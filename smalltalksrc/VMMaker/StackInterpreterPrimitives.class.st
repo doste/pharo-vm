@@ -144,6 +144,70 @@ StackInterpreterPrimitives >> doPrimitiveSameThreadCallout [
 ]
 
 { #category : #ffi }
+StackInterpreterPrimitives >> doPrimitiveSameThreadCalloutUint64Uint64 [
+	"Actual primitive implementation of primitiveSameThreadCallout.
+	Because of Slang restrictions, making FFI optional requires cutting the primitive in two different methods. Otherwise slang will unconditionally do all local declarations which may refer to invalid types if FFI is not enabled.
+	
+	Method primitiveSameThreadCallout checks if the feature is available. If so, it calls this method."
+
+	<inline: false>
+	<option: #FEATURE_FFI>
+	<var: #externalFunction declareC: #'uint64_t (*externalFunction)(uint64_t)'>
+	<var: #retVal type: #uint64_t>
+	| externalFunction cif PARAM_EXTERNALFUNCTION PARAM_ARGUMENTS argumentIntOop retVal |
+	PARAM_EXTERNALFUNCTION := 1.
+	PARAM_ARGUMENTS := 0.
+
+
+	"1. Obtain externalFunction and extract the CIF"
+	externalFunction := self getHandler:
+		                    (self stackValue: PARAM_EXTERNALFUNCTION).
+	self failed ifTrue: [
+		self logDebug: 'Invalid External Function Argument'.
+		^ self primitiveFailFor: PrimErrBadArgument ].
+
+	cif := self getHandlerAsCif: (objectMemory
+			        fetchPointer: 1
+			        ofObject: (self stackValue: PARAM_EXTERNALFUNCTION)).
+
+	self failed ifTrue: [
+		self logDebug: 'Invalid CIF in ExternalFunction'.
+		^ self primitiveFailFor: PrimErrBadArgument ].
+
+	"2. We know that this primitive accepts functions with only one argument, which has to be of type uint64"
+	"We check the return type:"
+	cif returnType = TFBasicType uint64 ifFalse: [
+		self logDebug: 'Return type of the function is not uint64'.
+		^ self primitiveFailFor: PrimErrBadArgument ].
+	
+	"And then that the (only) argument is of the right type:"
+	(cif parameterTypes size = 1 and: [
+		 (cif parameterTypes at: 1) = TFBasicType uint64 ]) ifFalse: [
+		self logDebug: 'Parameter type of the function is not uint64'.
+		^ self primitiveFailFor: PrimErrBadArgument ].
+
+	"The argument of this primitive is a Pharo Integer."
+	argumentIntOop := self stackValue: PARAM_ARGUMENTS. 
+	"We check that is indeed an unsigned integer of 64 bits:"
+	(self positive64BitValueOf: argumentIntOop) < 0 ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+	(self positive64BitValueOf: argumentIntOop) > UINT64_MAX ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+
+	(objectMemory isIntegerObject: argumentIntOop) ifFalse: [
+		self logDebug: 'Argument Integer is not an Integer'.
+		^ self primitiveFailFor: PrimErrBadArgument ].
+
+	" 3.
+	- Call directly the function.
+	- The only marshalling we have to do to the argument is to transform it from a Pharo Integer to a C integer."
+	retVal := self
+		          perform: externalFunction
+		          with: (self positive64BitValueOf: argumentIntOop).
+		
+	"Return the value applying the same marshalling as before, this time converting the return value to a Pharo Integer."
+	self pop: 2 thenPush: (objectMemory positive64BitIntegerFor: retVal)
+]
+
+{ #category : #ffi }
 StackInterpreterPrimitives >> doPrimitiveWorkerCallout [
 	"Actual primitive implementation of primitiveWorkerCallout.
 	Because of Slang restrictions, making FFI optional requires cutting the primitive in two different methods. Otherwise slang will unconditionally do all local declarations which may refer to invalid types if FFI is not enabled.
@@ -2685,6 +2749,19 @@ StackInterpreterPrimitives >> primitiveSameThreadCallout [
 		self doPrimitiveSameThreadCallout.
 	] ifFalse: [ 
 		self primitiveFailFor: PrimErrUnsupported ]
+]
+
+{ #category : #ffi }
+StackInterpreterPrimitives >> primitiveSameThreadCalloutUint64Uint64 [
+	"Because of Slang restrictions, making FFI optional requires cutting the primitive in two different methods. Otherwise slang will unconditionally do all local declarations which may refer to invalid types if FFI is not enabled.
+	
+	Method primitiveSameThreadCallout checks if the feature is available. If so, it calls the actual implementation: doPrimitiveSameThreadCallout."
+
+	<export: true>
+	self
+		cppIf: FEATURE_FFI
+		ifTrue: [ self doPrimitiveSameThreadCalloutUint64Uint64 ]
+		ifFalse: [ self primitiveFailFor: PrimErrUnsupported ]
 ]
 
 { #category : #'memory space primitives' }
