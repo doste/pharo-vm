@@ -176,14 +176,16 @@ StackInterpreterPrimitives >> doPrimitiveSameThreadCalloutUint64Uint64 [
 
 	"2. We know that this primitive accepts functions with only one argument, which has to be of type uint64"
 	"We check the return type:"
-	(cif returnType = self libFFI uint64) ifFalse: [
-	"(cif returnType = TFBasicType uint64) ifFalse: ["
+	(cif returnType size = 8) ifFalse: [
+	"(cif returnType = self libFFI uint64) ifFalse: [
+	(cif returnType = TFBasicType uint64) ifFalse: [			Estos chequeos no funcan :("
 		self logDebug: 'Return type of the function is not uint64'.
 		^ self primitiveFailFor: PrimErrBadArgument ].
 	
 	"And then that the (only) argument is of the right type:"
 	(cif numberArguments = 1 and: [
-		 (cif argTypeAt: 1) = self libFFI uint64 ]) ifFalse: [
+		 "(cif argTypeAt: 1) = self libFFI uint64 ]) ifFalse: ["
+		(cif returnType size = 8)]) ifFalse: [
 		self logDebug: 'Parameter type of the function is not uint64'.
 		^ self primitiveFailFor: PrimErrBadArgument ].
 
