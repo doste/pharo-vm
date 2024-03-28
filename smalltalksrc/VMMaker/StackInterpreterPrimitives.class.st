@@ -152,7 +152,7 @@ StackInterpreterPrimitives >> doPrimitiveSameThreadCalloutUint64Uint64 [
 
 	<inline: false>
 	<option: #FEATURE_FFI>
-	<var: #externalFunction declareC: #'uint64_t (*externalFunction)(uint64_t)'>
+	<var: #externalFunction declareC: #'uint64_t (*)(uint64_t)'>
 	<var: #retVal type: #uint64_t>
 	| externalFunction cif PARAM_EXTERNALFUNCTION PARAM_ARGUMENTS argumentIntOop retVal |
 	PARAM_EXTERNALFUNCTION := 1.
