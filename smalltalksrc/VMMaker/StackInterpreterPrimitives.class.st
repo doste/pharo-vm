@@ -152,9 +152,11 @@ StackInterpreterPrimitives >> doPrimitiveSameThreadCalloutUint64Uint64 [
 
 	<inline: false>
 	<option: #FEATURE_FFI>
-	<var: #externalFunction declareC: #'uint64_t (*)(uint64_t)'>
+	<var: #externalFunction declareC: #'uint64_t (*externalFunction)(uint64_t)'>
 	<var: #retVal type: #uint64_t>
 	| externalFunction cif PARAM_EXTERNALFUNCTION PARAM_ARGUMENTS argumentIntOop retVal |
+	
+	
 	PARAM_EXTERNALFUNCTION := 1.
 	PARAM_ARGUMENTS := 0.
 
@@ -207,7 +209,7 @@ StackInterpreterPrimitives >> doPrimitiveSameThreadCalloutUint64Uint64 [
 		          with: (self positive64BitValueOf: argumentIntOop).
 		
 	"Return the value applying the same marshalling as before, this time converting the return value to a Pharo Integer."
-	self pop: 2 thenPush: (objectMemory positive64BitIntegerFor: retVal)
+	self pop: 3 thenPush: (objectMemory positive64BitIntegerFor: retVal)
 ]
 
 { #category : #ffi }
