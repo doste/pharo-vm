@@ -164,42 +164,42 @@ StackInterpreterPrimitives >> doPrimitiveSameThreadCalloutUint64Uint64 [
 	"1. Obtain externalFunction and extract the CIF"
 	externalFunction := self getHandler:
 		                    (self stackValue: PARAM_EXTERNALFUNCTION).
-	"self failed ifTrue: [
+	self failed ifTrue: [
 		self logDebug: 'Invalid External Function Argument'.
-		^ self primitiveFailFor: PrimErrBadArgument ]."
+		^ self primitiveFailFor: PrimErrBadArgument ].
 
 	cif := self getHandlerAsCif: (objectMemory
 			        fetchPointer: 1
 			        ofObject: (self stackValue: PARAM_EXTERNALFUNCTION)).
 
-	"self failed ifTrue: [
+	self failed ifTrue: [
 		self logDebug: 'Invalid CIF in ExternalFunction'.
-		^ self primitiveFailFor: PrimErrBadArgument ]."
+		^ self primitiveFailFor: PrimErrBadArgument ].
 
 	"2. We know that this primitive accepts functions with only one argument, which has to be of type uint64"
 	"We check the return type:"
-	"(cif returnType size = 8) ifFalse: ["
-	"(cif returnType = self libFFI uint64) ifFalse: [
-	(cif returnType = TFBasicType uint64) ifFalse: [			Estos chequeos no funcan :("
-		"self logDebug: 'Return type of the function is not uint64'.
-		^ self primitiveFailFor: PrimErrBadArgument ]."
+	(cif returnType size = 8) ifFalse: [
+	"(cif returnType = self libFFI uint64) ifFalse: ["
+	"(cif returnType = TFBasicType uint64) ifFalse: [			Estos chequeos no funcan :("
+		self logDebug: 'Return type of the function is not uint64'.
+		^ self primitiveFailFor: PrimErrBadArgument ].
 	
 	"And then that the (only) argument is of the right type:"
-	"(cif numberArguments = 1 and: ["
+	(cif numberArguments = 1 and: [
 		 "(cif argTypeAt: 1) = self libFFI uint64 ]) ifFalse: ["
-		"(cif returnType size = 8)]) ifFalse: [
+		(cif returnType size = 8)]) ifFalse: [
 		self logDebug: 'Parameter type of the function is not uint64'.
-		^ self primitiveFailFor: PrimErrBadArgument ]."
+		^ self primitiveFailFor: PrimErrBadArgument ].
 
 	"The argument of this primitive is a Pharo Integer."
 	argumentIntOop := self stackValue: PARAM_ARGUMENTS. 
 	"We check that is indeed an unsigned integer of 64 bits:"
-	"(self positive64BitValueOf: argumentIntOop) < 0 ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+	(self positive64BitValueOf: argumentIntOop) < 0 ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
 	(self positive64BitValueOf: argumentIntOop) > UINT64_MAX ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
 
 	(objectMemory isIntegerObject: argumentIntOop) ifFalse: [
 		self logDebug: 'Argument Integer is not an Integer'.
-		^ self primitiveFailFor: PrimErrBadArgument ]."
+		^ self primitiveFailFor: PrimErrBadArgument ].
 
 	" 3.
 	- Call directly the function.
