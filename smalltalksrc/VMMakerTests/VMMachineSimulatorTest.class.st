@@ -514,3 +514,31 @@ VMMachineSimulatorTest >> testNormalExecutionUntilAddressIsRespected [
 
 	self assert: self instructionPointer equals: lastInstruction address
 ]
+
+{ #category : #'tests - memory access exception' }
+VMMachineSimulatorTest >> testPAPROBA [
+
+	| lastInstruction invalidAddressHandled returningPoint |
+	self compile: [ 
+		cogit MoveCq: 0 R: TempReg. 
+		cogit MoveCq: 16r7FFF0000 R: Extra0Reg.
+		cogit CallFull: Extra0Reg.
+		returningPoint := cogit MoveCq: 99 R: TempReg. 
+		lastInstruction := cogit RetN: 0].
+	
+	invalidAddressHandled := false.
+	
+	self machineSimulator invalidAccessHandler: [:invalidAccess | 
+		invalidAddressHandled := true.
+		self machineSimulator instructionPointerRegisterValue: returningPoint address.
+		true].
+
+	self
+		runFrom: cogInitialAddress
+		until: lastInstruction address
+		timeout: 0.
+
+
+	self assert: self temporaryRegisterValue equals: 99.
+	self assert: invalidAddressHandled
+]

@@ -1260,6 +1260,62 @@ CogObjectRepresentation >> genPrimitiveQuo [
 ]
 
 { #category : #'primitive generators' }
+CogObjectRepresentation >> genPrimitiveSameThreadCalloutUint64Uint64 [
+	| UINT64_MAX  jumpOutOfTopBounds jumpOutOfBottomBounds primitiveFailure jumpInvalidCifNargs jumpInvalidCifRtype |
+	"PARAM_EXTERNALFUNCTION := 1.
+	PARAM_ARGUMENTS := 0."
+	UINT64_MAX := 2**( 64) - 1.	
+
+	cogit genLoadArgAtDepth: 0 into: Arg0Reg.  "stack[0] <- argument of the C function (an uint64)"
+	cogit genLoadArgAtDepth: 1 into: Arg1Reg.  "stack[1] <- C function (an TFExternalFunction) . (In stack[2] is the receiver)"
+
+	"1. Obtain externalFunction and extract the CIF"
+	
+	"((objectMemory isPointers: anOop) not or: [ (objectMemory slotSizeOf: anOop) < 1 ])
+		ifTrue: [ self primitiveFail. ^ nil ]."
+		
+	"self readAddress: (objectMemory fetchPointer: 0 ofObject: anOop) ==> self unsignedLongAt: objOop + self baseHeaderSize + (fieldIndex << self shiftForWord)"
+	"externalFunction := self getHandler:
+		                    (self stackValue: PARAM_EXTERNALFUNCTION)."	
+	self genLoadSlot: 0 sourceReg: Arg1Reg  destReg: TempReg.													
+	"cif := self getHandlerAsCif: (objectMemory
+			        fetchPointer: 1
+			        ofObject: (self stackValue: PARAM_EXTERNALFUNCTION))"
+	self genLoadSlot: 1 sourceReg: Arg1Reg  destReg: Extra0Reg.
+	
+	"=========== EN VSCODE==========="
+	
+	"The argument of this primitive is a Pharo Integer."
+	"argumentIntOop := self stackValue: PARAM_ARGUMENTS.    <- This is already on Arg0Reg" 
+	
+	"cogit CmpCw: UINT64_MAX R: Arg0Reg.
+	jumpOutOfTopBounds := cogit JumpGreater: 0."
+	"jumpOutOfTopBounds := cogit JumpLess: 0."
+	cogit CmpCq: 0 R: Arg0Reg.
+	jumpOutOfBottomBounds := cogit JumpLess: 0.
+	"jumpOutOfBottomBounds := cogit JumpGreater: 0."
+		
+	"retVal := self
+		          perform: externalFunction
+		          with: (self positive64BitValueOf: argumentIntOop)."
+	"Arg0Reg already has the argument set"
+	cogit CallR: TempReg.
+	
+	"		cogit genPrimReturn.																							>>>>>>>>>>>>>>>>> ?????????"
+	
+	primitiveFailure := cogit Label.
+	"jumpInvalidCifRtype jmpTarget: primitiveFailure.
+	jumpInvalidCifNargs jmpTarget: primitiveFailure."
+	jumpOutOfBottomBounds jmpTarget: primitiveFailure.
+	"jumpOutOfTopBounds jmpTarget: primitiveFailure."
+	
+	^CompletePrimitive.
+	
+	
+
+]
+
+{ #category : #'primitive generators' }
 CogObjectRepresentation >> genPrimitiveShallowCopy [
 	"subclasses override if they can"
 	^UnimplementedPrimitive

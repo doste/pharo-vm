@@ -523,7 +523,7 @@ VMMachineCodeDebugger >> step [
 
 	machineSimulator step.
 	self refreshAll.
-	self highlightPCInstruction
+	"self highlightPCInstruction"
 ]
 
 { #category : #accessing }

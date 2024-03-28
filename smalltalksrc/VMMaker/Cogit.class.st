@@ -1229,6 +1229,8 @@ Cogit class >> initializePrimitiveTable [
 		(657 genPrimitiveStoreChar32IntoExternalAddress)
 		(658 genPrimitiveStoreFloat32IntoExternalAddress)
 		(659 genPrimitiveStoreFloat64IntoExternalAddress)
+		
+		(670 genPrimitiveSameThreadCalloutUint64Uint64)
 	)
 ]
 

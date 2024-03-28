@@ -666,9 +666,18 @@ VMSimpleStackBasedCogitAbstractTest >> push: aByteArray [
 VMSimpleStackBasedCogitAbstractTest >> pushAddress: anInteger [
 
 	| aByteArray |
+	
+	"solo para probar:"
+	(anInteger class = TFExternalFunction) ifTrue: [ 
+		self push: anInteger address asByteArrayPointer	
+	]
+ifFalse: [  
+	
 	aByteArray := ByteArray new: self wordSize.
 	aByteArray integerAt: 1 put: anInteger size: self wordSize signed: false.
 	self push: aByteArray
+	
+]
 ]
 
 { #category : #helpers }
