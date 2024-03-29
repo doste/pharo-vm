@@ -1266,8 +1266,8 @@ CogObjectRepresentation >> genPrimitiveSameThreadCalloutUint64Uint64 [
 	PARAM_ARGUMENTS := 0."
 	"UINT64_MAX := 2**( 64) - 1."
 
-	cogit genLoadArgAtDepth: 0 into: Arg0Reg.  "stack[0] <- argument of the C function (an uint64)"
-	cogit genLoadArgAtDepth: 1 into: Arg1Reg.  "stack[1] <- C function (an TFExternalFunction) . (In stack[2] is the receiver)"
+	cogit genLoadArgAtDepth: 0 into: Arg1Reg.  "stack[0] <- argument of the C function (an uint64)"
+	cogit genLoadArgAtDepth: 1 into: Arg0Reg.  "stack[1] <- C function (an TFExternalFunction) . (In stack[2] is the receiver)"
 
 	"1. Obtain externalFunction and extract the CIF"
 	
@@ -1277,11 +1277,11 @@ CogObjectRepresentation >> genPrimitiveSameThreadCalloutUint64Uint64 [
 	"self readAddress: (objectMemory fetchPointer: 0 ofObject: anOop) ==> self unsignedLongAt: objOop + self baseHeaderSize + (fieldIndex << self shiftForWord)"
 	"externalFunction := self getHandler:
 		                    (self stackValue: PARAM_EXTERNALFUNCTION)."	
-	self genLoadSlot: 0 sourceReg: Arg1Reg  destReg: TempReg.													
+	self genLoadSlot: 0 sourceReg: Arg0Reg  destReg: TempReg.													
 	"cif := self getHandlerAsCif: (objectMemory
 			        fetchPointer: 1
 			        ofObject: (self stackValue: PARAM_EXTERNALFUNCTION))"
-	self genLoadSlot: 1 sourceReg: Arg1Reg  destReg: Extra0Reg.
+	self genLoadSlot: 1 sourceReg: Arg0Reg  destReg: Extra0Reg.
 	
 	"=========== EN VSCODE==========="
 	
@@ -1303,7 +1303,7 @@ CogObjectRepresentation >> genPrimitiveSameThreadCalloutUint64Uint64 [
 	
 	"		cogit genPrimReturn.																							>>>>>>>>>>>>>>>>> ?????????"
 	
-	primitiveFailure := cogit Label.
+	"primitiveFailure := cogit Label."
 	"jumpInvalidCifRtype jmpTarget: primitiveFailure.
 	jumpInvalidCifNargs jmpTarget: primitiveFailure."
 	"jumpOutOfBottomBounds jmpTarget: primitiveFailure."

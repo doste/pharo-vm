@@ -185,9 +185,10 @@ StackInterpreterPrimitives >> doPrimitiveSameThreadCalloutUint64Uint64 [
 		^ self primitiveFailFor: PrimErrBadArgument ].
 	
 	"And then that the (only) argument is of the right type:"
-	(cif numberArguments = 1 and: [
-		 "(cif argTypeAt: 1) = self libFFI uint64 ]) ifFalse: ["
-		(cif returnType size = 8)]) ifFalse: [
+	"(cif numberArguments = 1 and: ["
+		 "(cif argTypeAt: 1) = self libFFI uint64 ]) ifFalse: [
+		cif returnType size = 8)]) ifFalse: ["
+		(cif numberArguments = 1) ifFalse: [
 		self logDebug: 'Parameter type of the function is not uint64'.
 		^ self primitiveFailFor: PrimErrBadArgument ].
 
