@@ -1264,7 +1264,7 @@ CogObjectRepresentation >> genPrimitiveSameThreadCalloutUint64Uint64 [
 	| UINT64_MAX  jumpOutOfTopBounds jumpOutOfBottomBounds primitiveFailure jumpInvalidCifNargs jumpInvalidCifRtype |
 	"PARAM_EXTERNALFUNCTION := 1.
 	PARAM_ARGUMENTS := 0."
-	UINT64_MAX := 2**( 64) - 1.	
+	"UINT64_MAX := 2**( 64) - 1."
 
 	cogit genLoadArgAtDepth: 0 into: Arg0Reg.  "stack[0] <- argument of the C function (an uint64)"
 	cogit genLoadArgAtDepth: 1 into: Arg1Reg.  "stack[1] <- C function (an TFExternalFunction) . (In stack[2] is the receiver)"
