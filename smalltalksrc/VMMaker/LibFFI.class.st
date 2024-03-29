@@ -58,6 +58,13 @@ LibFFI >> float [
 	^ LibFFIType type: FFI_TYPE_FLOAT size: 4 on: self.
 ]
 
+{ #category : #accessing }
+LibFFI >> functionAt: anInteger [ 
+	<doNotGenerate>
+	
+	^ functions at: anInteger
+]
+
 { #category : #'instance creation' }
 LibFFI >> initialize [
 

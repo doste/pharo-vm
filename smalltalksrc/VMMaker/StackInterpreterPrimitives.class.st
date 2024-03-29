@@ -19,6 +19,16 @@ StackInterpreterPrimitives >> allocateParameters: anInteger using: allocationBlo
 		inSmalltalk: [ CArrayAccessor on: (Array new: anInteger) ]
 ]
 
+{ #category : #'as yet unclassified' }
+StackInterpreterPrimitives >> callFunctionAtAddress: externalFunction with: anArgument [
+
+	^ self 
+		cCode: [ self perform: externalFunction with: anArgument ] 
+		inSmalltalk: [ (self libFFI functionAt: externalFunction) value: anArgument  ]
+
+	
+]
+
 { #category : #'primitive support' }
 StackInterpreterPrimitives >> cloneContext: aContext [ 
 	| sz cloned spouseFP sp |
@@ -154,7 +164,9 @@ StackInterpreterPrimitives >> doPrimitiveSameThreadCalloutUint64Uint64 [
 	<option: #FEATURE_FFI>
 	<var: #externalFunction declareC: #'uint64_t (*externalFunction)(uint64_t)'>
 	<var: #retVal type: #uint64_t>
-	| externalFunction cif PARAM_EXTERNALFUNCTION PARAM_ARGUMENTS argumentIntOop retVal |
+	<var: #argumentInt type: #uint64_t>
+
+	| externalFunction cif PARAM_EXTERNALFUNCTION PARAM_ARGUMENTS argumentIntOop retVal argumentInt |
 	
 	
 	PARAM_EXTERNALFUNCTION := 1.
@@ -178,36 +190,34 @@ StackInterpreterPrimitives >> doPrimitiveSameThreadCalloutUint64Uint64 [
 
 	"2. We know that this primitive accepts functions with only one argument, which has to be of type uint64"
 	"We check the return type:"
-	(cif returnType size = 8) ifFalse: [
-	"(cif returnType = self libFFI uint64) ifFalse: ["
-	"(cif returnType = TFBasicType uint64) ifFalse: [			Estos chequeos no funcan :("
+	(cif returnType type = FFI_TYPE_UINT64) ifFalse: [
 		self logDebug: 'Return type of the function is not uint64'.
 		^ self primitiveFailFor: PrimErrBadArgument ].
 	
-	"And then that the (only) argument is of the right type:"
-	"(cif numberArguments = 1 and: ["
-		 "(cif argTypeAt: 1) = self libFFI uint64 ]) ifFalse: [
-		cif returnType size = 8)]) ifFalse: ["
-		(cif numberArguments = 1) ifFalse: [
-		self logDebug: 'Parameter type of the function is not uint64'.
+	(cif numberArguments = 1) ifFalse: [
+		self logDebug: 'Invalid number of arguments'.
+		^ self primitiveFailFor: PrimErrBadArgument ].
+
+	(cif numberArguments = 1) ifFalse: [
+		self logDebug: 'Invalid number of arguments'.
+		^ self primitiveFailFor: PrimErrBadArgument ].
+
+	(cif argTypeAt: 0) type = FFI_TYPE_UINT64 ifFalse: [ 
+		self logDebug: 'Argument type of the function is not uint64'.
 		^ self primitiveFailFor: PrimErrBadArgument ].
 
 	"The argument of this primitive is a Pharo Integer."
 	argumentIntOop := self stackValue: PARAM_ARGUMENTS. 
-	"We check that is indeed an unsigned integer of 64 bits:"
-	(self positive64BitValueOf: argumentIntOop) < 0 ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
-	(self positive64BitValueOf: argumentIntOop) > UINT64_MAX ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
-
-	(objectMemory isIntegerObject: argumentIntOop) ifFalse: [
-		self logDebug: 'Argument Integer is not an Integer'.
+	"We extract the argument value"
+	argumentInt := self positive64BitValueOf: argumentIntOop.
+	self failed ifTrue: [ 	
+		self logDebug: 'Invalid argument value'.
 		^ self primitiveFailFor: PrimErrBadArgument ].
-
+	
 	" 3.
 	- Call directly the function.
 	- The only marshalling we have to do to the argument is to transform it from a Pharo Integer to a C integer."
-	retVal := self
-		          perform: externalFunction
-		          with: (self positive64BitValueOf: argumentIntOop).
+	retVal := self callFunctionAtAddress:  externalFunction with: argumentInt.
 		
 	"Return the value applying the same marshalling as before, this time converting the return value to a Pharo Integer."
 	self pop: 3 thenPush: (objectMemory positive64BitIntegerFor: retVal)
