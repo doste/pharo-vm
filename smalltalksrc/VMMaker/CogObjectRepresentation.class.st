@@ -1291,8 +1291,8 @@ CogObjectRepresentation >> genPrimitiveSameThreadCalloutUint64Uint64 [
 	"cogit CmpCw: UINT64_MAX R: Arg0Reg.
 	jumpOutOfTopBounds := cogit JumpGreater: 0."
 	"jumpOutOfTopBounds := cogit JumpLess: 0."
-	cogit CmpCq: 0 R: Arg0Reg.
-	jumpOutOfBottomBounds := cogit JumpLess: 0.
+	"cogit CmpCq: 0 R: Arg0Reg.
+	jumpOutOfBottomBounds := cogit JumpLess: 0."
 	"jumpOutOfBottomBounds := cogit JumpGreater: 0."
 		
 	"retVal := self
@@ -1306,7 +1306,7 @@ CogObjectRepresentation >> genPrimitiveSameThreadCalloutUint64Uint64 [
 	primitiveFailure := cogit Label.
 	"jumpInvalidCifRtype jmpTarget: primitiveFailure.
 	jumpInvalidCifNargs jmpTarget: primitiveFailure."
-	jumpOutOfBottomBounds jmpTarget: primitiveFailure.
+	"jumpOutOfBottomBounds jmpTarget: primitiveFailure."
 	"jumpOutOfTopBounds jmpTarget: primitiveFailure."
 	
 	^CompletePrimitive.
