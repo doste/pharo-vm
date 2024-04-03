@@ -1019,7 +1019,7 @@ StackInterpreter class >> initializePrimitiveTable [
 	"self initializePrimitiveTable"
 
 	"NOTE: The real limit here is 2047 because of the old method header layout but there is no point in going over the needed size"
-	MaxPrimitiveIndex := 670.	
+	MaxPrimitiveIndex := 680.	
 	MaxQuickPrimitiveIndex := 519.
 	PrimNumberExternalCall := 117.
 	PrimNumberDoPrimitive := 118.

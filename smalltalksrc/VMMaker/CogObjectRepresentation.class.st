@@ -1261,60 +1261,84 @@ CogObjectRepresentation >> genPrimitiveQuo [
 
 { #category : #'primitive generators' }
 CogObjectRepresentation >> genPrimitiveSameThreadCalloutUint64Uint64 [
-	| UINT64_MAX  jumpOutOfTopBounds jumpOutOfBottomBounds primitiveFailure jumpInvalidCifNargs jumpInvalidCifRtype |
+	| UINT64_MAX  jumpOutOfTopBounds jumpOutOfBottomBounds primitiveFailure jumpInvalidCifNargs jumpInvalidCifRtype jumpBadArg jumpInvalidCifRtypeSize |
 	"PARAM_EXTERNALFUNCTION := 1.
 	PARAM_ARGUMENTS := 0."
-	"UINT64_MAX := 2**( 64) - 1."
+	UINT64_MAX := 2**( 64) - 1. "16rFFFFFFFFFFFFFFFF"
 
 	cogit genLoadArgAtDepth: 0 into: Arg1Reg.  "stack[0] <- argument of the C function (an uint64)"
 	cogit genLoadArgAtDepth: 1 into: Arg0Reg.  "stack[1] <- C function (an TFExternalFunction) . (In stack[2] is the receiver)"
 
-	"1. Obtain externalFunction and extract the CIF"
+	"1. Obtain externalFunction and extract the C function pointer and the CIF:"
 	
-	"((objectMemory isPointers: anOop) not or: [ (objectMemory slotSizeOf: anOop) < 1 ])
-		ifTrue: [ self primitiveFail. ^ nil ]."
-		
-	"self readAddress: (objectMemory fetchPointer: 0 ofObject: anOop) ==> self unsignedLongAt: objOop + self baseHeaderSize + (fieldIndex << self shiftForWord)"
-	"externalFunction := self getHandler:
-		                    (self stackValue: PARAM_EXTERNALFUNCTION)."	
-	self genLoadSlot: 0 sourceReg: Arg0Reg  destReg: TempReg.													
+	"In Arg0Reg we have an Oop corresponding to the TFExternalFunction, we need to extract from it the C function pointer.
+	In the first slot of the TFExternalFunction we have another Oop: ExternalAddress."
+	self genLoadSlot: 0 sourceReg: Arg0Reg  destReg: TempReg.
+	"An ExternalAddress is just a wrapper to the C function. Its first (and unique) slot contains the address of the C function directly:"
+	self genLoadSlot: 0 sourceReg: TempReg  destReg: TempReg.
+
 	"cif := self getHandlerAsCif: (objectMemory
 			        fetchPointer: 1
 			        ofObject: (self stackValue: PARAM_EXTERNALFUNCTION))"
 	self genLoadSlot: 1 sourceReg: Arg0Reg  destReg: Extra0Reg.
+	
+	"Verify if the argument we receive for the C function is in fact an uint64:"
+	jumpBadArg := self genJumpNotSmallInteger: Arg1Reg.
+	self genConvertSmallIntegerToIntegerInReg: Arg1Reg.
+	"cogit CmpCw: 16rFFFFFFFFFFFFFFFF R: Arg1Reg.
+	jumpOutOfTopBounds := cogit JumpGreater: 0."
+	cogit CmpCq: 0 R: Arg1Reg.
+	jumpOutOfBottomBounds := cogit JumpLess: 0.
 
 	"The C function we are about to call expects its (unique) argument in Arg0Reg.
 	We have it in Arg1Reg, but we need to untag it. The C function expects an uint64_t, not a Pharo object (a SmallInteger for example)"
 	cogit MoveR: Arg1Reg R: Arg0Reg.
-	self genConvertSmallIntegerToIntegerInReg: Arg0Reg.
+	"self genConvertSmallIntegerToIntegerInReg: Arg0Reg.					---> Now we are doing up"
 	
-	"=========== EN VSCODE==========="
+	"Verify that the cif is correct:"
+	"(cif numberArguments = 1 and: [
+		(cif returnType size = 8)]) ifFalse: [
+		self logDebug: 'Parameter type of the function is not uint64'.
+		^ self primitiveFailFor: PrimErrBadArgument ]."
 	
-	"The argument of this primitive is a Pharo Integer."
-	"argumentIntOop := self stackValue: PARAM_ARGUMENTS.    <- This is already on Arg0Reg" 
+	"cif numberArguments = 1"
+	self genLoadSlot: 3 sourceReg: Extra0Reg  destReg: Extra1Reg.  "slot corresponding to the nargs of the CIF (class LibFFICIF)"
+	self genConvertSmallIntegerToIntegerInReg: Extra1Reg.
+	cogit CmpCq: 1 R: Extra1Reg.  
+	"Estas 2 ultimas lineas son lo mismo que: 																				?????????????????????
+		cogit CmpCq: (memory integerObjectOf: 1) R: Extra0Reg. 
+	???
+	"
+	jumpInvalidCifNargs := cogit JumpZero: 0.
 	
-	"cogit CmpCw: UINT64_MAX R: Arg0Reg.
-	jumpOutOfTopBounds := cogit JumpGreater: 0."
-	"jumpOutOfTopBounds := cogit JumpLess: 0."
-	"cogit CmpCq: 0 R: Arg0Reg.
-	jumpOutOfBottomBounds := cogit JumpLess: 0."
-	"jumpOutOfBottomBounds := cogit JumpGreater: 0."
+	"cif returnType size = 8"
+	self genLoadSlot: 5 sourceReg: Extra0Reg destReg: Extra1Reg.  "slot corresponding to the rtype of the CIF"
+	cogit CmpCq: 0 R: Extra1Reg.
+	jumpInvalidCifRtype := cogit JumpZero: 0.							"deberiamos chequear esto???????  (si no se hace este chequeo y en Extra1Reg queda algo invalido en la proxima instruccion lo intentara desreferenciar y explota"
+	
+	self genLoadSlot: 1 sourceReg: Extra1Reg destReg: Extra1Reg.  "slot corresponding to the size of the LibFFIType"
+	self genConvertSmallIntegerToIntegerInReg: Extra1Reg.
+	cogit CmpCq: 8 R: Extra1Reg.
+	jumpInvalidCifRtypeSize := cogit JumpZero: 0.
+	
 		
-	"retVal := self
-		          perform: externalFunction
-		          with: (self positive64BitValueOf: argumentIntOop)."
-
+	"Call the C function"
 	cogit CallR: TempReg.
-	
-	"		cogit genPrimReturn.																							>>>>>>>>>>>>>>>>> ?????????"
-	
-	"primitiveFailure := cogit Label."
-	"jumpInvalidCifRtype jmpTarget: primitiveFailure.
-	jumpInvalidCifNargs jmpTarget: primitiveFailure."
-	"jumpOutOfBottomBounds jmpTarget: primitiveFailure."
+	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
+	We need to convert that C integer into a Pharo SmallInteger:"																													
+	self genConvertIntegerToSmallIntegerInReg:  TempReg.
+	cogit MoveR: TempReg R: ReceiverResultReg.
+	cogit genPrimReturn.
+		
+	primitiveFailure := cogit Label.
+	jumpInvalidCifRtype jmpTarget: primitiveFailure.
+	jumpInvalidCifNargs jmpTarget: primitiveFailure.
+	jumpOutOfBottomBounds jmpTarget: primitiveFailure.
+	jumpInvalidCifRtypeSize jmpTarget: primitiveFailure.
 	"jumpOutOfTopBounds jmpTarget: primitiveFailure."
+	jumpBadArg jmpTarget: primitiveFailure.
 	
-	"Esta prim deberia lidiar solo con SmallInteger, si se le pasa un LongInteger deberia fallbackear a la primitiva del interprete, asique esta no seria una 'Complete Primitive', sino "
+	"Esta prim deberia lidiar solo con SmallInteger, si se le pasa un LongInteger deberia fallbackear a la primitiva del interprete, asique esta no seria una  End of statement expected ->'Complete Primitive', sino "
 	^CompletePrimitive.
 	
 	
