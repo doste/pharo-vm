@@ -1264,7 +1264,7 @@ CogObjectRepresentation >> genPrimitiveSameThreadCalloutUint64Uint64 [
 	| UINT64_MAX  jumpOutOfTopBounds jumpOutOfBottomBounds primitiveFailure jumpInvalidCifNargs jumpInvalidCifRtype jumpBadArg jumpInvalidCifRtypeSize |
 	"PARAM_EXTERNALFUNCTION := 1.
 	PARAM_ARGUMENTS := 0."
-	UINT64_MAX := 2**( 64) - 1. "16rFFFFFFFFFFFFFFFF"
+	"UINT64_MAX := 2**( 64) - 1." "16rFFFFFFFFFFFFFFFF"
 
 	cogit genLoadArgAtDepth: 0 into: Arg1Reg.  "stack[0] <- argument of the C function (an uint64)"
 	cogit genLoadArgAtDepth: 1 into: Arg0Reg.  "stack[1] <- C function (an TFExternalFunction) . (In stack[2] is the receiver)"
@@ -1277,8 +1277,7 @@ CogObjectRepresentation >> genPrimitiveSameThreadCalloutUint64Uint64 [
 	"An ExternalAddress is just a wrapper to the C function. Its first (and unique) slot contains the address of the C function directly:"
 	self genLoadSlot: 0 sourceReg: TempReg  destReg: TempReg.
 
-	"cif := self getHandlerAsCif: (objectMemory
-			        fetchPointer: 1
+	"cif := self getHandlerAsCif: (objectMemory fetchPointer: 1
 			        ofObject: (self stackValue: PARAM_EXTERNALFUNCTION))"
 	self genLoadSlot: 1 sourceReg: Arg0Reg  destReg: Extra0Reg.
 	
