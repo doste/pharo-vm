@@ -8346,6 +8346,11 @@ Cogit >> handleReadSimulationTrap: aProcessorSimulationTrap [
 	| variableValue accessor |
 
 	variableValue := (simulatedVariableGetters at: aProcessorSimulationTrap address) value asInteger.
+	
+	"for testing primitive FFI:"
+	"variableValue className = 'CArrayAccessor' ifTrue: [ (variableValue size = 1) ifFalse: [ 1halt. ] ifTrue: [ variableValue := ((variableValue object at: 1) type) asInteger ] ]."
+	
+	variableValue className = 'CArrayAccessor' ifTrue: [ 1halt ].
 
 	variableValue < 0 
 		ifTrue: [ 
@@ -11616,6 +11621,25 @@ Cogit >> simulatedReadWriteVariableAddress: getter in: receiver [
 ]
 
 { #category : #initialization }
+Cogit >> simulatedReadWriteVariableAddress: getter in: receiver atAddress: address [
+	"Answer a simulated variable.  This is a variable whose value can be read
+	 and written by generated machine code."
+	<doNotGenerate>
+	
+	simulatedVariableSetters at: address ifPresent: [ ^ 0 ].
+		
+	simulatedVariableSetters
+		at: address
+		put:
+			[| setter |
+			setter := (((getter beginsWith: 'get')
+						ifTrue: ['s', getter allButFirst]
+						ifFalse: [getter]), ':') asSymbol.
+			[:value| receiver perform: setter with: value]].
+
+]
+
+{ #category : #initialization }
 Cogit >> simulatedTrampolineFor: selectorOrAddress [
 	"Set a simulated trampoline.  This is a method in the cogit, coInterpreter
 	 or objectMemory that is called from a machine code trampoline."
@@ -11657,6 +11681,17 @@ Cogit >> simulatedVariableAddress: getter in: receiver [
 	<doNotGenerate>
 	| address |
 	address := self simulatedAddressFor: getter.
+	simulatedVariableGetters
+		at: address
+		ifAbsentPut: [MessageSend receiver: receiver selector: getter].
+	^address
+]
+
+{ #category : #initialization }
+Cogit >> simulatedVariableAddress: getter in: receiver atAddress: address [
+	"Answer a simulated variable.  This is a variable whose value can be read
+	 by generated machine code."
+	<doNotGenerate>
 	simulatedVariableGetters
 		at: address
 		ifAbsentPut: [MessageSend receiver: receiver selector: getter].
