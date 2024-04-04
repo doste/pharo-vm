@@ -57,11 +57,6 @@ LibFFIType class >> type: aType size: aSize on: aLibFFI [
 		yourself
 ]
 
-{ #category : #converting }
-LibFFIType >> asInteger [
-	^self type
-]
-
 { #category : #accessing }
 LibFFIType >> elements: aCollection [ 
 	elements := aCollection
