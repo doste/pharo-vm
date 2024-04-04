@@ -354,7 +354,7 @@ VMJittedSpecializedPrimitiveTest >> testPrimitiveFFIShouldFailWithInvalidCifRtyp
 			(memory integerObjectOf: 8888).														
 			 }.
 
-	"self openMachineDebuggerAt: primitiveAddress."
+	"We assert that the primitive failed so it will not return, so it will arrive to the endInstruction"
 		
 	self runFrom: primitiveAddress until: endInstruction address.
 	

@@ -1287,17 +1287,16 @@ CogObjectRepresentation >> genPrimitiveSameThreadCalloutUint64Uint64 [
 																				
 	"Verify that the cif is correct:"
 	
-	"1) cif numberArguments = 1"
-	cogit CmpCq: 2r1001 R: Extra1Reg.                        "The number 1 as SmallInteger is 1 001. So we compare it with the value in Extra0Reg directly, because we know that that value is a SmallInteger."
-	"cogit CmpCq: 1 R: Extra1Reg."
+	"1) cif numberArguments == 1"
+	"cogit CmpCq: 2r1001 R: Extra1Reg."                        "The number 1 as SmallInteger is 1 001. So we compare it with the value in Extra0Reg directly, because we know that that value is a SmallInteger."
+	cogit CmpCq: 1 R: Extra1Reg.
 	jumpInvalidCifNargs := cogit JumpNonZero: 0.
 								
-	"Now with the returnType:"												
+	"2) cif returnType == FFI_TYPE_UINT64 = 16rB . As a SmallInteger it's 16r59"									
 	self genLoadSlot: 5 sourceReg: Extra0Reg  destReg: Extra1Reg.
 	"Extra1Reg <- rtype"
-	
-	"2) cif returnType = FFI_TYPE_UINT64 = 16rB . As a SmallInteger it's 16r59"
-	cogit CmpCq: 16r59 R: Extra1Reg.
+	cogit CmpCq: 16rB R: Extra1Reg.
+	"cogit CmpCq: 16r59 R: Extra1Reg."
 	jumpInvalidCifRtype := cogit JumpNonZero: 0.
 	
 	"3) cif arg_types [0] == FFI_TYPE_UINT64 = 16rB . As a SmallInteger it's 16r59"
@@ -1305,11 +1304,9 @@ CogObjectRepresentation >> genPrimitiveSameThreadCalloutUint64Uint64 [
 	self genLoadSlot: 0 sourceReg: Extra1Reg destReg: Extra1Reg.    "Here there is a CArrayAccesor. In its slot 0 it has an field called object, and in turn this one has an array that has the type"
 	self genLoadSlot: 0 sourceReg: Extra1Reg  destReg: Extra1Reg.   "Here is the array"
 	self genLoadSlot: 0 sourceReg: Extra1Reg  destReg: Extra1Reg.   "And here we should have the type"
-	"cogit CmpCq: 16rB R: Extra1Reg."
-	cogit CmpCq: 16r59 R: Extra1Reg.
+	cogit CmpCq: 16rB R: Extra1Reg.
+	"cogit CmpCq: 16r59 R: Extra1Reg."
 	jumpInvalidCifArgtype := cogit JumpNonZero: 0.
-	
-	
 	
 	"Verify if the argument we receive for the C function is in fact an uint64:"
 	jumpBadArg := self genJumpNotSmallInteger: Arg1Reg.
