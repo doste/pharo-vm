@@ -1261,13 +1261,13 @@ CogObjectRepresentation >> genPrimitiveQuo [
 
 { #category : #'primitive generators' }
 CogObjectRepresentation >> genPrimitiveSameThreadCalloutUint64Uint64 [
-	| UINT64_MAX  jumpOutOfTopBounds jumpOutOfBottomBounds primitiveFailure jumpInvalidCifNargs jumpInvalidCifRtype jumpBadArg jumpInvalidCifRtypeSize |
+	| jumpOutOfBottomBounds primitiveFailure jumpInvalidCifNargs jumpInvalidCifRtype jumpBadArg jumpInvalidCifArgtype |
 	"PARAM_EXTERNALFUNCTION := 1.
 	PARAM_ARGUMENTS := 0."
-	"UINT64_MAX := 2**( 64) - 1." "16rFFFFFFFFFFFFFFFF"
 
 	cogit genLoadArgAtDepth: 0 into: Arg1Reg.  "stack[0] <- argument of the C function (an uint64)"
 	cogit genLoadArgAtDepth: 1 into: Arg0Reg.  "stack[1] <- C function (an TFExternalFunction) . (In stack[2] is the receiver)"
+
 
 	"1. Obtain externalFunction and extract the C function pointer and the CIF:"
 	
@@ -1277,48 +1277,49 @@ CogObjectRepresentation >> genPrimitiveSameThreadCalloutUint64Uint64 [
 	"An ExternalAddress is just a wrapper to the C function. Its first (and unique) slot contains the address of the C function directly:"
 	self genLoadSlot: 0 sourceReg: TempReg  destReg: TempReg.
 
-	"cif := self getHandlerAsCif: (objectMemory fetchPointer: 1
-			        ofObject: (self stackValue: PARAM_EXTERNALFUNCTION))"
-	self genLoadSlot: 1 sourceReg: Arg0Reg  destReg: Extra0Reg.
+	self genLoadSlot: 1 sourceReg: Arg0Reg  destReg: Extra0Reg. 		"In the second slot of the TFExternalFunction we have yet another Oop: TFFunctionDefinition, which has a 'pointer' to our CIF."
+	self genLoadSlot: 0 sourceReg: Extra0Reg  destReg: Extra0Reg. 	"In the first slot of the TFFunctionDefinition we have a handle, which itself is another ExternalAddress."
+	self genLoadSlot: 0 sourceReg: Extra0Reg destReg: Extra0Reg. 			"So we have to dereference it too, to access the 'external' CIF. Now in Extra0Reg we have a cifHandle"
+	
+	"Now we can use Extra0Reg to access the fields of the CIF:                   slots corresponding to the LibFFICIF (which our cifHandle is an instance of):"              
+	self genLoadSlot: 3 sourceReg: Extra0Reg  destReg: Extra1Reg. 					"address libFFI abi nargs arg_types rtype bytes flags"
+	"Extra1Reg <- nargs"																			"   0      1     2   3        4       5     6     7"
+																				
+	"Verify that the cif is correct:"
+	
+	"1) cif numberArguments = 1"
+	cogit CmpCq: 2r1001 R: Extra1Reg.                        "The number 1 as SmallInteger is 1 001. So we compare it with the value in Extra0Reg directly, because we know that that value is a SmallInteger."
+	"cogit CmpCq: 1 R: Extra1Reg."
+	jumpInvalidCifNargs := cogit JumpNonZero: 0.
+								
+	"Now with the returnType:"												
+	self genLoadSlot: 5 sourceReg: Extra0Reg  destReg: Extra1Reg.
+	"Extra1Reg <- rtype"
+	
+	"2) cif returnType = FFI_TYPE_UINT64 = 16rB . As a SmallInteger it's 16r59"
+	cogit CmpCq: 16r59 R: Extra1Reg.
+	jumpInvalidCifRtype := cogit JumpNonZero: 0.
+	
+	"3) cif arg_types [0] == FFI_TYPE_UINT64 = 16rB . As a SmallInteger it's 16r59"
+	self genLoadSlot: 4 sourceReg: Extra0Reg destReg: Extra1Reg.
+	self genLoadSlot: 0 sourceReg: Extra1Reg destReg: Extra1Reg.    "Here there is a CArrayAccesor. In its slot 0 it has an field called object, and in turn this one has an array that has the type"
+	self genLoadSlot: 0 sourceReg: Extra1Reg  destReg: Extra1Reg.   "Here is the array"
+	self genLoadSlot: 0 sourceReg: Extra1Reg  destReg: Extra1Reg.   "And here we should have the type"
+	"cogit CmpCq: 16rB R: Extra1Reg."
+	cogit CmpCq: 16r59 R: Extra1Reg.
+	jumpInvalidCifArgtype := cogit JumpNonZero: 0.
+	
+	
 	
 	"Verify if the argument we receive for the C function is in fact an uint64:"
 	jumpBadArg := self genJumpNotSmallInteger: Arg1Reg.
-	self genConvertSmallIntegerToIntegerInReg: Arg1Reg.
-	"cogit CmpCw: 16rFFFFFFFFFFFFFFFF R: Arg1Reg.
-	jumpOutOfTopBounds := cogit JumpGreater: 0."
+	self genConvertSmallIntegerToIntegerInReg: Arg1Reg. "We have it in Arg1Reg, but we need to untag it. The C function expects an uint64_t, not a Pharo object (a SmallInteger for example)"
 	cogit CmpCq: 0 R: Arg1Reg.
 	jumpOutOfBottomBounds := cogit JumpLess: 0.
+	
 
-	"The C function we are about to call expects its (unique) argument in Arg0Reg.
-	We have it in Arg1Reg, but we need to untag it. The C function expects an uint64_t, not a Pharo object (a SmallInteger for example)"
+	"The C function we are about to call expects its (unique) argument in Arg0Reg."
 	cogit MoveR: Arg1Reg R: Arg0Reg.
-	"self genConvertSmallIntegerToIntegerInReg: Arg0Reg.					---> Now we are doing up"
-	
-	"Verify that the cif is correct:"
-	"(cif numberArguments = 1 and: [
-		(cif returnType size = 8)]) ifFalse: [
-		self logDebug: 'Parameter type of the function is not uint64'.
-		^ self primitiveFailFor: PrimErrBadArgument ]."
-	
-	"cif numberArguments = 1"
-	self genLoadSlot: 3 sourceReg: Extra0Reg  destReg: Extra1Reg.  "slot corresponding to the nargs of the CIF (class LibFFICIF)"
-	self genConvertSmallIntegerToIntegerInReg: Extra1Reg.
-	cogit CmpCq: 1 R: Extra1Reg.  
-	"Estas 2 ultimas lineas son lo mismo que: 																				?????????????????????
-		cogit CmpCq: (memory integerObjectOf: 1) R: Extra0Reg. 
-	???
-	"
-	jumpInvalidCifNargs := cogit JumpZero: 0.
-	
-	"cif returnType size = 8"
-	self genLoadSlot: 5 sourceReg: Extra0Reg destReg: Extra1Reg.  "slot corresponding to the rtype of the CIF"
-	cogit CmpCq: 0 R: Extra1Reg.
-	jumpInvalidCifRtype := cogit JumpZero: 0.							"deberiamos chequear esto???????  (si no se hace este chequeo y en Extra1Reg queda algo invalido en la proxima instruccion lo intentara desreferenciar y explota"
-	
-	self genLoadSlot: 1 sourceReg: Extra1Reg destReg: Extra1Reg.  "slot corresponding to the size of the LibFFIType"
-	self genConvertSmallIntegerToIntegerInReg: Extra1Reg.
-	cogit CmpCq: 8 R: Extra1Reg.
-	jumpInvalidCifRtypeSize := cogit JumpZero: 0.
 	
 		
 	"Call the C function"
@@ -1332,12 +1333,11 @@ CogObjectRepresentation >> genPrimitiveSameThreadCalloutUint64Uint64 [
 	primitiveFailure := cogit Label.
 	jumpInvalidCifRtype jmpTarget: primitiveFailure.
 	jumpInvalidCifNargs jmpTarget: primitiveFailure.
+	jumpInvalidCifArgtype jmpTarget: primitiveFailure.
 	jumpOutOfBottomBounds jmpTarget: primitiveFailure.
-	jumpInvalidCifRtypeSize jmpTarget: primitiveFailure.
-	"jumpOutOfTopBounds jmpTarget: primitiveFailure."
 	jumpBadArg jmpTarget: primitiveFailure.
 	
-	"Esta prim deberia lidiar solo con SmallInteger, si se le pasa un LongInteger deberia fallbackear a la primitiva del interprete, asique esta no seria una  End of statement expected ->'Complete Primitive', sino "
+	"Esta prim deberia lidiar solo con SmallInteger, si se le pasa un LongInteger deberia fallbackear a la primitiva del interprete, asique esta no seria una 'Complete Primitive', sino "
 	^CompletePrimitive.
 	
 	
