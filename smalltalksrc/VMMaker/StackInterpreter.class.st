@@ -2788,73 +2788,29 @@ StackInterpreter >> booleanValueOf: obj [
 
 { #category : #'stack bytecodes' }
 StackInterpreter >> bytecodeFFICall [
-	| n fdef args cif externalFunction argumentSize parameters returnHolder value intHolder |
-	
-	<var: #parameters type: #'void **'> 									"se podra???"
+
+	<var: #parameters type: #'void **'>
 	<var: #returnHolder type: #'void *'>
 	<var: #externalFunction type: #'void *'>
-	
-	n := self fetchByte.
-	
-	self fetchNextBytecode.
-	
-	fdef := self literal: n.
-	
-	"1. Obtain externalFunction and extract the CIF"
-	externalFunction := self getHandler: fdef.
-	self failed 
-		ifTrue: [ 
-			self error: 'Invalid External Function Argument'].
-
-	cif := self getHandlerAsCif:(objectMemory
-				fetchPointer: 1
-				ofObject: fdef).
-
-	self failed
-		ifTrue: [ 
-			self error: 'Invalid CIF in ExternalFunction' ].
-	
-	
-	" 2. Prepare Arguments:
+	| n fdef cif externalFunction |
+	"1. Obtain externalFunction and extract the CIF"" 2. Prepare Arguments:
 	- Verify Arguments is an Array
 	- Allocate space for all the arguments in the stack and a holder for the return, and the parameters' pointer C array
-	- Marshall arguments and store in the parameter array."
-
-	argumentSize := cif numberArguments.
-
-	parameters := self allocateParameters: argumentSize 
-		using: [:aSize | self alloca: (self sizeof: #'void*') * aSize ].
-
-	0 to: argumentSize - 1 do: [ :i | 
-		| argType argHolder |
-		argType := cif argTypeAt: i.
-
-		argHolder := self alloca: argType size.
-		parameters at: i put: argHolder.
-	
-		self marshallArgumentFromElement: (self stackValue: (argumentSize - 1 - i)) into: argHolder ofType: argType type withSize: argType size.
-				
-		self failed 
-				ifTrue: [ 
-					self error: 'Bad argument!']].
-	
-	returnHolder := self alloca: cif returnType size.
-	
-
-	" 3. Call and then return
+	- Marshall arguments and store in the parameter array."" 3. Call and then return
 	- Call
 	- Marshall Argument and push it to the stack
 	- Return"
-
-	self
-		ffi_call: cif
-		_: externalFunction
-		_: returnHolder
-		_: parameters.
-
-	self marshallAndPushReturnValueFrom: returnHolder ofType: cif returnType poping: argumentSize.	
+	n := self fetchByte.
+	self fetchNextBytecode.
+	fdef := self literal: n.
+	externalFunction := self getHandler: fdef.
+	self failed ifTrue: [
+		self error: 'Invalid External Function Argument' ].
+	cif := self getHandlerAsCif:
+		       (objectMemory fetchPointer: 1 ofObject: fdef).
+	self failed ifTrue: [ self error: 'Invalid CIF in ExternalFunction' ].
 	
-	
+	self doCall: externalFunction withCif: cif
 ]
 
 { #category : #'common selector sends' }
@@ -5179,6 +5135,54 @@ StackInterpreter >> divorceFramesIn: aStackPage [
 
 	"The page is now free; mark it so."
 	aStackPage baseFP: 0
+]
+
+{ #category : #'stack bytecodes' }
+StackInterpreter >> doCall: externalFunction withCif: cif [
+	<inline: false>
+	| returnHolder argumentSize parameters |
+	argumentSize := cif numberArguments.
+
+	parameters := self
+		              allocateParameters: argumentSize
+		              using: [ :aSize |
+		              self alloca: (self sizeof: #'void*') * aSize ].
+
+	0 to: argumentSize - 1 do: [ :i |
+		| argType argHolder |
+		argType := cif argTypeAt: i.
+
+		argHolder := self alloca: argType size.
+		parameters at: i put: argHolder.
+
+		self
+			marshallArgumentFromElement:
+			(self stackValue: argumentSize - 1 - i)
+			into: argHolder
+			ofType: argType type
+			withSize: argType size.
+
+		self failed ifTrue: [ self error: 'Bad argument!' ] ].
+
+	returnHolder := self alloca: cif returnType size.
+
+
+	" 3. Call and then return
+	- Call
+	- Marshall Argument and push it to the stack
+	- Return"
+
+	self
+		ffi_call: cif
+		_: externalFunction
+		_: returnHolder
+		_: parameters.
+
+	self
+		marshallAndPushReturnValueFrom: returnHolder
+		ofType: cif returnType
+		poping: argumentSize.
+
 ]
 
 { #category : #simulation }
