@@ -56,6 +56,56 @@ VMByteCodesTest >> assertPopped: aBlock [
 	
 ]
 
+{ #category : #'tests-send' }
+VMByteCodesTest >> buildFunctionForTesting [
+	| functionAddress tfExternalFunction functionExternalAddress tfFunctionDefinition libFFIType cifArrayOfArgTypes cifArgTypes cif cifExternalAddress |
+	"functionAddress := self compile: [ cogit MoveR: Arg0Reg R: TempReg .cogit RetN: 0 ]." "mov rdi, rax. ret"
+
+	functionAddress := 16rFFFF.
+	
+	tfExternalFunction := self newObjectWithSlots: 2. 
+	functionExternalAddress := self newExternalAddress: functionAddress. 
+	tfFunctionDefinition := self newObjectWithSlots: 4.
+	
+	"Build CIF by hand:"
+	
+	"Build CIF argumentTypes"
+	libFFIType := self newObjectWithSlots: 5.
+	memory storePointer: 0 ofObject: libFFIType withValue: (memory integerObjectOf: 16rB).   "type"
+	memory storePointer: 1 ofObject: libFFIType withValue: (memory integerObjectOf: 8).		   "size"
+	memory storePointer: 2 ofObject: libFFIType withValue: (memory nilObject).					"alignment"
+	memory storePointer: 3 ofObject: libFFIType withValue: (memory nilObject).					"elements"
+	memory storePointer: 4 ofObject: libFFIType withValue: (memory nilObject).               "libFFI"
+	
+	cifArrayOfArgTypes := self newArrayWithSlots: 1. 
+	memory storePointer: 0 ofObject: cifArrayOfArgTypes withValue: libFFIType.
+	
+	cifArgTypes := self newObjectWithSlots: 2. 
+	memory storePointer: 0 ofObject: cifArgTypes withValue: cifArrayOfArgTypes.
+	memory storePointer: 1 ofObject: cifArgTypes withValue: (memory integerObjectOf: 8888).
+	
+	"The CIF itself:"
+	cif := self newObjectWithSlots: 8.
+	memory storePointer: 0 ofObject: cif withValue: (memory integerObjectOf: 1).       "address"
+	memory storePointer: 1 ofObject: cif withValue: (memory nilObject).		 	         "libFFI"
+	memory storePointer: 2 ofObject: cif withValue: (memory nilObject).						"abi"
+	memory storePointer: 3 ofObject: cif withValue: (memory integerObjectOf: 1).			"nargs"
+	memory storePointer: 4 ofObject: cif withValue: cifArgTypes.                    	"arg_types"
+	memory storePointer: 5 ofObject: cif withValue: (memory integerObjectOf: 16rB).  	"rtype"
+	memory storePointer: 6 ofObject: cif withValue: (memory nilObject).              	"bytes"
+	memory storePointer: 7 ofObject: cif withValue: (memory nilObject).              	"flags"
+	 
+	
+	cifExternalAddress := self newExternalAddress: cif.
+	
+	
+	memory storePointer: 0 ofObject: tfExternalFunction withValue: functionExternalAddress.
+	memory storePointer: 1 ofObject: tfExternalFunction withValue: tfFunctionDefinition.
+	memory storePointer: 0 "HANDLE" ofObject: tfFunctionDefinition withValue: cifExternalAddress.
+	
+	^tfExternalFunction
+]
+
 { #category : #'helpers-bytecode-table' }
 VMByteCodesTest >> firstPushTemporaryVariableBytecode [
 	"in v3 bytecode table"
@@ -129,8 +179,26 @@ VMByteCodesTest >> pushThisContextTopFrame [
 { #category : #'tests-simd' }
 VMByteCodesTest >> setUp [ 
 
+	| classFloat |
 	super setUp.
 	self installFloat64RegisterClass
+	
+	"aver:::"
+	interpreter libFFI: LibFFI new.
+	interpreter libFFI interpreter: interpreter.
+	
+	memory classExternalAddress: (self newClassInOldSpaceWithSlots: 0 instSpec: (memory byteFormatForNumBytes: 0) ).
+	memory classArray: (self newClassInOldSpaceWithSlots: 0 instSpec: memory arrayFormat ).
+	memory classByteArray: (self newClassInOldSpaceWithSlots: 0 instSpec: (memory byteFormatForNumBytes: 0) ).
+
+  classFloat := self newClassInOldSpaceWithSlots: 0 instSpec: memory firstLongFormat.
+	memory setHashBitsOf: classFloat to: ClassFloatCompactIndex.
+	memory
+		storePointer: ClassFloatCompactIndex
+		ofObject: memory classTableFirstPage
+		withValue: classFloat.
+
+	self createLargeIntegerClasses.	
 ]
 
 { #category : #'tests-push-simple' }
@@ -231,6 +299,316 @@ VMByteCodesTest >> testArraySumUsingVectorBytecode [
 	self assert: (memory fetchFloat64: 0 ofObject: result) equals: 11.0.
 	self assert: (memory fetchFloat64: 1 ofObject: result) equals: 22.0.
 	
+]
+
+{ #category : #'tests-send' }
+VMByteCodesTest >> testBytecodeFFICallAddTwoBigIntegers [
+
+	| aMethod aMethodToActivate receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction |
+	tfExternalFunction := self
+		                      createExternalFunctionFor: [
+		                      :anArgument
+		                      :anotherArgument |
+		                      anArgument + anotherArgument ]
+		                      withArgumentTypes: {
+				                      interpreter libFFI sint64.
+				                      interpreter libFFI sint64 }
+		                      withReturnType: interpreter libFFI sint64.
+
+	methodBuilder newMethod literals: { tfExternalFunction }.
+	aMethod := methodBuilder buildMethod.
+	aMethodToActivate := methodBuilder newMethod
+		                     numberOfArguments: 2;
+		                     buildMethod.
+
+	aMethod := methodBuilder newMethod
+		           bytecodes: #[ 16rE6 16r0 ];
+		           numberOfArguments: 2;
+		           literals: { tfExternalFunction };
+		           isPrimitive: false;
+		           buildMethod.
+	"byecodeFFICall n=0"
+
+	receiver := memory integerObjectOf: 41.
+	receiverClass := self setSmallIntegerClassIntoClassTable.
+	self setUpMethodDictionaryIn: receiverClass.
+	aMethodDictionary := memory
+		                     fetchPointer: MethodDictionaryIndex
+		                     ofObject: receiverClass.
+
+	self
+		installSelector: tfExternalFunction
+		method: aMethod
+		inMethodDictionary: aMethodDictionary.
+	arg1 := memory maxSmallInteger.
+	arg2 := memory maxSmallInteger.
+	stackBuilder addNewFrame
+		method: aMethod;
+		stack: {
+				receiver.
+				arg1.
+				arg2 }.
+	stackBuilder buildStack.
+
+	interpreter methodDictLinearSearchLimit: 3.
+	interpreter setBreakSelector: nil.
+	interpreter method: aMethod.
+	"interpreter currentBytecode: 230."
+	1 halt.
+	self interpretNextBytecode.
+	1halt.
+	self
+		assert: (memory positive64BitIntegerFor: interpreter stackTop)
+		equals:  (memory positive64BitIntegerFor: memory maxSmallInteger + memory maxSmallInteger)
+]
+
+{ #category : #'tests-send' }
+VMByteCodesTest >> testBytecodeFFICallAddTwoNumbersCorrectly [
+
+	| aMethod aMethodToActivate receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction isFunctionCalled |
+	
+	isFunctionCalled := false.
+	
+	tfExternalFunction := self 
+		createExternalFunctionFor:  [ :anArgument :anotherArgument | isFunctionCalled := true . ^anArgument + anotherArgument ] 
+		withArgumentTypes: { interpreter libFFI uint64. interpreter libFFI uint64} 
+		withReturnType: interpreter libFFI uint64.
+
+	"tfExternalFunction := self buildFunctionForTesting."	
+	methodBuilder newMethod literals: { tfExternalFunction }.
+	aMethod := methodBuilder buildMethod.
+	aMethodToActivate := methodBuilder newMethod
+		                     numberOfArguments: 2;
+		                     buildMethod.
+	1halt.
+	aMethod := methodBuilder newMethod
+		bytecodes:
+			#[ 
+				"byecodeFFICall n=0" 16rE6 16r0						
+						];
+		numberOfArguments: 2;
+		literals: { 
+			tfExternalFunction
+		};
+		isPrimitive: false;
+		buildMethod.
+		
+	receiver := memory integerObjectOf: 41.
+	receiverClass := self setSmallIntegerClassIntoClassTable.
+	self setUpMethodDictionaryIn: receiverClass.
+	aMethodDictionary := memory
+		                     fetchPointer: MethodDictionaryIndex
+		                     ofObject: receiverClass.
+
+	self
+		installSelector: tfExternalFunction
+		method: aMethod
+		inMethodDictionary: aMethodDictionary.
+	arg1 := memory integerObjectOf: 111.
+	arg2 := memory integerObjectOf: 222.
+	stackBuilder addNewFrame
+		method: aMethod;
+		stack: { 
+				receiver.
+				arg1.
+				arg2 }.
+	stackBuilder buildStack.
+
+	interpreter methodDictLinearSearchLimit: 3.
+	interpreter setBreakSelector: nil.
+	interpreter method: aMethod.
+	"interpreter currentBytecode: 230."
+
+	self interpretNextBytecode.
+
+	self assert: isFunctionCalled.
+	
+	"Before calling to the bytecode we had to push the receiver and all the arguments.
+	We should assert that the bytecode popped the 2 arguments and pushed the result.
+	Here we assert that the result was pushed:"
+	self assert: (memory integerValueOf:(interpreter stackTop))  equals: 111 + 222.
+	
+	"And here we assert that the 2 arguments were popped (the receiver was pushed before the args)"
+	self assert: (memory integerValueOf:(interpreter stackValue: 1))  equals: receiver.
+
+]
+
+{ #category : #'tests-send' }
+VMByteCodesTest >> testBytecodeFFICallBadArgs [
+
+	| aMethod aMethodToActivate receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction |
+	tfExternalFunction := self
+		                      createExternalFunctionFor: [
+		                      :anArgument
+		                      :anotherArgument |
+		                      anArgument + anotherArgument ]
+		                      withArgumentTypes: {
+				                      interpreter libFFI uint64.
+				                      interpreter libFFI uint64 }
+		                      withReturnType: interpreter libFFI uint64.
+
+	methodBuilder newMethod literals: { tfExternalFunction }.
+	aMethod := methodBuilder buildMethod.
+	aMethodToActivate := methodBuilder newMethod
+		                     numberOfArguments: 2;
+		                     buildMethod.
+
+	aMethod := methodBuilder newMethod
+		           bytecodes: #[ 16rE6 16r0 ];
+		           numberOfArguments: 2;
+		           literals: { tfExternalFunction };
+		           isPrimitive: false;
+		           buildMethod.
+	"byecodeFFICall n=0"
+
+	receiver := memory integerObjectOf: 41.
+	receiverClass := self setSmallIntegerClassIntoClassTable.
+	self setUpMethodDictionaryIn: receiverClass.
+	aMethodDictionary := memory
+		                     fetchPointer: MethodDictionaryIndex
+		                     ofObject: receiverClass.
+
+	self
+		installSelector: tfExternalFunction
+		method: aMethod
+		inMethodDictionary: aMethodDictionary.
+	arg1 := memory integerObjectOf: 1.
+	arg2 := memory newArrayWith: { 1. 2 }. "<----- Bad argument!"
+	stackBuilder addNewFrame
+		method: aMethod;
+		stack: {
+				receiver.
+				arg1.
+				arg2 }.
+	stackBuilder buildStack.
+
+	interpreter methodDictLinearSearchLimit: 3.
+	interpreter setBreakSelector: nil.
+	interpreter method: aMethod.
+
+	[
+	self interpretNextBytecode.
+	self fail ]
+		on: Error
+		do: [ :err | self assert: err messageText equals: 'Bad argument!' ]
+]
+
+{ #category : #'tests-send' }
+VMByteCodesTest >> testBytecodeFFICallBadExternalFunction [
+
+	| aMethod aMethodToActivate receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction |
+	tfExternalFunction := memory trueObject. "<-------- Bad function!"
+
+	methodBuilder newMethod literals: { tfExternalFunction }.
+	aMethod := methodBuilder buildMethod.
+	aMethodToActivate := methodBuilder newMethod
+		                     numberOfArguments: 2;
+		                     buildMethod.
+
+	aMethod := methodBuilder newMethod
+		           bytecodes: #[ 16rE6 16r0 ];
+		           numberOfArguments: 2;
+		           literals: { tfExternalFunction };
+		           isPrimitive: false;
+		           buildMethod.
+
+	receiver := memory integerObjectOf: 41.
+	receiverClass := self setSmallIntegerClassIntoClassTable.
+	self setUpMethodDictionaryIn: receiverClass.
+	aMethodDictionary := memory
+		                     fetchPointer: MethodDictionaryIndex
+		                     ofObject: receiverClass.
+
+	self
+		installSelector: tfExternalFunction
+		method: aMethod
+		inMethodDictionary: aMethodDictionary.
+	arg1 := memory integerObjectOf: 111.
+	arg2 := memory integerObjectOf: 222.
+	stackBuilder addNewFrame
+		method: aMethod;
+		stack: {
+				receiver.
+				arg1.
+				arg2 }.
+	stackBuilder buildStack.
+
+	interpreter methodDictLinearSearchLimit: 3.
+	interpreter setBreakSelector: nil.
+	interpreter method: aMethod.
+
+	[
+	self interpretNextBytecode.
+	self fail ]
+		on: Error
+		do: [ :err |
+			self
+				assert: err messageText
+				equals: 'Invalid External Function Argument' ]
+]
+
+{ #category : #'tests-send' }
+VMByteCodesTest >> testBytecodeFFICallWithNonConmutativeOp [
+
+	| aMethod aMethodToActivate receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction isFunctionCalled |
+	
+	isFunctionCalled := false.
+	
+	tfExternalFunction := self 
+		createExternalFunctionFor:  [ :anArgument :anotherArgument | isFunctionCalled := true . ^anArgument - anotherArgument ] 
+		withArgumentTypes: { interpreter libFFI uint64. interpreter libFFI uint64} 
+		withReturnType: interpreter libFFI uint64.
+
+	"tfExternalFunction := self buildFunctionForTesting."	
+	methodBuilder newMethod literals: { tfExternalFunction }.
+	aMethod := methodBuilder buildMethod.
+	aMethodToActivate := methodBuilder newMethod
+		                     numberOfArguments: 2;
+		                     buildMethod.
+
+	aMethod := methodBuilder newMethod
+		bytecodes:
+			#[ 
+				"byecodeFFICall n=0" 16rE6 16r0						
+						];
+		numberOfArguments: 2;
+		literals: { 
+			tfExternalFunction
+		};
+		isPrimitive: false;
+		buildMethod.
+		
+	receiver := memory integerObjectOf: 41.
+	receiverClass := self setSmallIntegerClassIntoClassTable.
+	self setUpMethodDictionaryIn: receiverClass.
+	aMethodDictionary := memory
+		                     fetchPointer: MethodDictionaryIndex
+		                     ofObject: receiverClass.
+
+	self
+		installSelector: tfExternalFunction
+		method: aMethod
+		inMethodDictionary: aMethodDictionary.
+	arg1 := memory integerObjectOf: 10.
+	arg2 := memory integerObjectOf: 90.
+	stackBuilder addNewFrame
+		method: aMethod;
+		stack: { 
+				receiver.
+				arg1.
+				arg2 }.
+	stackBuilder buildStack.
+
+	interpreter methodDictLinearSearchLimit: 3.
+	interpreter setBreakSelector: nil.
+	interpreter method: aMethod.
+	"interpreter currentBytecode: 230."
+
+	self interpretNextBytecode.
+
+	self assert: isFunctionCalled.
+	
+	self assert: (memory integerValueOf:(interpreter stackTop))  equals: 10 - 90.
 ]
 
 { #category : #'tests-complex' }
@@ -605,6 +983,7 @@ VMByteCodesTest >> testSendMessageWithTwoArgumentsMakeAFrame [
 	selectorOop := memory integerObjectOf: 42.
 	methodBuilder newMethod literals: { selectorOop }.
 	aMethod := methodBuilder buildMethod.
+
 	aMethodToActivate := methodBuilder newMethod
 		                     numberOfArguments: 2;
 		                     buildMethod.
@@ -737,7 +1116,7 @@ VMByteCodesTest >> testSubVectorBytecode [
 	self interpret: [ interpreter subFloat64VectorBytecode ].
 	
 	result := interpreter stackTop.
-	
+	1halt.
 	self deny: result equals: memory nilObject.
 	self assert: (memory fetchFloat64: 0 ofObject: result) equals: 3.0.
 	self assert: (memory fetchFloat64: 1 ofObject: result) equals: 2.0.

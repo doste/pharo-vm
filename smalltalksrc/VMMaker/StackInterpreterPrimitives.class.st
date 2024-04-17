@@ -2,22 +2,10 @@ Class {
 	#name : #StackInterpreterPrimitives,
 	#superclass : #StackInterpreter,
 	#pools : [
-		'LibFFIConstants',
 		'VMBasicConstants'
 	],
 	#category : #'VMMaker-Interpreter'
 }
-
-{ #category : #initialization }
-StackInterpreterPrimitives >> allocateParameters: anInteger using: allocationBlock [
-	<inline: #always>
-
-	anInteger = 0 ifTrue: [ ^ nil ].
-
-	^ self
-		cCode: [ allocationBlock value: anInteger ]
-		inSmalltalk: [ CArrayAccessor on: (Array new: anInteger) ]
-]
 
 { #category : #'as yet unclassified' }
 StackInterpreterPrimitives >> callFunctionAtAddress: externalFunction with: anArgument [
@@ -353,13 +341,6 @@ StackInterpreterPrimitives >> doPrimitiveWorkerExtractReturnValue [
 	task freeTask.
 ]
 
-{ #category : #'ffi - helpers' }
-StackInterpreterPrimitives >> ffi_call: aCif _: externalFunctionAddress _: returnHolder _: parameters [
-
-	<doNotGenerate>
-	libFFI ffiCall: aCif _: externalFunctionAddress _: returnHolder _: parameters
-]
-
 { #category : #'object access primitives' }
 StackInterpreterPrimitives >> field: index ofFrame: theFP [
 	"Arrange to answer naked frame pointers for unmarried
@@ -428,27 +409,6 @@ StackInterpreterPrimitives >> freeArgumentsArray: arguments count: count [
 	
 	self free: arguments.
 	
-]
-
-{ #category : #'ffi - helpers' }
-StackInterpreterPrimitives >> getHandler: anOop [ 
-
-	<api>
-	<returnTypeC: #'void *'>
-
-	((objectMemory isPointers: anOop) not or: [ (objectMemory slotSizeOf: anOop) < 1 ])
-		ifTrue: [ self primitiveFail. ^ nil ].
-		
-	^ self readAddress: (objectMemory fetchPointer: 0 ofObject: anOop)
-
-]
-
-{ #category : #'ffi - helpers' }
-StackInterpreterPrimitives >> getHandlerAsCif: anOop [
-
-	^ self
-		cCode: [ self cCoerce: (self getHandler: anOop) to: 'ffi_cif *' ]
-		inSmalltalk: [ libFFI cifAtAddress: (self getHandler: anOop)]
 ]
 
 { #category : #'ffi - helpers' }
@@ -526,82 +486,22 @@ StackInterpreterPrimitives >> markFrame: theFPInt [
 ]
 
 { #category : #'ffi - helpers' }
-StackInterpreterPrimitives >> marshallAndPushReturnValueFrom: returnHolder ofType: ffiType poping: argumentsAndReceiverCount [
-
-	<option: #FEATURE_FFI>
-	<var: #ffiType type: #'ffi_type *'>
-
-	[ ffiType type ]
-		caseOf: {
-			[ FFI_TYPE_SINT8 ] 	-> [ self pop: argumentsAndReceiverCount thenPushInteger: (objectMemory readSINT8AtPointer: returnHolder) ].
-			[ FFI_TYPE_SINT16 ] 	-> [ self pop: argumentsAndReceiverCount thenPushInteger: (objectMemory readSINT16AtPointer: returnHolder) ].
-			[ FFI_TYPE_SINT32 ] 	-> [ self 
-													pop: argumentsAndReceiverCount 
-													thenPush: (objectMemory signed32BitIntegerFor: (objectMemory readSINT32AtPointer: returnHolder)) ].
-			[ FFI_TYPE_SINT64 ] 	-> [ self 
-													pop: argumentsAndReceiverCount 
-													thenPush: (objectMemory signed64BitIntegerFor: (objectMemory readSINT64AtPointer: returnHolder)) ].
-
-			[ FFI_TYPE_UINT8 ] 	-> [ self pop: argumentsAndReceiverCount thenPushInteger: (objectMemory readUINT8AtPointer: returnHolder) ].
-			[ FFI_TYPE_UINT16 ] 	-> [ self pop: argumentsAndReceiverCount thenPushInteger: (objectMemory readUINT16AtPointer: returnHolder) ].
-			[ FFI_TYPE_UINT32 ] 	-> [ self 
-													pop: argumentsAndReceiverCount 
-													thenPush: (objectMemory positive32BitIntegerFor: (objectMemory readUINT32AtPointer: returnHolder)) ].
-			[ FFI_TYPE_UINT64 ] 	-> [ self 
-													pop: argumentsAndReceiverCount 
-													thenPush: (objectMemory positive64BitIntegerFor: (objectMemory readUINT64AtPointer: returnHolder)) ].
-
-			[ FFI_TYPE_POINTER ] 	-> [ self pop: argumentsAndReceiverCount thenPush: (objectMemory newExternalAddressWithValue: (objectMemory readPointerAtPointer: returnHolder)) ].
-
-			[ FFI_TYPE_STRUCT ] 	-> [ self pop: argumentsAndReceiverCount thenPush: (self newByteArrayWithStructContent: returnHolder size: ffiType size) ].
-
-			[ FFI_TYPE_FLOAT ] 	-> [ self pop: argumentsAndReceiverCount thenPushFloat: (objectMemory readFloat32AtPointer: returnHolder) ].
-			[ FFI_TYPE_DOUBLE ] 	-> [ self pop: argumentsAndReceiverCount thenPushFloat: (objectMemory readFloat64AtPointer: returnHolder) ].
-			[ FFI_TYPE_VOID ] 		-> [ self pop: argumentsAndReceiverCount - 1 "Pop the arguments leaving the receiver" ]}
-			otherwise: [ self primitiveFailFor: PrimErrBadArgument ]
-
-]
-
-{ #category : #'ffi - helpers' }
-StackInterpreterPrimitives >> marshallArgumentFrom: argumentsArrayOop atIndex: i into: argHolder ofType: argType withSize: argTypeSize [
-
-	<option: #FEATURE_FFI>
-	[ argType ]
-		caseOf:
-			{([ FFI_TYPE_POINTER ]
-				-> [ self marshallPointerFrom: argumentsArrayOop at: i into: argHolder ]).
-			([ FFI_TYPE_STRUCT ]
-				-> [ self marshallStructFrom: argumentsArrayOop at: i into: argHolder withSize: argTypeSize ]).
-			([ FFI_TYPE_FLOAT ]
-				-> [ self marshallFloatFrom: argumentsArrayOop at: i into: argHolder ]).
-			([ FFI_TYPE_DOUBLE ]
-				-> [ self marshallDoubleFrom: argumentsArrayOop at: i into: argHolder ]).
-			([ FFI_TYPE_SINT8 ]
-				-> [ self marshallSInt8From: argumentsArrayOop at: i into: argHolder ]).
-			([ FFI_TYPE_UINT8 ]
-				-> [ self marshallUInt8From: argumentsArrayOop at: i into: argHolder ]).
-			([ FFI_TYPE_SINT16 ]
-				-> [ self marshallSInt16From: argumentsArrayOop at: i into: argHolder ]).
-			([ FFI_TYPE_UINT16 ]
-				-> [ self marshallUInt16From: argumentsArrayOop at: i into: argHolder ]).
-			([ FFI_TYPE_SINT32 ]
-				-> [ self marshallSInt32From: argumentsArrayOop at: i into: argHolder ]).
-			([ FFI_TYPE_UINT32 ]
-				-> [ self marshallUInt32From: argumentsArrayOop at: i into: argHolder ]).
-			([ FFI_TYPE_SINT64 ]
-				-> [ self marshallSInt64From: argumentsArrayOop at: i into: argHolder ]).
-			([ FFI_TYPE_UINT64 ]
-				-> [ self marshallUInt64From: argumentsArrayOop at: i into: argHolder ])}
-		otherwise: [ self primitiveFailFor: PrimErrBadArgument ]
-]
-
-{ #category : #'ffi - helpers' }
 StackInterpreterPrimitives >> marshallDoubleFrom: argumentArrayOop at: index into: holder [ 
 
 	| doubleHolder |
 	doubleHolder := self cCoerce: holder to: #'double *'.
 	
 	doubleHolder at: 0 put: (self fetchFloat: index ofObject: argumentArrayOop ).
+
+]
+
+{ #category : #'ffi - helpers' }
+StackInterpreterPrimitives >> marshallDoubleFrom: elemOop into: holder [ 
+
+	| doubleHolder |
+	doubleHolder := self cCoerce: holder to: #'double *'.
+	
+	doubleHolder at: 0 put: (self fetchFloatFromOop: elemOop)
 
 ]
 
@@ -616,6 +516,16 @@ StackInterpreterPrimitives >> marshallFloatFrom: argumentArrayOop at: index into
 ]
 
 { #category : #'ffi - helpers' }
+StackInterpreterPrimitives >> marshallFloatFrom: elemOop into: holder [ 
+	
+	| floatHolder |
+	floatHolder := self cCoerce: holder to: #'float *'.
+	
+	floatHolder at: 0 put: elemOop.
+	
+]
+
+{ #category : #'ffi - helpers' }
 StackInterpreterPrimitives >> marshallPointerFrom: argumentArrayOop at: index into: holder [ 
 	
 	| pointerHolder externalAddress |
@@ -626,11 +536,34 @@ StackInterpreterPrimitives >> marshallPointerFrom: argumentArrayOop at: index in
 ]
 
 { #category : #'ffi - helpers' }
+StackInterpreterPrimitives >> marshallPointerFromElement: elemOop into: holder [ 
+	
+	| pointerHolder |
+	pointerHolder := self cCoerce: holder to: #'void **'.
+	pointerHolder at: 0 put: (self readAddress: elemOop).
+	
+]
+
+{ #category : #'ffi - helpers' }
 StackInterpreterPrimitives >> marshallSInt16From: argumentArrayOop at: index into: holder [
 
 	| intHolder value |
 
 	value := self fetchInteger: index ofObject: argumentArrayOop.	
+	value > INT16_MAX ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+	value < INT16_MIN ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+
+	intHolder := self cCoerce: holder to: #'int16_t *'.
+	intHolder at: 0 put: value.
+		
+]
+
+{ #category : #'ffi - helpers' }
+StackInterpreterPrimitives >> marshallSInt16From: elemOop into: holder [
+
+	| intHolder value |
+
+	value := elemOop.
 	value > INT16_MAX ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
 	value < INT16_MIN ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
 
@@ -654,11 +587,39 @@ StackInterpreterPrimitives >> marshallSInt32From: argumentArrayOop at: index int
 ]
 
 { #category : #'ffi - helpers' }
+StackInterpreterPrimitives >> marshallSInt32From: elemOop into: holder [
+
+	| intHolder value |
+
+	value := self signed32BitValueOf: elemOop.
+
+	self failed ifTrue: [ ^self primitiveFailFor: PrimErrBadArgument ].
+
+	intHolder := self cCoerce: holder to: #'int32_t *'.
+	intHolder at: 0 put: value.
+		
+]
+
+{ #category : #'ffi - helpers' }
 StackInterpreterPrimitives >> marshallSInt64From: argumentArrayOop at: index into: holder [
 
 	| intHolder value |
 	
 	value := self signed64BitValueOf: (objectMemory fetchPointer: index ofObject: argumentArrayOop).
+	
+	self failed ifTrue: [ ^ self ].
+		
+	intHolder := self cCoerce: holder to: #'int64_t *'.
+	intHolder at: 0 put: value.
+		
+]
+
+{ #category : #'ffi - helpers' }
+StackInterpreterPrimitives >> marshallSInt64From: elemOop into: holder [
+
+	| intHolder value |
+	
+	value := self signed64BitValueOf: elemOop.
 	
 	self failed ifTrue: [ ^ self ].
 		
@@ -678,6 +639,20 @@ StackInterpreterPrimitives >> marshallSInt8From: argumentArrayOop at: index into
 
 	intHolder := self cCoerce: holder to: #'int8_t *'.
 	intHolder at: 0 put: (self fetchInteger: index ofObject: argumentArrayOop ).
+		
+]
+
+{ #category : #'ffi - helpers' }
+StackInterpreterPrimitives >> marshallSInt8From: elemOop into: holder [
+
+	| intHolder value |
+
+	value := elemOop.
+	value > INT8_MAX ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+	value < INT8_MIN ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+
+	intHolder := self cCoerce: holder to: #'int8_t *'.
+	intHolder at: 0 put: elemOop
 		
 ]
 
@@ -709,11 +684,51 @@ StackInterpreterPrimitives >> marshallStructFrom: argumentsArrayOop at: index in
 ]
 
 { #category : #'ffi - helpers' }
+StackInterpreterPrimitives >> marshallStructFromElement: elemOop into: holder withSize: typeSize [ 
+
+
+	| address srcPtr  |
+
+	
+	(objectMemory fetchClassOf: elemOop) = objectMemory classExternalAddress
+		ifTrue: [
+				address := self readAddress: elemOop.
+				address = 0 ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ]]
+		ifFalse: [  
+			(objectMemory fetchClassOf: elemOop) = objectMemory classByteArray 
+				ifFalse: [ ^ self primitiveFailFor: PrimErrBadArgument  ].
+				address := objectMemory firstIndexableField: elemOop ].
+	
+	srcPtr := objectMemory cCoerce: address to: 'void *'.
+	
+	self 
+		cCode:  [ objectMemory memcpy: holder _:  srcPtr _: typeSize ]
+		inSmalltalk: [ 
+			holder object 
+				replaceFrom: 1 to: typeSize 
+				with: (objectMemory cCoerce: srcPtr to: 'char *') startingAt: 0]
+]
+
+{ #category : #'ffi - helpers' }
 StackInterpreterPrimitives >> marshallUInt16From: argumentArrayOop at: index into: holder [
 
 	| intHolder value |
 	
 	value := self fetchInteger: index ofObject: argumentArrayOop.
+	value < 0 ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+	value > UINT16_MAX ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+		
+	intHolder := self cCoerce: holder to: #'uint16_t *'.
+	intHolder at: 0 put: value.
+		
+]
+
+{ #category : #'ffi - helpers' }
+StackInterpreterPrimitives >> marshallUInt16From: elemOop into: holder [
+
+	| intHolder value |
+	
+	value := elemOop.
 	value < 0 ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
 	value > UINT16_MAX ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
 		
@@ -737,6 +752,20 @@ StackInterpreterPrimitives >> marshallUInt32From: argumentArrayOop at: index int
 ]
 
 { #category : #'ffi - helpers' }
+StackInterpreterPrimitives >> marshallUInt32From: elemOop into: holder [
+
+	| intHolder value |
+	
+	value := self positive32BitValueOf: elemOop.
+	
+	self failed ifTrue: [ ^self primitiveFailFor: PrimErrBadArgument ].
+			
+	intHolder := self cCoerce: holder to: #'uint32_t *'.
+	intHolder at: 0 put: value.
+		
+]
+
+{ #category : #'ffi - helpers' }
 StackInterpreterPrimitives >> marshallUInt64From: argumentArrayOop at: index into: holder [
 
 	| intHolder value |
@@ -745,7 +774,20 @@ StackInterpreterPrimitives >> marshallUInt64From: argumentArrayOop at: index int
 
 	self failed
 		ifTrue: [ ^ self ].
-			
+	intHolder := self cCoerce: holder to: #'uint64_t *'.
+	intHolder at: 0 put: value.
+		
+]
+
+{ #category : #'ffi - helpers' }
+StackInterpreterPrimitives >> marshallUInt64From: elemOop into: holder [
+
+	| intHolder value |
+
+	value := self positive64BitValueOf: elemOop.	
+
+	self failed
+		ifTrue: [ ^ self ].
 	intHolder := self cCoerce: holder to: #'uint64_t *'.
 	intHolder at: 0 put: value.
 		
@@ -757,6 +799,24 @@ StackInterpreterPrimitives >> marshallUInt8From: argumentArrayOop at: index into
 	| intHolder value oop |
 	
 	oop := objectMemory fetchPointer: index ofObject: argumentArrayOop.
+	value := (objectMemory isCharacterObject: oop) 
+		ifTrue: [ objectMemory characterValueOf: oop ]	
+		ifFalse: [ objectMemory integerValueOf: oop ].
+	
+	value < 0 ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+	value > UINT8_MAX ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+		
+	intHolder := self cCoerce: holder to: #'uint8_t *'.
+	intHolder at: 0 put: value.
+		
+]
+
+{ #category : #'ffi - helpers' }
+StackInterpreterPrimitives >> marshallUInt8From: elemOop into: holder [
+
+	| intHolder value oop |
+	
+	oop := elemOop.
 	value := (objectMemory isCharacterObject: oop) 
 		ifTrue: [ objectMemory characterValueOf: oop ]	
 		ifFalse: [ objectMemory integerValueOf: oop ].
