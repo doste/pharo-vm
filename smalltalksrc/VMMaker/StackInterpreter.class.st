@@ -2789,6 +2789,11 @@ StackInterpreter >> booleanValueOf: obj [
 { #category : #'stack bytecodes' }
 StackInterpreter >> bytecodeFFICall [
 	| n fdef args cif externalFunction argumentSize parameters returnHolder value intHolder |
+	
+	<var: #parameters type: #'void **'> 									"se podra???"
+	<var: #returnHolder type: #'void *'>
+	<var: #externalFunction type: #'void *'>
+	
 	n := self fetchByte.
 	
 	self fetchNextBytecode.
@@ -10059,8 +10064,9 @@ StackInterpreter >> marshallArgumentFrom: argumentsArrayOop atIndex: i into: arg
 	<option: #FEATURE_FFI>
 	
 	| elemOop |
-	elemOop := argumentsArrayOop at: i.
-	"(argType = 11) ifTrue: [ self marshallUInt64From: argumentsArrayOop at: i into: argHolder  ] ifFalse: [ 1halt ]."
+	"elemOop := argumentsArrayOop at: i."
+	elemOop := objectMemory fetchPointer: i ofObject: argumentsArrayOop.
+	
 	[ argType ]
 		caseOf:
 			{([ FFI_TYPE_POINTER ]
