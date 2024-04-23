@@ -11,16 +11,6 @@ VMObjectLayoutTests >> formatFromInstSpec: instSpecInt instSize: instSizeInt [
 	^ instSpecInt << 16 + instSizeInt
 ]
 
-{ #category : #helpers }
-VMObjectLayoutTests >> installClassIntoClassTableWithInstSpec: aFormatInt instSize: aSizeInt [ 
-	| class |
-	class := self
-		newClassInOldSpaceWithSlots: aSizeInt
-		instSpec: aFormatInt.
-	memory ensureBehaviorHash: class.	
-	^class	
-]
-
 { #category : #helper }
 VMObjectLayoutTests >> objSizeWithNumberOfSlots: numberOfSlots [ 
 	| objSize |

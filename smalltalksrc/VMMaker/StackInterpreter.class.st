@@ -2792,7 +2792,7 @@ StackInterpreter >> bytecodeFFICall [
 	<var: #parameters type: #'void **'>
 	<var: #returnHolder type: #'void *'>
 	<var: #externalFunction type: #'void *'>
-	| n fdef cif externalFunction |
+	| n fdef cif externalFunction runner |
 	"1. Obtain externalFunction and extract the CIF"" 2. Prepare Arguments:
 	- Verify Arguments is an Array
 	- Allocate space for all the arguments in the stack and a holder for the return, and the parameters' pointer C array
@@ -2800,17 +2800,24 @@ StackInterpreter >> bytecodeFFICall [
 	- Call
 	- Marshall Argument and push it to the stack
 	- Return"
+
+	
 	n := self fetchByte.
+	
+	fdef := self literal: (n bitAnd: 2r1111).
+	
+	runner := self literal: ((n >> 4) bitAnd: 2r1111).
+	
 	self fetchNextBytecode.
-	fdef := self literal: n.
+	
 	externalFunction := self getHandler: fdef.
-	self failed ifTrue: [
-		self error: 'Invalid External Function Argument' ].
+	self failed ifTrue: [ self error: 'Invalid External Function Argument'  ].
 	cif := self getHandlerAsCif:
 		       (objectMemory fetchPointer: 1 ofObject: fdef).
 	self failed ifTrue: [ self error: 'Invalid CIF in ExternalFunction' ].
 	
-	self doCall: externalFunction withCif: cif
+	(self doCall: externalFunction withCif: cif)
+		ifFalse: [ self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: cif ]
 ]
 
 { #category : #'common selector sends' }
@@ -5139,7 +5146,24 @@ StackInterpreter >> divorceFramesIn: aStackPage [
 
 { #category : #'stack bytecodes' }
 StackInterpreter >> doCall: externalFunction withCif: cif [
+	"This method is meant to be called from bytecodeFFICall. The reason why all this logic is extracted in a different method is for the allocations (all the 'alloca's):
+	
+	All the bytecode execution happens inside a function called interpret. This function has a loop where executes each bytecode in a 'swith-case' way. When we enter de bytecodeFFICall case, we do a couple of 'alloca's but if we do them just inside the block corresponding to this case, the memory corresponding to those 'alloca's would get freed when the interpret function finishes, which may be long after we execute the bytecodeFFICall. 
+	This is because the memory allocated by an 'alloca' is released at the end of the function, not the block defining it.
+	
+	This means that with every FFI call performed through the bytecode we would allocate the memory we need but never release it, only when the interpreter is done interpreting bytecodes.
+	With just a few FFI calls we would end up with a stack overflow.
+	
+One solution is to use malloc for every allocation and then when we are done with the C function called, we free the memory. This approach may incur a performance penalty for all the heap allocations.
+
+What we decided to do instead was to extract all the allocations to a different method so when this method gets transpiled to C, all the 'alloca's happen in a different function. This way when we return from this new function all the memory is released automatically.
+
+	"
 	<inline: false>
+	<var: #parameters type: #'void **'>
+	<var: #returnHolder type: #'void *'>
+	<var: #externalFunction type: #'void *'>
+	<var: #externalFunction type: #'ffi_cif *'>
 	| returnHolder argumentSize parameters |
 	argumentSize := cif numberArguments.
 
@@ -5162,7 +5186,7 @@ StackInterpreter >> doCall: externalFunction withCif: cif [
 			ofType: argType type
 			withSize: argType size.
 
-		self failed ifTrue: [ self error: 'Bad argument!' ] ].
+		self failed ifTrue: [ ^false ]].
 
 	returnHolder := self alloca: cif returnType size.
 
@@ -5183,6 +5207,7 @@ StackInterpreter >> doCall: externalFunction withCif: cif [
 		ofType: cif returnType
 		poping: argumentSize.
 
+	^ true
 ]
 
 { #category : #simulation }
@@ -7247,6 +7272,45 @@ StackInterpreter >> getThisSessionID [
 	^globalSessionID
 ]
 
+{ #category : #'stack bytecodes' }
+StackInterpreter >> handleFFIError [
+	
+]
+
+{ #category : #'stack bytecodes' }
+StackInterpreter >> handleFFIErrorWithFunctionDefinition: aFunctionDefinition runner: aRunner andCif: cif [  
+	
+	| numberOfArguments arguments lookupClassTag s |
+	numberOfArguments := cif numberArguments.
+1halt.
+
+	"arguments := objectMemory
+		         eeInstantiateSmallClassIndex: ClassArrayCompactIndex
+		         format: objectMemory arrayFormat
+		         numSlots: numberOfArguments."
+	arguments := objectMemory newObjectWithSlots: numberOfArguments format: objectMemory arrayFormat classIndex: objectMemory arrayClassIndexPun.
+	
+	0 to: numberOfArguments - 1 do: [ :i | 
+		"Assume: have just allocated a new Array; it must be young. Thus, can use unchecked stores."
+				objectMemory
+					storePointerUnchecked: i
+					ofObject: arguments
+					withValue: (self stackValue: numberOfArguments - i - 1) ].
+	self pop: numberOfArguments.
+	
+	"setup send of: aRunner invokeFunction: aFunctionDefinition withArguments: arguments"
+	self push: aRunner.
+	self push: aFunctionDefinition.
+	self push: arguments.
+
+	messageSelector := objectMemory splObj: SelectorInvokeFunctionWithArguments.
+	argumentCount := 2.
+	1halt.
+	lookupClassTag := objectMemory fetchClassTagOf: aRunner.
+	self findNewMethodInClassTag: lookupClassTag.
+	self executeNewMethod.  
+]
+
 { #category : #'message sending' }
 StackInterpreter >> handleForwardedSelectorFaultFor: selectorOop [
 	"Handle a send fault that is due to a send using a forwarded selector.
@@ -9120,6 +9184,7 @@ StackInterpreter >> lookupMethodInClass: class [
 	self sendBreak: messageSelector + objectMemory baseHeaderSize
 		point: (objectMemory lengthOf: messageSelector)
 		receiver: nil.
+		1halt.
 	^self lookupMethodInClass: class
 ]
 
@@ -13720,7 +13785,11 @@ StackInterpreter >> sendCannotReturn: resultOop [
 
 { #category : #'send bytecodes' }
 StackInterpreter >> sendLiteralSelector0ArgsBytecode [
-	"Can use any of the first 16 literals for the selector."
+	"At this point the selector is already put in the literals table, to access it we need its corresponding index. This index is	encoded in the bytecode itself. 
+	The byte corresponding to this bytecode encodes two things:
+	 In the most significant nibble (4 bits), it's encoded the opcode of the bytecode.
+	 And in the least significant nibble, it's the literal's index. As we have 4 bits to encode this index, then we could use it to access any of the first 16 literals."
+
 	| rcvr |
 	messageSelector := self literal: (currentBytecode bitAnd: 16rF).
 	argumentCount := 0.

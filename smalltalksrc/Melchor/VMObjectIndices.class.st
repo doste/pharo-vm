@@ -80,6 +80,7 @@ Class {
 		'SelectorCounterTripped',
 		'SelectorDoesNotUnderstand',
 		'SelectorInvokeCallback',
+		'SelectorInvokeFunctionWithArguments',
 		'SelectorMustBeBoolean',
 		'SelectorRunWithIn',
 		'SelectorSistaTrap',

@@ -136,6 +136,26 @@ VMSpurMemoryManagerTest >> createExternalFunctionFor: aBlock withArgumentTypes: 
 	^ tfExternalFunction
 ]
 
+{ #category : #helpers }
+VMSpurMemoryManagerTest >> createExternalFunctionFor: aBlock withArgumentTypes: argumentTypes withReturnType: returnType withCif: aCif [
+
+	| functionAddress tfExternalFunction functionExternalAddress tfFunctionDefinition cifExternalAddress |
+
+	functionAddress := interpreter libFFI registerFunction: aBlock.
+
+	tfExternalFunction := self newObjectWithSlots: 2. 
+	functionExternalAddress := self newExternalAddress: functionAddress. 
+	tfFunctionDefinition := self newObjectWithSlots: 1.
+		
+	cifExternalAddress := self newExternalAddress: (aCif address).
+
+	memory storePointer: 0 ofObject: tfExternalFunction withValue: functionExternalAddress.
+	memory storePointer: 1 ofObject: tfExternalFunction withValue: tfFunctionDefinition.
+	memory storePointer: 0 ofObject: tfFunctionDefinition withValue: cifExternalAddress.	
+
+	^ tfExternalFunction
+]
+
 { #category : #utils }
 VMSpurMemoryManagerTest >> createLargeIntegerClasses [
 
