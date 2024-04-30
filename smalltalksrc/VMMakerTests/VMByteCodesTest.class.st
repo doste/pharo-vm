@@ -548,6 +548,321 @@ VMByteCodesTest >> testBytecodeFFICallBadExternalFunction [
 ]
 
 { #category : #'tests-send' }
+VMByteCodesTest >> testBytecodeFFICallFailWithNonSMIArgument [
+
+	| aMethod aMethodToActivate receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction aTFSameThreadRunner aTFSameThreadRunnerDeMentiritas selectorOop |
+	
+	tfExternalFunction := self 
+		createExternalFunctionFor:  [ :anArgument :anotherArgument | ^anArgument + anotherArgument ] 
+		withArgumentTypes: { interpreter libFFI uint64. interpreter libFFI uint64} 
+		withReturnType: interpreter libFFI uint64.
+
+
+	aTFSameThreadRunner := self newObjectWithSlots: 0.																								"Como hacer que este objeto sepa responder a un selector (a #invokeFunction:withArguments)"
+	"--------- aver si asi aTFSameThreadRunner sabe responderlo:"
+	
+	aTFSameThreadRunnerDeMentiritas := self newObjectWithSlots: 0.
+	"receiverClass := self setSmallIntegerClassIntoClassTable."
+	receiverClass := self
+		newClassInOldSpaceWithSlots: 0
+		instSpec: memory nonIndexablePointerFormat.
+	memory setHashBitsOf: receiverClass to: 16 "not necessarily ok, this is not enforced by the VM".
+	memory
+		storePointer: 16 "not necessarily ok, this is not enforced by the VM"
+		ofObject: memory classTableFirstPage
+		withValue: receiverClass.
+		
+	"selectorOop := self newString: 'invokeFunction:withArguments:'."
+	selectorOop := self newString: 'invokeFunctionDeMentiritas'.
+	methodBuilder newMethod literals: { selectorOop }.
+	aMethod := methodBuilder buildMethod.
+
+	aMethodToActivate := methodBuilder newMethod
+		                     numberOfArguments: 2;
+		                     buildMethod.
+		
+		
+	self setUpMethodDictionaryIn: receiverClass.
+	aMethodDictionary := memory
+		                     fetchPointer: MethodDictionaryIndex
+		                     ofObject: receiverClass.
+	self
+		installSelector: selectorOop
+		method: aMethodToActivate
+		inMethodDictionary: aMethodDictionary.
+
+	memory splObj: SelectorInvokeFunctionWithArguments  put: selectorOop.
+	
+	"-----------------------------"																								
+																									
+	methodBuilder newMethod literals: { aTFSameThreadRunnerDeMentiritas . tfExternalFunction }. 
+	
+	aMethod := methodBuilder buildMethod.
+	aMethodToActivate := methodBuilder newMethod
+		                     numberOfArguments: 2;
+		                     buildMethod.
+	1halt.
+	"memory formatStringOf: (TFSameThreadRunner uniqueInstance)"
+	
+	"The byte following the bytecode 230 (15rE6) encodes two offsets of the literals, corresponding to aTFRunner and the function definition.
+	In the least significant nibble it's the runner and on the most significant one the fdef."
+	
+	" The runner it's on offset 0 and the fdef on offset 1:  0000 0001"
+	aMethod := methodBuilder newMethod
+		bytecodes:
+			#[ 
+				"byecodeFFICall n=0" 16rE6 16r1						
+						];
+		numberOfArguments: 2;
+		literals: { 
+			aTFSameThreadRunnerDeMentiritas . tfExternalFunction
+		};
+		isPrimitive: false;
+		buildMethod.
+		
+	receiver := memory integerObjectOf: 41.
+	receiverClass := self setSmallIntegerClassIntoClassTable.
+	self setUpMethodDictionaryIn: receiverClass.
+	aMethodDictionary := memory
+		                     fetchPointer: MethodDictionaryIndex
+		                     ofObject: receiverClass.
+
+	self
+		installSelector: tfExternalFunction
+		method: aMethod
+		inMethodDictionary: aMethodDictionary.
+
+	arg1 := memory nilObject.
+	arg2 := memory integerObjectOf: 222.
+
+	stackBuilder addNewFrame
+		method: aMethod;
+		stack: { 
+				receiver.
+				arg1.
+				arg2 }.
+	stackBuilder buildStack.
+
+	interpreter methodDictLinearSearchLimit: 3.
+	interpreter setBreakSelector: nil.
+	interpreter method: aMethod.
+	"interpreter currentBytecode: 230."
+
+	self interpretNextBytecode.
+
+	
+	"Before calling to the bytecode we had to push the receiver and all the arguments.
+	We should assert that the bytecode popped the 2 arguments and pushed the result.
+	Here we assert that the result was pushed:"
+	self assert: (memory integerValueOf:(interpreter stackTop))  equals: 111 + 222.
+	
+	"And here we assert that the 2 arguments were popped (the receiver was pushed before the args)"
+	self assert: (memory integerValueOf:(interpreter stackValue: 1))  equals: receiver.
+
+]
+
+{ #category : #'tests-send' }
+VMByteCodesTest >> testBytecodeFFICallFailWithNonSMIArgumentV2 [
+
+	| aMethod aMethodToActivate receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction aTFSameThreadRunner aTFSameThreadRunnerDeMentiritas selectorOop methodOop aClass selectorToInvoke |
+	
+	tfExternalFunction := self 
+		createExternalFunctionFor:  [ :anArgument :anotherArgument | ^anArgument + anotherArgument ] 
+		withArgumentTypes: { interpreter libFFI uint64. interpreter libFFI uint64} 
+		withReturnType: interpreter libFFI uint64.
+
+
+	methodOop := methodBuilder newMethod buildMethod.
+	selectorOop := self newString: 'invokeFunctionDeMentiritas'.
+	receiver := memory integerObjectOf: 56.
+	receiverClass := self setSmallIntegerClassIntoClassTable.
+	
+	aClass := self
+		newClassInOldSpaceWithSlots: 0
+		instSpec: Array instSpec.
+	memory setHashBitsOf: aClass to: ClassArrayCompactIndex.
+	memory
+		storePointer: ClassArrayCompactIndex
+		ofObject: memory classTableFirstPage
+		withValue: aClass.
+		
+	aClass := self
+		newClassInOldSpaceWithSlots: MessageSend allSlots size 
+		instSpec: MessageSend instSpec.
+	memory setHashBitsOf: aClass to: ClassMessageCompactIndex.
+	memory
+		storePointer: ClassMessageCompactIndex
+		ofObject: memory classTableFirstPage
+		withValue: aClass.
+		
+		
+	self setUpMethodDictionaryIn: receiverClass.
+	aMethodDictionary := memory fetchPointer: MethodDictionaryIndex ofObject: receiverClass.
+	self installSelector: selectorOop method: methodOop  inMethodDictionary: aMethodDictionary.
+
+	
+	selectorToInvoke := self newString: 'invokeFunctionDeMentiritas'.
+
+	memory splObj: SelectorInvokeFunctionWithArguments  put: selectorOop.
+	
+	"-----------------------------"																								
+																									
+	methodBuilder newMethod literals: { receiver . tfExternalFunction }. 
+	
+	aMethod := methodBuilder buildMethod.
+	aMethodToActivate := methodBuilder newMethod
+		                     numberOfArguments: 2;
+		                     buildMethod.
+	1halt.
+	"memory formatStringOf: (TFSameThreadRunner uniqueInstance)"
+	
+	"The byte following the bytecode 230 (15rE6) encodes two offsets of the literals, corresponding to aTFRunner and the function definition.
+	In the least significant nibble it's the runner and on the most significant one the fdef."
+	
+	" The runner it's on offset 0 and the fdef on offset 1:  0000 0001"
+	aMethod := methodBuilder newMethod
+		bytecodes:
+			#[ 
+				"byecodeFFICall n=0" 16rE6 16r1						
+						];
+		numberOfArguments: 2;
+		literals: { 
+			receiver . tfExternalFunction
+		};
+		isPrimitive: false;
+		buildMethod.
+		
+	receiver := memory integerObjectOf: 41.
+	receiverClass := self setSmallIntegerClassIntoClassTable.
+	self setUpMethodDictionaryIn: receiverClass.
+	aMethodDictionary := memory
+		                     fetchPointer: MethodDictionaryIndex
+		                     ofObject: receiverClass.
+
+	self
+		installSelector: tfExternalFunction
+		method: aMethod
+		inMethodDictionary: aMethodDictionary.
+
+	arg1 := memory nilObject.
+	arg2 := memory integerObjectOf: 222.
+
+	stackBuilder addNewFrame
+		method: aMethod;
+		stack: { 
+				receiver.
+				arg1.
+				arg2 }.
+	stackBuilder buildStack.
+
+	interpreter methodDictLinearSearchLimit: 3.
+	interpreter setBreakSelector: nil.
+	interpreter method: aMethod.
+	"interpreter currentBytecode: 230."
+
+	self interpretNextBytecode.
+
+	
+	"Before calling to the bytecode we had to push the receiver and all the arguments.
+	We should assert that the bytecode popped the 2 arguments and pushed the result.
+	Here we assert that the result was pushed:"
+	self assert: (memory integerValueOf:(interpreter stackTop))  equals: 111 + 222.
+	
+	"And here we assert that the 2 arguments were popped (the receiver was pushed before the args)"
+	self assert: (memory integerValueOf:(interpreter stackValue: 1))  equals: receiver.
+
+]
+
+{ #category : #'tests-send' }
+VMByteCodesTest >> testBytecodeFFICallFailWithNonSMIArgumentV3 [
+
+	| aMethod aMethodToActivate receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction selectorOop methodOop class receiverOop |
+	
+	tfExternalFunction := self 
+		createExternalFunctionFor:  [ :anArgument :anotherArgument | ^anArgument + anotherArgument ] 
+		withArgumentTypes: { interpreter libFFI uint64. interpreter libFFI uint64} 
+		withReturnType: interpreter libFFI uint64.
+
+	"-----------------------------------------"
+	
+   class := self installClassIntoClassTableWithInstSpec: 1 instSize: 0.
+	receiverOop := memory instantiateClass: class.
+    self setUpMethodDictionaryIn: class.
+
+    methodOop := methodBuilder newMethod buildMethod.
+	selectorOop := self newString: 'invokeFunctionDeMentiritas'.
+	memory splObj: SelectorInvokeFunctionWithArguments  put: selectorOop.
+
+    self installSelector: selectorOop method: methodOop inMethodDictionary: (memory fetchPointer: MethodDictionaryIndex ofObject: class).
+																							
+	"-----------------------------------------"																								
+	methodBuilder newMethod literals: { receiverOop . tfExternalFunction }. 
+	
+	aMethod := methodBuilder buildMethod.
+	aMethodToActivate := methodBuilder newMethod
+		                     numberOfArguments: 2;
+		                     buildMethod.
+	1halt.
+	"memory formatStringOf: (TFSameThreadRunner uniqueInstance)"
+	
+	"The byte following the bytecode 230 (15rE6) encodes two offsets of the literals, corresponding to aTFRunner and the function definition.
+	In the least significant nibble it's the runner and on the most significant one the fdef."
+	
+	" The runner it's on offset 0 and the fdef on offset 1:  0000 0001"
+	aMethod := methodBuilder newMethod
+		bytecodes:
+			#[ 
+				"byecodeFFICall n=0" 16rE6 16r1						
+						];
+		numberOfArguments: 2;
+		literals: { 
+			receiverOop . tfExternalFunction
+		};
+		isPrimitive: false;
+		buildMethod.
+		
+	receiver := memory integerObjectOf: 41.
+	receiverClass := self setSmallIntegerClassIntoClassTable.
+	self setUpMethodDictionaryIn: receiverClass.
+	aMethodDictionary := memory
+		                     fetchPointer: MethodDictionaryIndex
+		                     ofObject: receiverClass.
+
+	self
+		installSelector: tfExternalFunction
+		method: aMethod
+		inMethodDictionary: aMethodDictionary.
+
+	arg1 := memory nilObject.
+	arg2 := memory integerObjectOf: 222.
+
+	stackBuilder addNewFrame
+		method: aMethod;
+		stack: { 
+				receiver.
+				arg1.
+				arg2 }.
+	stackBuilder buildStack.
+
+	interpreter methodDictLinearSearchLimit: 3.
+	interpreter setBreakSelector: nil.
+	interpreter method: aMethod.
+	"interpreter currentBytecode: 230."
+
+	self interpretNextBytecode.
+
+	
+	"Before calling to the bytecode we had to push the receiver and all the arguments.
+	We should assert that the bytecode popped the 2 arguments and pushed the result.
+	Here we assert that the result was pushed:"
+	self assert: (memory integerValueOf:(interpreter stackTop))  equals: 111 + 222.
+	
+	"And here we assert that the 2 arguments were popped (the receiver was pushed before the args)"
+	self assert: (memory integerValueOf:(interpreter stackValue: 1))  equals: receiver.
+
+]
+
+{ #category : #'tests-send' }
 VMByteCodesTest >> testBytecodeFFICallFailWithNonSmallIntegerArgument [
 
 	| aMethod receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction selectorOop simulatedInvokeFunctionWithArguments simulatedClassOfRunner simulatedRunner |

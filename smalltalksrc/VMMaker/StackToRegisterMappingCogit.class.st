@@ -1433,6 +1433,79 @@ StackToRegisterMappingCogit >> genBlockReturn [
 ]
 
 { #category : #'bytecode generators' }
+StackToRegisterMappingCogit >> genBytecodeFFICall [
+	| n aTFExternalFunction runner externalFunctionAddr jumpInvalidCifNargs jumpInvalidCifRtype jumpInvalidCifArgtype jumpBadArg cif aTFFunctionDefinition cifAddr failure jumpNeg jumpContinue continueToNextBytecode valueAtTheTopOfStack reg |
+	
+	n :=  byte1.
+
+	"fdef := self getLiteral: (n bitAnd: 2r1111)."
+	
+	aTFExternalFunction := self getLiteral: ((n >> 4) bitAnd: 2r1111).   "<<<<<<<<<<<<<<<<<<<<<<<<<< Por ahora ignoramos          <<<<<<< FIXEAR! deberia ser el runner"
+	
+	self ssFlushUpThroughRegister: Arg0Reg.
+	"ssFlushUpThroughRegister: comment: 'Any occurrences on the stack of the register must be flushed'. Then, because now we are about to write into Arg0Reg we should preserve it and we do so with that flush method.
+	We have to preserve it because that register is in the stack, that means someone (most likely our caller) is using it." 
+	
+	self ssTop moveToReg: Arg0Reg.
+	self ssPop: 1.
+	"Why can't we just do something like: self MoveCw: valueAtTheTopOfStack R: Arg0Reg ?
+	Because the stack is the simulated one, so we don't really know what kind of value there is in the top of it. We do know that it's going to be a 'CogSimStackEntry'. Whatever value it contains, we want to move it to Arg0Reg.
+	The method moveToReg: will handle all the cases for us."
+	
+	externalFunctionAddr := self getHandler: aTFExternalFunction.
+	
+	externalFunctionAddr ifNil: [ self error ]. 
+	
+	self MoveCw: externalFunctionAddr R: TempReg.  
+	
+	aTFFunctionDefinition := objectMemory fetchPointer: 1 ofObject: aTFExternalFunction.
+	
+	cifAddr := self getHandler: aTFFunctionDefinition.
+
+	"cif := self getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction)."
+	cif := coInterpreter getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction).
+	
+	cif ifNil: [ self error ].
+																							
+	cif numberArguments = 1 ifFalse: [ self error: 'WAT' ].
+	cif returnType type = FFI_TYPE_UINT64 ifFalse:  [ self error: 'WAT' ].
+	(cif argTypeAt: 0) type = FFI_TYPE_UINT64 ifFalse:  [ self error: 'WAT' ].
+	
+	
+	"Verify if the argument we receive for the C function is in fact an uint64:
+	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
+	jumpBadArg := objectRepresentation genJumpNotSmallInteger: Arg0Reg.
+	objectRepresentation genConvertSmallIntegerToIntegerInReg: Arg0Reg. "We have it in Arg1Reg, but we need to untag it. The C function expects an uint64_t, not a Pharo object (a SmallInteger for example)"
+	self CmpCq: 0 R: Arg0Reg.
+	jumpNeg := self JumpLess: 0.
+	
+	"The C function we are about to call expects its (unique) argument in Arg0Reg."
+	"self MoveR: Arg1Reg R: Arg0Reg.																		<<<<<<<<<<< usando Arg0Reg desde el principio nos ahorramos este mov (y usamos un reg menos)"
+	
+	"Call the C function"
+	self CallR: TempReg.
+	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
+	We need to convert that C integer into a Pharo SmallInteger:"																													
+	objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
+	"self PushR: TempReg."
+	self ssPushRegister: TempReg.
+	"los bytecodes pusehan el resultado"
+	jumpContinue := self Jump: 0.
+
+	
+	failure := self Label.
+	jumpNeg jmpTarget: failure.
+	jumpBadArg jmpTarget: failure.
+	
+	self Stop.
+	
+	continueToNextBytecode := self Label.
+	jumpContinue jmpTarget: continueToNextBytecode.
+	
+	^0																				"<<<<<<<<<<<<<<<<<<<<<<<<<<<<< ??????????????????????????????????????????????????"
+]
+
+{ #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> genCallMappedInlinedPrimitive [
 	"SistaV1:	236		11101100	iiiiiiii		callMappedInlinedPrimitive"
 	^ self genMappedInlinePrimitive: byte1

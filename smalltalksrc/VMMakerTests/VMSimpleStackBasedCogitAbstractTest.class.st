@@ -28,6 +28,7 @@ Class {
 		'CogAbstractRegisters',
 		'CogCompilationConstants',
 		'CogMethodConstants',
+		'LibFFIConstants',
 		'VMBytecodeConstants',
 		'VMClassIndices'
 	],
@@ -55,8 +56,8 @@ VMSimpleStackBasedCogitAbstractTest class >> wordSize32Parameters [
 VMSimpleStackBasedCogitAbstractTest class >> wordSize64Parameters [
 
 	^ ParametrizedTestMatrix new
-		addCase: { #ISA -> #'aarch64'. #wordSize -> 8};
 		addCase: { #ISA -> #'X64'. #wordSize -> 8};
+		addCase: { #ISA -> #'aarch64'. #wordSize -> 8};
 		yourself
 ]
 
@@ -101,6 +102,29 @@ VMSimpleStackBasedCogitAbstractTest >> assertStackRemainsUnchangedDuring: aBlock
 	self
 		assert: machineSimulator stackPointerRegisterValue
 		equals: before
+]
+
+{ #category : #helpers }
+VMSimpleStackBasedCogitAbstractTest >> callCogMethod: callingMethod receiver: receiver arguments: arguments returnAddress: returnAddress [
+
+	machineSimulator receiverRegisterValue: receiver.
+	self pushAddress: receiver.
+	
+	arguments do: [ :e | self pushAddress: e ].
+
+	arguments size = 1 
+		ifTrue: [ machineSimulator arg0RegisterValue: (arguments at: 1) ].
+
+	arguments size = 2 
+		ifTrue: [
+			machineSimulator arg0RegisterValue: (arguments at: 1).
+			machineSimulator arg1RegisterValue: (arguments at: 2). ].
+	
+	self prepareCall.
+	machineSimulator instructionPointerRegisterValue: callingMethod address + cogit noCheckEntryOffset. 
+
+	self runFrom: callingMethod address + cogit noCheckEntryOffset until: returnAddress.
+
 ]
 
 { #category : #accessing }

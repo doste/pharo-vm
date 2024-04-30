@@ -12,9 +12,12 @@ Class {
 		'externalPrimJumpOffsets',
 		'externalSetPrimOffsets',
 		'introspectionDataIndex',
-		'introspectionData'
+		'introspectionData',
+		'simulatedLibFFI',
+		'indexForSimulatedCif'
 	],
 	#pools : [
+		'LibFFIConstants',
 		'VMClassIndices',
 		'VMMethodCacheConstants',
 		'VMObjectIndices',
@@ -148,7 +151,8 @@ SimpleStackBasedCogit class >> initializeBytecodeTableForSistaV1 [
 		(2 227 227 genExtPushLiteralVariableBytecode		needsFrameNever: 1)
 		(2 228 228 genExtPushLiteralBytecode					needsFrameNever: 1)
 		(2 229 229 genLongPushTemporaryVariableBytecode)
-		(2 230 230 unknownBytecode)
+		"(2 230 230 unknownBytecode)                <<<<<<<<<<<<<<<<<<<<----------------------------"
+		(2 230 230 genBytecodeFFICall)
 		(2 231 231 genPushNewArrayBytecode)
 		(2 232 232 genExtPushIntegerBytecode				needsFrameNever: 1)
 		(2 233 233 genExtPushCharacterBytecode				needsFrameNever: 1)
@@ -1109,6 +1113,71 @@ SimpleStackBasedCogit >> genBlockReturn [
 			[self PopR: LinkReg]].
 	self RetN: methodOrBlockNumArgs + 1 * objectMemory wordSize.
 	^0
+]
+
+{ #category : #'bytecode generators' }
+SimpleStackBasedCogit >> genBytecodeFFICall [
+	| n aTFExternalFunction runner externalFunctionAddr jumpInvalidCifNargs jumpInvalidCifRtype jumpInvalidCifArgtype jumpBadArg cif aTFFunctionDefinition cifAddr failure jumpNeg jumpContinue continueToNextBytecode |
+	
+	n :=  byte1.
+	
+	"fdef := self getLiteral: (n bitAnd: 2r1111)."
+	
+	aTFExternalFunction := self getLiteral: ((n >> 4) bitAnd: 2r1111).   "<<<<<<<<<<<<<<<<<<<<<<<<<< Por ahora ignoramos          <<<<<<< FIXEAR! deberia ser el runner"
+	
+	"self genLoadArgAtDepth: -1 into: Arg1Reg."  "stack[0] <- argument of the C function (an uint64)      <<<< MAL. mejor popearlo de una!            <<<<<<<<<< por que primitivas SI???????????????????????"
+	self PopR: Arg1Reg.
+	
+	externalFunctionAddr := self getHandler: aTFExternalFunction.
+	
+	externalFunctionAddr ifNil: [ self error ]. 
+	
+	self MoveCw: externalFunctionAddr R: TempReg.  
+	
+	aTFFunctionDefinition := objectMemory fetchPointer: 1 ofObject: aTFExternalFunction.
+	
+	cifAddr := self getHandler: aTFFunctionDefinition.
+
+	"cif := self getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction)."
+	cif := coInterpreter getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction).
+	
+	cif ifNil: [ self error ].
+																							
+	cif numberArguments = 1 ifFalse: [ self error: 'WAT' ].
+	cif returnType type = FFI_TYPE_UINT64 ifFalse:  [ self error: 'WAT' ].
+	(cif argTypeAt: 0) type = FFI_TYPE_UINT64 ifFalse:  [ self error: 'WAT' ].
+	
+	
+	"Verify if the argument we receive for the C function is in fact an uint64:
+	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
+	jumpBadArg := objectRepresentation genJumpNotSmallInteger: Arg1Reg.
+	objectRepresentation genConvertSmallIntegerToIntegerInReg: Arg1Reg. "We have it in Arg1Reg, but we need to untag it. The C function expects an uint64_t, not a Pharo object (a SmallInteger for example)"
+	self CmpCq: 0 R: Arg1Reg.
+	jumpNeg := self JumpLess: 0.
+	
+	"The C function we are about to call expects its (unique) argument in Arg0Reg."
+	self MoveR: Arg1Reg R: Arg0Reg.
+	
+	"Call the C function"
+	self CallR: TempReg.
+	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
+	We need to convert that C integer into a Pharo SmallInteger:"																													
+	objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
+	self PushR: TempReg.
+	"los bytecodes pusehan el resultado"
+	jumpContinue := self Jump: 0.
+
+	
+	failure := self Label.
+	jumpNeg jmpTarget: failure.
+	jumpBadArg jmpTarget: failure.
+	
+	self Stop.
+	
+	continueToNextBytecode := self Label.
+	jumpContinue jmpTarget: continueToNextBytecode.
+	
+	^0																				"<<<<<<<<<<<<<<<<<<<<<<<<<<<<< ??????????????????????????????????????????????????"
 ]
 
 { #category : #'bytecode generators' }
@@ -2840,6 +2909,30 @@ SimpleStackBasedCogit >> generateTracingTrampolines [
 		 ceTraceStoreTrampoline := self simulatedTrampolineFor: #ceShortCutTraceStore:]
 ]
 
+{ #category : #'bytecode generator support' }
+SimpleStackBasedCogit >> getHandler: anOop [ 
+
+	<api>
+	<returnTypeC: #'void *'>
+
+	((objectMemory isPointers: anOop) not or: [ (objectMemory slotSizeOf: anOop) < 1 ])
+		ifTrue: [ self primitiveFail. ^ nil ].
+		
+	^ self readAddress: (objectMemory fetchPointer: 0 ofObject: anOop)
+
+]
+
+{ #category : #'bytecode generator support' }
+SimpleStackBasedCogit >> getHandlerAsCif: anOop [
+
+	^ self
+		cCode: [ self cCoerce: (self getHandler: anOop) to: 'ffi_cif *' ]
+		inSmalltalk: [ simulatedLibFFI at: (self getHandler: anOop)]
+		"quisiera que en el ambiente simulado, cuando pida getHandlerAsCif: se devuelva
+		un libFFICif. De esta manera en los tests se le pueden enviar los mensajes como
+		numberOfArguments, returnType etc"
+]
+
 { #category : #'register management' }
 SimpleStackBasedCogit >> isCallerSavedReg: reg [
 	<inline: true>
@@ -3087,6 +3180,18 @@ SimpleStackBasedCogit >> putSelfInReceiverResultReg [
 	self MoveMw: FoxMFReceiver r: FPReg R: ReceiverResultReg
 ]
 
+{ #category : #'bytecode generator support' }
+SimpleStackBasedCogit >> readAddress: anOop [ 
+
+	<api>
+	"AVERRrRRRR"
+
+	(objectMemory is: anOop KindOfClass: objectMemory classExternalAddress)
+		ifFalse: [ ^ nil ].
+
+	^ objectMemory fetchPointer: 0 ofObject: anOop.
+]
+
 { #category : #'external primitive support' }
 SimpleStackBasedCogit >> recordCallOffsetIn: cogMethod [
 	<api>
@@ -3207,6 +3312,34 @@ SimpleStackBasedCogit >> setInterpreter: aCoInterpreter [
 	externalPrimJumpOffsets := CArrayAccessor on: (Array new: MaxNumArgs + 1).
 	externalPrimCallOffsets := CArrayAccessor on: (Array new: MaxNumArgs + 1).
 	externalSetPrimOffsets := CArrayAccessor on: (Array new: MaxNumArgs + 1)
+]
+
+{ #category : #'bytecode generator support' }
+SimpleStackBasedCogit >> setSimulatedCif: aCif [
+
+	indexForSimulatedCif ifNil: [ indexForSimulatedCif := 0 ].
+	
+	simulatedLibFFI := Dictionary new.
+	
+	simulatedLibFFI at: indexForSimulatedCif put: aCif.
+	
+	indexForSimulatedCif := indexForSimulatedCif + 1.
+	
+	^ indexForSimulatedCif - 1
+]
+
+{ #category : #'bytecode generator support' }
+SimpleStackBasedCogit >> setSimulatedCif: aCif at: anAddress [
+
+	"indexForSimulatedCif ifNil: [ indexForSimulatedCif := 0 ]."
+	
+	simulatedLibFFI ifNil: [ simulatedLibFFI := Dictionary new].
+	
+	simulatedLibFFI at: anAddress put: aCif.
+	
+	"indexForSimulatedCif := indexForSimulatedCif + 1."
+	
+	"^ indexForSimulatedCif - 1"
 ]
 
 { #category : #'bytecode generator support' }

@@ -114,6 +114,15 @@ VMStackToRegisterMappingCogitTest >> setUp [
 	super setUp.
 	methodReceiver := memory nilObject.
 	arguments := #().
+	
+	"averrrr"
+	interpreter libFFI: LibFFI new.
+	interpreter libFFI interpreter: interpreter.
+	
+	"averrrr"
+	memory classExternalAddress: (self newClassInOldSpaceWithSlots: 0 instSpec: (memory byteFormatForNumBytes: 0) ).
+	memory classArray: (self newClassInOldSpaceWithSlots: 0 instSpec: memory arrayFormat ).
+	memory classByteArray: (self newClassInOldSpaceWithSlots: 0 instSpec: (memory byteFormatForNumBytes: 0) ).
 ]
 
 { #category : #builder }

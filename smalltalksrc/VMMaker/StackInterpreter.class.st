@@ -2811,10 +2811,10 @@ StackInterpreter >> bytecodeFFICall [
 	self fetchNextBytecode.
 	
 	externalFunction := self getHandler: fdef.
-	self failed ifTrue: [ self error: 'Invalid External Function Argument'  ].
+	self failed ifTrue: [ self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil  ].
 	cif := self getHandlerAsCif:
 		       (objectMemory fetchPointer: 1 ofObject: fdef).
-	self failed ifTrue: [ self error: 'Invalid CIF in ExternalFunction' ].
+	self failed ifTrue: [ self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil ].
 	
 	(self doCall: externalFunction withCif: cif)
 		ifFalse: [ self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: cif ]
@@ -7280,14 +7280,9 @@ StackInterpreter >> handleFFIError [
 { #category : #'stack bytecodes' }
 StackInterpreter >> handleFFIErrorWithFunctionDefinition: aFunctionDefinition runner: aRunner andCif: cif [  
 	
-	| numberOfArguments arguments lookupClassTag s |
-	numberOfArguments := cif numberArguments.
-1halt.
+	| numberOfArguments arguments lookupClassTag |
+	numberOfArguments := cif ifNil: [ 0 ] ifNotNil: [ cif numberArguments ] .
 
-	"arguments := objectMemory
-		         eeInstantiateSmallClassIndex: ClassArrayCompactIndex
-		         format: objectMemory arrayFormat
-		         numSlots: numberOfArguments."
 	arguments := objectMemory newObjectWithSlots: numberOfArguments format: objectMemory arrayFormat classIndex: objectMemory arrayClassIndexPun.
 	
 	0 to: numberOfArguments - 1 do: [ :i | 
@@ -7305,7 +7300,7 @@ StackInterpreter >> handleFFIErrorWithFunctionDefinition: aFunctionDefinition ru
 
 	messageSelector := objectMemory splObj: SelectorInvokeFunctionWithArguments.
 	argumentCount := 2.
-	1halt.
+
 	lookupClassTag := objectMemory fetchClassTagOf: aRunner.
 	self findNewMethodInClassTag: lookupClassTag.
 	self executeNewMethod.  

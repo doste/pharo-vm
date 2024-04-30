@@ -4,6 +4,29 @@ Class {
 	#category : #'VMMakerTests-JitTests'
 }
 
+{ #category : #'tests - extended push bytecode - push inst var' }
+VMSimpleStackBasedCogitBytecodeTest >> createExternalFunctionForCogitBlock: aCogitBlock withArgumentTypes: argumentTypes withReturnType: returnType [
+
+	| functionAddress tfExternalFunction functionExternalAddress tfFunctionDefinition cif cifExternalAddress |
+
+	functionAddress := self compile: aCogitBlock.
+	tfExternalFunction := self newObjectWithSlots: 2. 
+	functionExternalAddress := self newExternalAddress: functionAddress. 
+	tfFunctionDefinition := self newObjectWithSlots:4 .
+	
+	cif := interpreter libFFI newCif.
+	cif argumentTypes: argumentTypes.
+	cif returnType: returnType.
+		
+	cifExternalAddress := self newExternalAddress: (cif address). 
+
+	memory storePointer: 0 ofObject: tfExternalFunction withValue: functionExternalAddress.
+	memory storePointer: 1 ofObject: tfExternalFunction withValue: tfFunctionDefinition.
+	memory storePointer: 0 ofObject: tfFunctionDefinition withValue: cifExternalAddress.	
+
+	^ tfExternalFunction
+]
+
 { #category : #'tests - single bytecode - pop into inst var' }
 VMSimpleStackBasedCogitBytecodeTest >> doPopIntoReceiverVariableBytecodeStoresVariableAt: instanceVariableToWrite [
 
@@ -74,6 +97,141 @@ VMSimpleStackBasedCogitBytecodeTest >> setUp [
 
 	super setUp.
 	self setUpTrampolines
+	
+
+	"averrrr"
+	interpreter libFFI: LibFFI new.
+	interpreter libFFI interpreter: interpreter.
+	
+	"averrrr"
+	memory classExternalAddress: (self newClassInOldSpaceWithSlots: 0 instSpec: (memory byteFormatForNumBytes: 0) ).
+	memory classArray: (self newClassInOldSpaceWithSlots: 0 instSpec: memory arrayFormat ).
+	memory classByteArray: (self newClassInOldSpaceWithSlots: 0 instSpec: (memory byteFormatForNumBytes: 0) ).
+]
+
+{ #category : #'tests - extended push bytecode - push inst var' }
+VMSimpleStackBasedCogitBytecodeTest >> testBytecodeFFICall [
+	| tfExternalFunction stopAddress addr  methodObject |
+	
+	"Test that the C function is called correctly and that the bytecode doesn't mess the stack up, this is: it pops the arguments and pushes the result."
+	
+	"functionAddress := self compile: [ cogit MoveR: Arg0Reg R: TempReg .cogit RetN: 0 ]." "mov rdi, rax. ret"
+	
+	"tfExternalFunction := self newObjectWithSlots: 2. 
+	functionExternalAddress := self newExternalAddress: functionAddress. 
+	tfFunctionDefinition := self newObjectWithSlots: 4."
+	
+	"cif := LibFFICIF new."
+	"cif := interpreter libFFI newCif."																																"coInterpreter == interpreter ?????????????????????????"
+	"cif argumentTypes: {LibFFIType type: FFI_TYPE_UINT64 size: 8 on: nil}."
+	"cif returnType: (LibFFIType type: FFI_TYPE_UINT64 size: 8 on: nil)."
+	 
+	"cifExternalAddress := self buildSimulatedCifFromCif: cif.									<< al pedo. TODO: borrar"
+	"cifExternalAddress := self newExternalAddress: (cif address). 
+	memory storePointer: 0 ofObject: tfExternalFunction withValue: functionExternalAddress.
+	memory storePointer: 1 ofObject: tfExternalFunction withValue: tfFunctionDefinition.
+	memory storePointer: 0 ofObject: tfFunctionDefinition withValue: cifExternalAddress."
+																																												"TODO: extraer el armado de la funcion a un metodo similar a este!!!"
+	"tfExternalFunction := self 
+		createExternalFunctionFor:  [ :anArgument :anotherArgument | isFunctionCalled := true . ^anArgument + anotherArgument ] 
+		withArgumentTypes: { interpreter libFFI uint64. interpreter libFFI uint64} 
+		withReturnType: interpreter libFFI uint64."
+		
+	tfExternalFunction := self createExternalFunctionForCogitBlock: [ cogit MoveR: Arg0Reg R: TempReg .cogit RetN: 0 "mov rdi, rax. ret"]
+											withArgumentTypes: { interpreter libFFI uint64.} 
+											withReturnType: interpreter libFFI uint64.
+
+	methodObject :=  (methodBuilder newMethod
+			 literals:{tfExternalFunction};
+			 buildMethod).
+			
+    addr := self
+        compile: [ 
+				cogit methodObj: methodObject.
+	
+				cogit PushCq: (memory integerObjectOf: 777). "a stack canary, just to check that the stack was not messed up."
+            cogit PushCq: (memory integerObjectOf: 888).
+            cogit byte0: 230.
+            cogit byte1: 1.
+            cogit genBytecodeFFICall.
+				
+				"The bytecode (as all bytecodes) will push its result to the stack. We move it to a register so we can then assert about its value."
+				cogit PopR: ReceiverResultReg.
+				
+				"Pop the canary."
+				cogit PopR: Arg1Reg.
+				
+				"This instruction should not be called"
+            stopAddress := cogit Stop.]
+        bytecodes: 1.
+
+	"self openMachineDebuggerAt: addr."
+	self runFrom: addr until: stopAddress address . 
+
+	self assert: machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 888).
+	
+	self assert: machineSimulator arg1RegisterValue equals: (memory integerObjectOf: 777).
+]
+
+{ #category : #'tests - extended push bytecode - push inst var' }
+VMSimpleStackBasedCogitBytecodeTest >> testBytecodeFFICall2 [
+	|  cogitBlock tfExternalFunction  stopAddress addr  methodObject |
+	
+	"Test that the C function is called correctly and that the bytecode doesn't mess the stack up, this is: it pops the arguments and pushes the result."
+	
+	cogitBlock := [	| loop done |	
+		 cogit MoveCq: 0 R: TempReg.
+		 cogit MoveCq: 0 R: ClassReg.
+		 cogit MoveR: Arg0Reg R: Arg1Reg. 
+		 loop := cogit CmpR: ClassReg R: Arg0Reg.
+		 done := cogit JumpLess: 0.
+		
+		 cogit AddR: Arg1Reg R: TempReg.
+		
+		 cogit SubCq: 1 R: Arg1Reg. 
+		
+		 cogit AddCq: 1 R: ClassReg. 
+		
+		 cogit Jump: loop.	
+			
+		 done jmpTarget: cogit Label.    
+		
+		 cogit RetN: 0
+	  ].
+		
+	tfExternalFunction := self createExternalFunctionForCogitBlock: cogitBlock
+											withArgumentTypes: { interpreter libFFI uint64.} 
+											withReturnType: interpreter libFFI uint64.
+
+	methodObject :=  (methodBuilder newMethod
+			 literals:{tfExternalFunction};
+			 buildMethod).
+			
+    addr := self
+        compile: [ 
+				cogit methodObj: methodObject.
+	
+				cogit PushCq: (memory integerObjectOf: 0). "a stack canary, just to check that the stack was not messed up."
+            cogit PushCq: (memory integerObjectOf: 7).
+            cogit byte0: 230.
+            cogit byte1: 1.
+            cogit genBytecodeFFICall.
+				
+				"The bytecode (as all bytecodes) will push its result to the stack. We move it to a register so we can then assert about its value."
+				cogit PopR: ReceiverResultReg.
+				
+				"Pop the canary."
+				cogit PopR: Arg1Reg.
+				
+				"This instruction should not be called"
+            stopAddress := cogit Stop.]
+        bytecodes: 1.
+
+	self runFrom: addr until: stopAddress address . 
+
+	self assert: machineSimulator receiverRegisterValue equals: (memory integerObjectOf: (7 + 6 + 5 + 4 + 3 + 2 + 1)).
+	
+	self assert: machineSimulator arg1RegisterValue equals: (memory integerObjectOf: 0).
 ]
 
 { #category : #'tests - extended push bytecode - push inst var' }

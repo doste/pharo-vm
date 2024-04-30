@@ -15,6 +15,13 @@ ManifestVMMakerTests class >> ruleBadMessageRule2V1FalsePositive [
 ]
 
 { #category : #'code-critics' }
+ManifestVMMakerTests class >> ruleCodeCruftLeftInMethodsRuleV1FalsePositive [
+
+	<ignoreForCoverage>
+	^ #(#(#(#RGMethodDefinition #(#VMByteCodesTest #testBytecodeFFICallFailWithNonSMIArgument #false)) #'2024-04-23T10:16:19.067197+02:00') )
+]
+
+{ #category : #'code-critics' }
 ManifestVMMakerTests class >> rulePrecedenceRuleV1FalsePositive [
 
 	<ignoreForCoverage>
