@@ -2811,13 +2811,13 @@ StackInterpreter >> bytecodeFFICall [
 	self fetchNextBytecode.
 	
 	externalFunction := self getHandler: fdef.
-	self failed ifTrue: [ self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil  ].
+	self failed ifTrue: [ "self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil" 1halt. "OJOOOOOOOOO" ].
 	cif := self getHandlerAsCif:
 		       (objectMemory fetchPointer: 1 ofObject: fdef).
-	self failed ifTrue: [ self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil ].
+	self failed ifTrue: [ "self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil" 1halt. "OJOOOOOOOOO" ].
 	
 	(self doCall: externalFunction withCif: cif)
-		ifFalse: [ self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: cif ]
+		ifFalse: [ "self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil" 1halt. "OJOOOOOOOOO"  ]
 ]
 
 { #category : #'common selector sends' }
@@ -5163,7 +5163,7 @@ What we decided to do instead was to extract all the allocations to a different 
 	<var: #parameters type: #'void **'>
 	<var: #returnHolder type: #'void *'>
 	<var: #externalFunction type: #'void *'>
-	<var: #externalFunction type: #'ffi_cif *'>
+	<var: #cif type: #'ffi_cif *'>
 	| returnHolder argumentSize parameters |
 	argumentSize := cif numberArguments.
 
