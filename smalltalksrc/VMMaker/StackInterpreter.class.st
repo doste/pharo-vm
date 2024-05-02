@@ -2804,9 +2804,9 @@ StackInterpreter >> bytecodeFFICall [
 	
 	n := self fetchByte.
 	
-	fdef := self literal: (n bitAnd: 2r1111).
-	
-	runner := self literal: ((n >> 4) bitAnd: 2r1111).
+	"fdef := self literal: (n bitAnd: 2r1111).
+	runner := self literal: ((n >> 4) bitAnd: 2r1111).			>>>> por ahora sin runner"
+	fdef := self literal: n.
 	
 	self fetchNextBytecode.
 	

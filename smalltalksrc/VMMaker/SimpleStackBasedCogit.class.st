@@ -1123,7 +1123,8 @@ SimpleStackBasedCogit >> genBytecodeFFICall [
 	
 	"fdef := self getLiteral: (n bitAnd: 2r1111)."
 	
-	aTFExternalFunction := self getLiteral: ((n >> 4) bitAnd: 2r1111).   "<<<<<<<<<<<<<<<<<<<<<<<<<< Por ahora ignoramos          <<<<<<< FIXEAR! deberia ser el runner"
+	"aTFExternalFunction := self getLiteral: ((n >> 4) bitAnd: 2r1111)."   "<<<<<<<<<<<<<<<<<<<<<<<<<< Por ahora ignoramos          <<<<<<< FIXEAR! deberia ser el runner"
+	aTFExternalFunction := self getLiteral: n.
 	
 	"self genLoadArgAtDepth: -1 into: Arg1Reg."  "stack[0] <- argument of the C function (an uint64)      <<<< MAL. mejor popearlo de una!            <<<<<<<<<< por que primitivas SI???????????????????????"
 	self PopR: Arg1Reg.
