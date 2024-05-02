@@ -1452,7 +1452,7 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	Because the stack is the simulated one, so we don't really know what kind of value there is in the top of it. We do know that it's going to be a 'CogSimStackEntry'. Whatever value it contains, we want to move it to Arg0Reg.
 	The method moveToReg: will handle all the cases for us."
 	
-	externalFunctionAddr := self getHandler: aTFExternalFunction.
+	externalFunctionAddr := coInterpreter getHandler: aTFExternalFunction.
 	
 	externalFunctionAddr ifNil: [ self error ]. 
 	
@@ -1460,7 +1460,7 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	
 	aTFFunctionDefinition := objectMemory fetchPointer: 1 ofObject: aTFExternalFunction.
 	
-	cifAddr := self getHandler: aTFFunctionDefinition.
+	cifAddr := coInterpreter getHandler: aTFFunctionDefinition.
 
 	"cif := self getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction)."
 	cif := coInterpreter getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction).

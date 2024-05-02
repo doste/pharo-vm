@@ -1128,7 +1128,8 @@ SimpleStackBasedCogit >> genBytecodeFFICall [
 	"self genLoadArgAtDepth: -1 into: Arg1Reg."  "stack[0] <- argument of the C function (an uint64)      <<<< MAL. mejor popearlo de una!            <<<<<<<<<< por que primitivas SI???????????????????????"
 	self PopR: Arg1Reg.
 	
-	externalFunctionAddr := self getHandler: aTFExternalFunction.
+	"externalFunctionAddr := self getHandler: aTFExternalFunction.   asi no tenemos que redefinir getHandler:"
+	externalFunctionAddr := coInterpreter getHandler: aTFExternalFunction.
 	
 	externalFunctionAddr ifNil: [ self error ]. 
 	
@@ -1136,7 +1137,7 @@ SimpleStackBasedCogit >> genBytecodeFFICall [
 	
 	aTFFunctionDefinition := objectMemory fetchPointer: 1 ofObject: aTFExternalFunction.
 	
-	cifAddr := self getHandler: aTFFunctionDefinition.
+	cifAddr := coInterpreter getHandler: aTFFunctionDefinition.
 
 	"cif := self getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction)."
 	cif := coInterpreter getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction).
@@ -2909,30 +2910,6 @@ SimpleStackBasedCogit >> generateTracingTrampolines [
 		 ceTraceStoreTrampoline := self simulatedTrampolineFor: #ceShortCutTraceStore:]
 ]
 
-{ #category : #'bytecode generator support' }
-SimpleStackBasedCogit >> getHandler: anOop [ 
-
-	<api>
-	<returnTypeC: #'void *'>
-
-	((objectMemory isPointers: anOop) not or: [ (objectMemory slotSizeOf: anOop) < 1 ])
-		ifTrue: [ self primitiveFail. ^ nil ].
-		
-	^ self readAddress: (objectMemory fetchPointer: 0 ofObject: anOop)
-
-]
-
-{ #category : #'bytecode generator support' }
-SimpleStackBasedCogit >> getHandlerAsCif: anOop [
-
-	^ self
-		cCode: [ self cCoerce: (self getHandler: anOop) to: 'ffi_cif *' ]
-		inSmalltalk: [ simulatedLibFFI at: (self getHandler: anOop)]
-		"quisiera que en el ambiente simulado, cuando pida getHandlerAsCif: se devuelva
-		un libFFICif. De esta manera en los tests se le pueden enviar los mensajes como
-		numberOfArguments, returnType etc"
-]
-
 { #category : #'register management' }
 SimpleStackBasedCogit >> isCallerSavedReg: reg [
 	<inline: true>
@@ -3178,19 +3155,6 @@ SimpleStackBasedCogit >> primitivePropertyFlags: primIndex primitiveDescriptor: 
 SimpleStackBasedCogit >> putSelfInReceiverResultReg [
 	<inline: true>
 	self MoveMw: FoxMFReceiver r: FPReg R: ReceiverResultReg
-]
-
-{ #category : #'bytecode generator support' }
-SimpleStackBasedCogit >> readAddress: anOop [ 
-
-	<api>
-"AVERRrRRRR"
-	<returnTypeC: #'void *'>
-
-	(objectMemory is: anOop KindOfClass: objectMemory classExternalAddress)
-		ifFalse: [ ^ nil ].
-
-	^ objectMemory fetchPointer: 0 ofObject: anOop.
 ]
 
 { #category : #'external primitive support' }
