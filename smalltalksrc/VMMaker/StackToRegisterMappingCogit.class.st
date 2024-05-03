@@ -1437,8 +1437,6 @@ StackToRegisterMappingCogit >> genBlockReturn [
 StackToRegisterMappingCogit >> genBytecodeFFICall [
 	| n aTFExternalFunction runner externalFunctionAddr jumpInvalidCifNargs jumpInvalidCifRtype jumpInvalidCifArgtype jumpBadArg cif aTFFunctionDefinition cifAddr failure jumpNeg jumpContinue continueToNextBytecode valueAtTheTopOfStack reg |
 	
-	<var: #cif type: #'ffi_cif*'>
-	
 	n :=  byte1.
 	"fdef := self getLiteral: (n bitAnd: 2r1111)."
 	
