@@ -28,55 +28,7 @@ VMJitBytecodeFFICall >> createExternalFunctionForCogitBlock: aCogitBlock withArg
 ]
 
 { #category : #tests }
-VMJitBytecodeFFICall >> testBytecodeFFICall [
-	| tfExternalFunction stopAddress addr  methodObject |
-	
-	"Test that the C function is called correctly and that the bytecode doesn't mess the stack up, this is: it pops the arguments and pushes the result."
-
-	tfExternalFunction := self createExternalFunctionForCogitBlock: [ cogit MoveR: Arg0Reg R: TempReg .cogit RetN: 0 "mov rdi, rax. ret"]
-											withArgumentTypes: { interpreter libFFI uint64.} 
-											withReturnType: interpreter libFFI uint64.
-
-	methodObject :=  (methodBuilder newMethod
-			 literals:{tfExternalFunction};
-			 buildMethod).
-	
-	
-	
-    addr := self
-        compile: [ 
-				
-				cogit methodOrBlockNumTemps: 1.
-				cogit methodOrBlockNumArgs: 1.
-				cogit initSimStackForFramefulMethod: 0.
-	
-	
-				cogit methodObj: methodObject.
-				cogit ssPushConstant: (memory integerObjectOf: 888).
-            "cogit PushCq: (memory integerObjectOf: 888)."
-            cogit byte0: 230.
-            cogit byte1: 1.
-            cogit genBytecodeFFICall.
-				
-				"The bytecode (as all bytecodes) will push its result to the stack. We move it to a register so we can then assert about its value."
-				
-				"cogit PopR: ReceiverResultReg."
-				cogit ssTop moveToReg: ReceiverResultReg.
-				cogit ssPop: 1.
-				
-				"This instruction should not be called"
-            stopAddress := cogit Stop.]
-        bytecodes: 1.
-
-	"self openMachineDebuggerAt: addr."
-	self runFrom: addr until: stopAddress address . 
-
-	self assert: machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 888).
-	
-]
-
-{ #category : #tests }
-VMJitBytecodeFFICall >> testBytecodeFFICall2 [
+VMJitBytecodeFFICall >> testBytecodeFFICallWithComplexExternalFunction [
 	|  cogitBlock tfExternalFunction  stopAddress addr  methodObject |
 	
 	"Test that the C function is called correctly and that the bytecode doesn't mess the stack up, this is: it pops the arguments and pushes the result."
@@ -106,7 +58,7 @@ VMJitBytecodeFFICall >> testBytecodeFFICall2 [
 											withReturnType: interpreter libFFI uint64.
 
 	methodObject :=  (methodBuilder newMethod
-			 literals:{tfExternalFunction};
+			 literals:{memory nilObject. tfExternalFunction};
 			 buildMethod).
 			
     addr := self
@@ -144,7 +96,7 @@ VMJitBytecodeFFICall >> testBytecodeFFICall2 [
 ]
 
 { #category : #tests }
-VMJitBytecodeFFICall >> testBytecodeFFICall3 [
+VMJitBytecodeFFICall >> testBytecodeFFICallWithComplexExternalFunctionAndPreservesValuesInRegisters [
 	|  cogitBlock tfExternalFunction  stopAddress addr  methodObject |
 	
 	"Test that the C function is called correctly and that the bytecode doesn't writo into a register that is being used elsewhere."
@@ -174,7 +126,7 @@ VMJitBytecodeFFICall >> testBytecodeFFICall3 [
 											withReturnType: interpreter libFFI uint64.
 
 	methodObject :=  (methodBuilder newMethod
-			 literals:{tfExternalFunction};
+			 literals:{memory nilObject. tfExternalFunction};
 			 buildMethod).
 			
     addr := self
@@ -211,4 +163,56 @@ VMJitBytecodeFFICall >> testBytecodeFFICall3 [
 	self assert: machineSimulator receiverRegisterValue equals: (memory integerObjectOf: (7 + 6 + 5 + 4 + 3 + 2 + 1)).
 	
 	self assert: machineSimulator arg0RegisterValue equals: (memory integerObjectOf: 19).
+]
+
+{ #category : #tests }
+VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunction [
+
+	| tfExternalFunction stopAddress addr methodObject |
+	"Test that the C function is called correctly and that the bytecode doesn't mess the stack up, this is: it pops the arguments and pushes the result."
+	tfExternalFunction := self
+		                      createExternalFunctionForCogitBlock: [
+			                      cogit MoveR: Arg0Reg R: TempReg.
+			                      cogit RetN: 0 ]
+		                      withArgumentTypes:
+		                      { interpreter libFFI uint64 }
+		                      withReturnType: interpreter libFFI uint64.
+
+	methodObject := methodBuilder newMethod
+		                literals: {
+				                memory nilObject.
+				                tfExternalFunction };
+		                buildMethod.
+
+
+
+	addr := self
+		        compile: [
+			        cogit methodOrBlockNumTemps: 1.
+			        cogit methodOrBlockNumArgs: 1.
+			        cogit initSimStackForFramefulMethod: 0.
+
+
+			        cogit methodObj: methodObject.
+			        cogit ssPushConstant: (memory integerObjectOf: 888).
+			        "cogit PushCq: (memory integerObjectOf: 888)."
+			        cogit byte0: 230.
+			        cogit byte1: 1.
+			        cogit genBytecodeFFICall.
+
+			        "The bytecode (as all bytecodes) will push its result to the stack. We move it to a register so we can then assert about its value."
+
+			        "cogit PopR: ReceiverResultReg."
+			        cogit ssTop moveToReg: ReceiverResultReg.
+			        cogit ssPop: 1.
+
+			        "This instruction should not be called"
+			        stopAddress := cogit Stop ]
+		        bytecodes: 1.
+
+	self runFrom: addr until: stopAddress address.
+
+	self
+		assert: machineSimulator receiverRegisterValue
+		equals: (memory integerObjectOf: 888)
 ]

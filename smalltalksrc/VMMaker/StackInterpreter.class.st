@@ -2793,31 +2793,22 @@ StackInterpreter >> bytecodeFFICall [
 	<var: #returnHolder type: #'void *'>
 	<var: #externalFunction type: #'void *'>
 	| n fdef cif externalFunction runner |
-	"1. Obtain externalFunction and extract the CIF"" 2. Prepare Arguments:
-	- Verify Arguments is an Array
-	- Allocate space for all the arguments in the stack and a holder for the return, and the parameters' pointer C array
-	- Marshall arguments and store in the parameter array."" 3. Call and then return
-	- Call
-	- Marshall Argument and push it to the stack
-	- Return"
-
 	
 	n := self fetchByte.
-	
-	"fdef := self literal: (n bitAnd: 2r1111).
-	runner := self literal: ((n >> 4) bitAnd: 2r1111).			>>>> por ahora sin runner"
-	fdef := self literal: n.
+1halt.
+	fdef := self literal: (n bitAnd: 2r1111).
+	runner := self literal: ((n >> 4) bitAnd: 2r1111).			
 	
 	self fetchNextBytecode.
 	
 	externalFunction := self getHandler: fdef.
-	self failed ifTrue: [ "self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil" 1halt. "OJOOOOOOOOO" ].
+	self failed ifTrue: [ ^self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil].
 	cif := self getHandlerAsCif:
 		       (objectMemory fetchPointer: 1 ofObject: fdef).
-	self failed ifTrue: [ "self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil" 1halt. "OJOOOOOOOOO" ].
+	self failed ifTrue: [ ^self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil].
 	
 	(self doCall: externalFunction withCif: cif)
-		ifFalse: [ "self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil" 1halt. "OJOOOOOOOOO"  ]
+		ifFalse: [ ^self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil]
 ]
 
 { #category : #'common selector sends' }

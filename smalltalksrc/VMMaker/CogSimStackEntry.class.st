@@ -219,6 +219,9 @@ CogSimStackEntry >> maybeConstant [
 
 { #category : #'compile abstract instructions' }
 CogSimStackEntry >> moveToReg: reg [
+	"When moving from the simulated stack to a register it's necessary to use this method because as the stack is the simulated one, we don't really know what kind of value there is in it.
+	We do know that it's going to be a 'CogSimStackEntry'. Whatever value it contains, we want to move it to the register reg.
+	This method will handle all the cases for us."
 	spilled
 		ifTrue:
 			[cogit PopR: reg]

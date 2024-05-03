@@ -5,6 +5,62 @@ Class {
 }
 
 { #category : #'tests - extended push bytecode - push inst var' }
+VMSimpleStackBasedCogitBytecodeTest >> buildSimulatedCifFromCif: aCif [
+	"Helper method to build a simulated CIF given a 'real' CIF.
+	This method also will set the CIF so that the Cogit can access to it when testing, that is when running Smalltalk code.
+	
+	This method is supposed to be used when building a simulated TFExternalFunction, so it will return a ExternalAddress ready to set as the handler in the TFFunctionDefinition of the External Function."	
+
+	"Build CIF by hand:"
+	"Build CIF argumentTypes"
+	| libFFIType cifArrayOfArgTypes cifArgTypes simulatedAddressOfCif cifExternalAddress |
+	
+	cifArrayOfArgTypes := self newArrayWithSlots: (aCif numberArguments). 
+	
+	(aCif arg_types object) withIndexDo: [ :argType :index |
+	
+		libFFIType := self newObjectWithSlots: 5.
+		memory storePointer: 0 ofObject: libFFIType withValue: (memory integerObjectOf: argType type).       "type"
+		memory storePointer: 1 ofObject: libFFIType withValue: (memory integerObjectOf: argType size).		  "size"
+		memory storePointer: 2 ofObject: libFFIType withValue: (memory nilObject).					           "alignment"
+		memory storePointer: 3 ofObject: libFFIType withValue: (memory nilObject).					           "elements"
+		memory storePointer: 4 ofObject: libFFIType withValue: (memory nilObject).                          "libFFI"
+	
+		memory storePointer: index ofObject: cifArrayOfArgTypes withValue: libFFIType.
+	].
+
+	"For some reason, the arg_types field of a CIF is an CArrayAccessor, which in turn, have two slots (inst vars):
+	the first with actual array and a offset. We set our array in the first slot."
+	cifArgTypes := self newObjectWithSlots: 2. 
+	memory storePointer: 0 ofObject: cifArgTypes withValue: cifArrayOfArgTypes.
+	memory storePointer: 1 ofObject: cifArgTypes withValue: (memory integerObjectOf: 1). "don't care about the offset"
+	
+	"The CIF itself:"
+	simulatedAddressOfCif := self newObjectWithSlots: 8.
+	memory storePointer: 0 ofObject: simulatedAddressOfCif withValue: (memory integerObjectOf: 1).       "address"
+	memory storePointer: 1 ofObject: simulatedAddressOfCif withValue: (memory nilObject).		 	         "libFFI"
+	memory storePointer: 2 ofObject: simulatedAddressOfCif withValue: (memory nilObject).						"abi"
+	memory storePointer: 3 ofObject: simulatedAddressOfCif withValue: (aCif numberArguments).    			"nargs"
+	memory storePointer: 4 ofObject: simulatedAddressOfCif withValue: cifArgTypes.                      	"arg_types"
+	memory storePointer: 5 ofObject: simulatedAddressOfCif withValue: (aCif returnType type).  	                "rtype"
+	memory storePointer: 6 ofObject: simulatedAddressOfCif withValue: (memory nilObject).              	"bytes"
+	memory storePointer: 7 ofObject: simulatedAddressOfCif withValue: (memory nilObject).              	"flags"
+	 
+	cifExternalAddress := self newExternalAddress: simulatedAddressOfCif.
+	
+	"Finally we set the CIF so that Cogit have access to it."
+	cogit setSimulatedCif: aCif at: simulatedAddressOfCif.
+	
+	^cifExternalAddress
+	
+	
+
+   
+
+	
+]
+
+{ #category : #'tests - extended push bytecode - push inst var' }
 VMSimpleStackBasedCogitBytecodeTest >> createExternalFunctionForCogitBlock: aCogitBlock withArgumentTypes: argumentTypes withReturnType: returnType [
 
 	| functionAddress tfExternalFunction functionExternalAddress tfFunctionDefinition cif cifExternalAddress |
@@ -110,71 +166,7 @@ VMSimpleStackBasedCogitBytecodeTest >> setUp [
 ]
 
 { #category : #'tests - extended push bytecode - push inst var' }
-VMSimpleStackBasedCogitBytecodeTest >> testBytecodeFFICall [
-	| tfExternalFunction stopAddress addr  methodObject |
-	
-	"Test that the C function is called correctly and that the bytecode doesn't mess the stack up, this is: it pops the arguments and pushes the result."
-	
-	"functionAddress := self compile: [ cogit MoveR: Arg0Reg R: TempReg .cogit RetN: 0 ]." "mov rdi, rax. ret"
-	
-	"tfExternalFunction := self newObjectWithSlots: 2. 
-	functionExternalAddress := self newExternalAddress: functionAddress. 
-	tfFunctionDefinition := self newObjectWithSlots: 4."
-	
-	"cif := LibFFICIF new."
-	"cif := interpreter libFFI newCif."																																"coInterpreter == interpreter ?????????????????????????"
-	"cif argumentTypes: {LibFFIType type: FFI_TYPE_UINT64 size: 8 on: nil}."
-	"cif returnType: (LibFFIType type: FFI_TYPE_UINT64 size: 8 on: nil)."
-	 
-	"cifExternalAddress := self buildSimulatedCifFromCif: cif.									<< al pedo. TODO: borrar"
-	"cifExternalAddress := self newExternalAddress: (cif address). 
-	memory storePointer: 0 ofObject: tfExternalFunction withValue: functionExternalAddress.
-	memory storePointer: 1 ofObject: tfExternalFunction withValue: tfFunctionDefinition.
-	memory storePointer: 0 ofObject: tfFunctionDefinition withValue: cifExternalAddress."
-																																												"TODO: extraer el armado de la funcion a un metodo similar a este!!!"
-	"tfExternalFunction := self 
-		createExternalFunctionFor:  [ :anArgument :anotherArgument | isFunctionCalled := true . ^anArgument + anotherArgument ] 
-		withArgumentTypes: { interpreter libFFI uint64. interpreter libFFI uint64} 
-		withReturnType: interpreter libFFI uint64."
-		
-	tfExternalFunction := self createExternalFunctionForCogitBlock: [ cogit MoveR: Arg0Reg R: TempReg .cogit RetN: 0 "mov rdi, rax. ret"]
-											withArgumentTypes: { interpreter libFFI uint64.} 
-											withReturnType: interpreter libFFI uint64.
-
-	methodObject :=  (methodBuilder newMethod
-			 literals:{tfExternalFunction};
-			 buildMethod).
-			
-    addr := self
-        compile: [ 
-				cogit methodObj: methodObject.
-	
-				cogit PushCq: (memory integerObjectOf: 777). "a stack canary, just to check that the stack was not messed up."
-            cogit PushCq: (memory integerObjectOf: 888).
-            cogit byte0: 230.
-            cogit byte1: 1.
-            cogit genBytecodeFFICall.
-				
-				"The bytecode (as all bytecodes) will push its result to the stack. We move it to a register so we can then assert about its value."
-				cogit PopR: ReceiverResultReg.
-				
-				"Pop the canary."
-				cogit PopR: Arg1Reg.
-				
-				"This instruction should not be called"
-            stopAddress := cogit Stop.]
-        bytecodes: 1.
-
-	"self openMachineDebuggerAt: addr."
-	self runFrom: addr until: stopAddress address . 
-
-	self assert: machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 888).
-	
-	self assert: machineSimulator arg1RegisterValue equals: (memory integerObjectOf: 777).
-]
-
-{ #category : #'tests - extended push bytecode - push inst var' }
-VMSimpleStackBasedCogitBytecodeTest >> testBytecodeFFICall2 [
+VMSimpleStackBasedCogitBytecodeTest >> testBytecodeFFICallWithComplexExternalFunction [
 	|  cogitBlock tfExternalFunction  stopAddress addr  methodObject |
 	
 	"Test that the C function is called correctly and that the bytecode doesn't mess the stack up, this is: it pops the arguments and pushes the result."
@@ -204,7 +196,7 @@ VMSimpleStackBasedCogitBytecodeTest >> testBytecodeFFICall2 [
 											withReturnType: interpreter libFFI uint64.
 
 	methodObject :=  (methodBuilder newMethod
-			 literals:{tfExternalFunction};
+			 literals:{memory nilObject. tfExternalFunction};
 			 buildMethod).
 			
     addr := self
@@ -232,6 +224,47 @@ VMSimpleStackBasedCogitBytecodeTest >> testBytecodeFFICall2 [
 	self assert: machineSimulator receiverRegisterValue equals: (memory integerObjectOf: (7 + 6 + 5 + 4 + 3 + 2 + 1)).
 	
 	self assert: machineSimulator arg1RegisterValue equals: (memory integerObjectOf: 0).
+]
+
+{ #category : #'tests - extended push bytecode - push inst var' }
+VMSimpleStackBasedCogitBytecodeTest >> testBytecodeFFICallWithSimpleExternalFunction [
+	| tfExternalFunction stopAddress addr  methodObject |
+	
+	"Test that the C function is called correctly and that the bytecode doesn't mess the stack up, this is: it pops the arguments and pushes the result."
+		
+	tfExternalFunction := self createExternalFunctionForCogitBlock: [ cogit MoveR: Arg0Reg R: TempReg .cogit RetN: 0 "mov rdi, rax. ret"]
+											withArgumentTypes: { interpreter libFFI uint64.} 
+											withReturnType: interpreter libFFI uint64.
+
+	methodObject :=  (methodBuilder newMethod
+			 literals:{memory nilObject. tfExternalFunction};
+			 buildMethod).
+			
+    addr := self
+        compile: [ 
+				cogit methodObj: methodObject.
+	
+				cogit PushCq: (memory integerObjectOf: 777). "a stack canary, just to check that the stack was not messed up."
+            cogit PushCq: (memory integerObjectOf: 888).
+            cogit byte0: 230.
+            cogit byte1: 1.
+            cogit genBytecodeFFICall.
+				
+				"The bytecode (as all bytecodes) will push its result to the stack. We move it to a register so we can then assert about its value."
+				cogit PopR: ReceiverResultReg.
+				
+				"Pop the canary."
+				cogit PopR: Arg1Reg.
+				
+				"This instruction should not be called"
+            stopAddress := cogit Stop.]
+        bytecodes: 1.
+
+	self runFrom: addr until: stopAddress address . 
+
+	self assert: machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 888).
+	
+	self assert: machineSimulator arg1RegisterValue equals: (memory integerObjectOf: 777).
 ]
 
 { #category : #'tests - extended push bytecode - push inst var' }
