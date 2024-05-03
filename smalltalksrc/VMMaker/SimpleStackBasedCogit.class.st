@@ -1119,6 +1119,8 @@ SimpleStackBasedCogit >> genBlockReturn [
 SimpleStackBasedCogit >> genBytecodeFFICall [
 	| n aTFExternalFunction runner externalFunctionAddr jumpInvalidCifNargs jumpInvalidCifRtype jumpInvalidCifArgtype jumpBadArg cif aTFFunctionDefinition cifAddr failure jumpNeg jumpContinue continueToNextBytecode |
 	
+	<var: #cif type: #'ffi_cif *'>
+	
 	n :=  byte1.
 	
 	"fdef := self getLiteral: (n bitAnd: 2r1111)."
