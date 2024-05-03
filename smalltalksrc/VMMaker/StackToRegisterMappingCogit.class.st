@@ -355,7 +355,8 @@ StackToRegisterMappingCogit class >> initializeBytecodeTableForSistaV1 [
 		(2 227 227 genExtPushLiteralVariableBytecode			needsFrameNever: 1)
 		(2 228 228 genExtPushLiteralBytecode					needsFrameNever: 1)
 		(2 229 229 genLongPushTemporaryVariableBytecode)
-		(2 230 230 unknownBytecode)
+		"(2 230 230 unknownBytecode)							<<<<<<<<<<<<<<<<<<<<<<<<"
+		(2 230 230 genBytecodeFFICall)
 		(2 231 231 genPushNewArrayBytecode)
 		(2 232 232 genExtPushIntegerBytecode				needsFrameNever: 1)
 		(2 233 233 genExtPushCharacterBytecode				needsFrameNever: 1)
