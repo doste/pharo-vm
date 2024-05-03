@@ -355,6 +355,7 @@ Cogit class >> ancilliaryClasses [
 		CogPrimitiveDescriptor.
 		CogMethod.
 		CogPrimitiveCallState.
+		LibFFI.		"<- For the bytecodeFFICall"
 		self activeCompilerClass literalsManagerClass},
 	((InitializationOptions at: #SistaVM ifAbsent: [false])
 		ifTrue: [{SistaMethodZone}]
