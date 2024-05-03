@@ -522,7 +522,8 @@ Cogit class >> declareCVarsIn: aCCodeGenerator [
 		addHeaderFile: '"vmRememberedSet.h"';
 		addHeaderFile: '"cointerp.h"';
 		addHeaderFile: '"cogit.h"';
-		addHeaderFile: '<stdint.h>'.
+		addHeaderFile: '<stdint.h>';
+		addHeaderFile: '<ffi.h>'.  "For the bytecode FFICall"
 
 	aCCodeGenerator addHeaderFile: '<pthread.h>'.
 
