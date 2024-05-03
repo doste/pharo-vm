@@ -761,7 +761,7 @@ StackInterpreter class >> initializeBytecodeTableForSistaV1 [
 		(228		extPushLiteralBytecode)
 		(229		longPushTemporaryVariableBytecode)
 		"(230		unknownBytecode)																<<<<<<<<<<<<<<<---------------------"
-		(230 bytecodeFFICall)		
+		(230 		bytecodeFFICall)		
 		(231		pushNewArrayBytecode)
 		(232		extPushIntegerBytecode)
 		(233		extPushCharacterBytecode)
@@ -7212,7 +7212,9 @@ StackInterpreter >> getHandler: anOop [
 
 { #category : #'ffi - helpers' }
 StackInterpreter >> getHandlerAsCif: anOop [
-
+	
+	"averrrrr"<api>
+	
 	^ self
 		cCode: [ self cCoerce: (self getHandler: anOop) to: 'ffi_cif *' ]
 		inSmalltalk: [ libFFI cifAtAddress: (self getHandler: anOop)]

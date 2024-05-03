@@ -1437,8 +1437,9 @@ StackToRegisterMappingCogit >> genBlockReturn [
 StackToRegisterMappingCogit >> genBytecodeFFICall [
 	| n aTFExternalFunction runner externalFunctionAddr jumpInvalidCifNargs jumpInvalidCifRtype jumpInvalidCifArgtype jumpBadArg cif aTFFunctionDefinition cifAddr failure jumpNeg jumpContinue continueToNextBytecode valueAtTheTopOfStack reg |
 	
+	<var: #cif type: #'ffi_cif*'>
+	
 	n :=  byte1.
-
 	"fdef := self getLiteral: (n bitAnd: 2r1111)."
 	
 	aTFExternalFunction := self getLiteral: ((n >> 4) bitAnd: 2r1111).   "<<<<<<<<<<<<<<<<<<<<<<<<<< Por ahora ignoramos          <<<<<<< FIXEAR! deberia ser el runner"
@@ -1455,7 +1456,7 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	
 	externalFunctionAddr := coInterpreter getHandler: aTFExternalFunction.
 	
-	externalFunctionAddr ifNil: [ self error ]. 
+	externalFunctionAddr ifNil: [ self error: 'WAT' ]. 
 	
 	self MoveCw: externalFunctionAddr R: TempReg.  
 	
@@ -1466,7 +1467,7 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	"cif := self getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction)."
 	cif := coInterpreter getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction).
 	
-	cif ifNil: [ self error ].
+	cif ifNil: [ self error: 'WAT' ].
 																							
 	cif numberArguments = 1 ifFalse: [ self error: 'WAT' ].
 	cif returnType type = FFI_TYPE_UINT64 ifFalse:  [ self error: 'WAT' ].
