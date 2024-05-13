@@ -2795,7 +2795,7 @@ StackInterpreter >> bytecodeFFICall [
 	| n fdef cif externalFunction runner |
 	
 	n := self fetchByte.
-1halt.
+
 	fdef := self literal: (n bitAnd: 2r1111).
 	runner := self literal: ((n >> 4) bitAnd: 2r1111).			
 	
@@ -7273,30 +7273,8 @@ StackInterpreter >> handleFFIError [
 { #category : #'stack bytecodes' }
 StackInterpreter >> handleFFIErrorWithFunctionDefinition: aFunctionDefinition runner: aRunner andCif: cif [  
 	
-	| numberOfArguments arguments lookupClassTag |
-	numberOfArguments := cif ifNil: [ 0 ] ifNotNil: [ cif numberArguments ] .
+	"<doNotGenerate>   quizas deberia tener esto? y todo el codigo anterior [ver historial]"
 
-	arguments := objectMemory newObjectWithSlots: numberOfArguments format: objectMemory arrayFormat classIndex: objectMemory arrayClassIndexPun.
-	
-	0 to: numberOfArguments - 1 do: [ :i | 
-		"Assume: have just allocated a new Array; it must be young. Thus, can use unchecked stores."
-				objectMemory
-					storePointerUnchecked: i
-					ofObject: arguments
-					withValue: (self stackValue: numberOfArguments - i - 1) ].
-	self pop: numberOfArguments.
-	
-	"setup send of: aRunner invokeFunction: aFunctionDefinition withArguments: arguments"
-	self push: aRunner.
-	self push: aFunctionDefinition.
-	self push: arguments.
-
-	messageSelector := objectMemory splObj: SelectorInvokeFunctionWithArguments.
-	argumentCount := 2.
-
-	lookupClassTag := objectMemory fetchClassTagOf: aRunner.
-	self findNewMethodInClassTag: lookupClassTag.
-	self executeNewMethod.  
 ]
 
 { #category : #'message sending' }
