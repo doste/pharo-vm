@@ -1448,10 +1448,11 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	cifAddr := coInterpreter getHandler: aTFFunctionDefinition.
 	cif := coInterpreter getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction).	
 	cif ifNil: [ self error: 'WAT' ].
-																							
-	cif numberArguments = 1 ifFalse: [ self error: 'WAT' ].
-	cif returnType type = FFI_TYPE_UINT64 ifFalse:  [ self error: 'WAT' ].
-	(cif argTypeAt: 0) type = FFI_TYPE_UINT64 ifFalse:  [ self error: 'WAT' ].
+	
+	"Check that the signature of the external function is supported:"												
+	cif numberArguments = 1 ifFalse: [ ^ self unknownBytecode].
+	cif returnType type = FFI_TYPE_UINT64 ifFalse:  [ ^ self unknownBytecode].
+	(cif argTypeAt: 0) type = FFI_TYPE_UINT64 ifFalse:  [ ^ self unknownBytecode ].
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
 	top := self ssTop.
