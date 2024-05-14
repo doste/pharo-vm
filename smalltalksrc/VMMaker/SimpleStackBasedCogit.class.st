@@ -1146,10 +1146,11 @@ SimpleStackBasedCogit >> genBytecodeFFICall [
 	cif := coInterpreter getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction).
 	
 	cif ifNil: [ self error ].
-																							
-	cif numberArguments = 1 ifFalse: [ self error: 'WAT' ].
-	cif returnType type = FFI_TYPE_UINT64 ifFalse:  [ self error: 'WAT' ].
-	(cif argTypeAt: 0) type = FFI_TYPE_UINT64 ifFalse:  [ self error: 'WAT' ].
+	
+	"We check that the signature of the external function is supported:"															
+	cif numberArguments = 1 ifFalse: [ ^ self unknownBytecode ].
+	cif returnType type = FFI_TYPE_UINT64 ifFalse:  [ ^ self unknownBytecode ].
+	(cif argTypeAt: 0) type = FFI_TYPE_UINT64 ifFalse:  [ ^ self unknownBytecode ].
 	
 	
 	"Verify if the argument we receive for the C function is in fact an uint64:
