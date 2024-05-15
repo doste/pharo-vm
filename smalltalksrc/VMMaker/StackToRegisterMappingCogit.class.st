@@ -1467,7 +1467,7 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	self CmpCq: 0 R: Arg0Reg.
 	jumpNeg := self JumpLess: 0.
 		
-	self CallRT: externalFunctionAddr.
+	self CallFullRT: externalFunctionAddr.
 	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
 	We need to convert that C integer into a Pharo SmallInteger:"																													
 	objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
