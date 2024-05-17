@@ -1777,9 +1777,9 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	self handleReturnFromExternalFunctionWithCif: cif.
 	jumpContinue := self Jump: 0.
 	
-	failure := self Label. "jumpError at: 2 esta el size. at: 1 esta el puntero en si."
+	"failure := self Label. jumpError at: 2 esta el size. at: 1 esta el puntero en si.
 	0 to: (jumpErrors at: 2) - 1 do: [:i |
-		((jumpErrors at: 1) at: i) jmpTarget: failure ].
+		((jumpErrors at: 1) at: i) jmpTarget: failure ]."
 	
 	self Stop.
 	
