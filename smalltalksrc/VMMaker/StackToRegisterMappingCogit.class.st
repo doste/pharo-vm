@@ -1026,7 +1026,7 @@ StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithCif: aCif us
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithOneArgWithCif: aCif usingRegisters: usedRegisters [
-	
+	<var: #aCif type: #'ffi_cif *'>
 	"Verify if the argument(s) we receive for the C function comply with the ones describes in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
 	
@@ -1763,7 +1763,8 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [ ^ self unknownBytecode ].
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
-	argsBeingUsed := self preserveAndAllocateRegisterForExternalFunctionCallWithCif: cif.  "implicitly return. 1->Arg0Reg . 2->Arg0Reg and Arg1Reg . ..."
+	"argsBeingUsed := self preserveAndAllocateRegisterForExternalFunctionCallWithCif: cif."  "implicitly return. 1->Arg0Reg . 2->Arg0Reg and Arg1Reg . ..."
+	argsBeingUsed := 1.
 	
 	"Verify that the argument(s) we receive for the C function complies with those specified in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
