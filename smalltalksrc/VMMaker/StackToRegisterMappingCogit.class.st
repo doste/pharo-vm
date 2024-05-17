@@ -983,14 +983,20 @@ StackToRegisterMappingCogit >> checkArgumentUint16: aRegister [
 StackToRegisterMappingCogit >> checkArgumentUint64: aRegister [ 
 	""
 	
-	| jumpBadArg jumpNeg |
+	| jumpBadArg jumpNeg jumps |
+	
+	jumps := self alloca: 2 type: (self cCode: [#'AbstractInstruction *'] inSmalltalk: [self backEnd class]).
+	
 	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.
 	
 	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister. "Untag the result"
 	self CmpCq: 0 R: aRegister.
 	jumpNeg := self JumpLess: 0.
 	
-	^{jumpBadArg . jumpNeg }
+	jumps at: 0 put: jumpBadArg.
+	jumps at: 1 put: jumpNeg.
+	
+	^{jumps . 2 }
 ]
 
 { #category : #'bytecode generators' }
@@ -1761,18 +1767,19 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
 	argsBeingUsed := self preserveAndAllocateRegisterForExternalFunctionCallWithCif: cif.
 	
-	jumpErrors := self checkArgumentsForExternalFunctionWithCif: cif usingRegisters: argsBeingUsed.
-		
+	jumpErrors := self checkArgumentsForExternalFunctionWithCif: cif usingRegisters: argsBeingUsed. "Esto devuelve {jumps . sizeofjumps}"
+	self assert: jumpErrors isNotNil.
+	self assert: jumpErrors size = 2.
+	
 	self CallFullRT: externalFunctionAddr.
 	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
 	We need to convert that C integer into a Pharo SmallInteger:"																													
 	self handleReturnFromExternalFunctionWithCif: cif.
 	jumpContinue := self Jump: 0.
 	
-	failure := self Label.
-	jumpErrors ifNotNil: [ jumpErrors do: [ :jmp |
-		jmp jmpTarget: failure.
-	]].
+	failure := self Label. "jumpError at: 2 esta el size. at: 1 esta el puntero en si."
+	0 to: (jumpErrors at: 2) - 1 do: [:i |
+		((jumpErrors at: 1) at: i) jmpTarget: failure ].
 	
 	self Stop.
 	
