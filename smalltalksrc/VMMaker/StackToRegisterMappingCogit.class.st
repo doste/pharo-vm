@@ -943,8 +943,9 @@ StackToRegisterMappingCogit >> checkArgumentSint16: aRegister [
 	value:= value inside aRegister. We want to check that:
 		- value > INT16_MAX 
 		- value < INT16_MIN 
+	"
+	| jumpBadArg jumpBelowRep jumpAboveRep mergePointToExit fallthroughJump fallbackJump fallthroughLabel |
 	
-	| jumpBadArg jumpBelowRep jumpAboveRep |
 	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.
 	
 	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister.
@@ -954,7 +955,20 @@ StackToRegisterMappingCogit >> checkArgumentSint16: aRegister [
 	self CmpCq: INT16_MAX R: aRegister.
 	jumpAboveRep := self JumpGreater: 0.
 	
-	^{jumpBadArg . jumpBelowRep . jumpAboveRep }"
+	
+	"Everything went ok! We need to continue with the next instructions and not fall back to the slow case"
+	fallthroughJump := self Jump: 0.
+	
+	mergePointToExit := self Label.				
+	jumpBadArg jmpTarget: mergePointToExit.
+	jumpBelowRep jmpTarget: mergePointToExit.
+	jumpAboveRep jmpTarget: mergePointToExit.
+	fallbackJump := self Jump: 0.
+	
+	fallthroughLabel := self Label.
+	fallthroughJump jmpTarget: fallthroughLabel.
+
+	^ fallbackJump
 ]
 
 { #category : #'compile abstract instructions' }
@@ -963,18 +977,32 @@ StackToRegisterMappingCogit >> checkArgumentUint16: aRegister [
 	value:= value inside aRegister. We want to check that:
 		- value < 0 
 		- value > UINT16_MAX
+	"
+	| jumpBadArg jumpNeg jumpAboveRep mergePointToExit fallthroughJump fallbackJump fallthroughLabel |
 	
-	| jumpBadArg jumpNeg jumpAboveRep |
 	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.
 	
-	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister.
+	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister. "Untag the result"
 	self CmpCq: 0 R: aRegister.
 	jumpNeg := self JumpLess: 0.
 	
 	self CmpCq: INT16_MAX R: aRegister.
 	jumpAboveRep := self JumpGreater: 0.
 	
-	^{jumpBadArg . jumpNeg . jumpAboveRep }"
+	
+	"Everything went ok! We need to continue with the next instructions and not fall back to the slow case"
+	fallthroughJump := self Jump: 0.
+	
+	mergePointToExit := self Label.				
+	jumpBadArg jmpTarget: mergePointToExit.
+	jumpNeg jmpTarget: mergePointToExit.
+	jumpAboveRep jmpTarget: mergePointToExit.
+	fallbackJump := self Jump: 0.
+	
+	fallthroughLabel := self Label.
+	fallthroughJump jmpTarget: fallthroughLabel.
+
+	^ fallbackJump
 ]
 
 { #category : #'compile abstract instructions' }
@@ -1052,11 +1080,11 @@ StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithOneArgWithCi
 			([ FFI_TYPE_UINT16 ]
 				-> [ ^self checkArgumentUint16: Arg0Reg ]).
 			([ FFI_TYPE_SINT32 ]
-				-> [ ]).
+				-> [  ]).
 			([ FFI_TYPE_UINT32 ]
 				-> [  ]).
 			([ FFI_TYPE_SINT64 ]
-				-> [  ]).
+				-> [ ]).
 			([ FFI_TYPE_UINT64 ]
 				-> [ ^self checkArgumentUint64: Arg0Reg ])}
 				
@@ -1764,19 +1792,16 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
 	argsBeingUsed := self preserveAndAllocateRegisterForExternalFunctionCallWithCif: cif.  "implicitly return. 1->Arg0Reg . 2->Arg0Reg and Arg1Reg . ..."
-	"argsBeingUsed := 1."
 	
 	"Verify that the argument(s) we receive for the C function complies with those specified in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
-	"jumpSomeError := self checkArgumentsForExternalFunctionWithCif: cif usingRegisters: argsBeingUsed."
-	jumpSomeError := self Jump:0.	
+	jumpSomeError := self checkArgumentsForExternalFunctionWithCif: cif usingRegisters: argsBeingUsed.
 	
 	self CallFullRT: externalFunctionAddr.
 	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
 	We need to convert that C integer into a Pharo SmallInteger:"																													
 	"objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
 	self ssPushRegister: TempReg."
-	
 	self handleReturnFromExternalFunctionWithCif: cif.
 	
 	jumpContinue := self Jump: 0.
