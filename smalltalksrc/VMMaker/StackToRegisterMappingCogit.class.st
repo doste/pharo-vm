@@ -1760,7 +1760,7 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	cif ifNil: [ self error: 'WAT' ].
 	
 	"Check that the signature of the external function is supported:"												
-	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [ ^ self unknownBytecode ].
+	"(self isExternalFunctionPrototypeSupported: cif) ifFalse: [ ^ self unknownBytecode ]."
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
 	"argsBeingUsed := self preserveAndAllocateRegisterForExternalFunctionCallWithCif: cif."  "implicitly return. 1->Arg0Reg . 2->Arg0Reg and Arg1Reg . ..."
@@ -1776,7 +1776,7 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	"objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
 	self ssPushRegister: TempReg."
 	
-	self handleReturnFromExternalFunctionWithCif: cif.
+	"self handleReturnFromExternalFunctionWithCif: cif."
 	
 	jumpContinue := self Jump: 0.
 	
