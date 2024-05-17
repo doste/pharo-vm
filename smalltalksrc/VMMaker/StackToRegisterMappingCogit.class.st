@@ -1747,7 +1747,7 @@ StackToRegisterMappingCogit >> genBlockReturn [
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> genBytecodeFFICall [
-	| n aTFExternalFunction runner externalFunctionAddr jumpBadArg cif aTFFunctionDefinition cifAddr failure jumpNeg jumpContinue continueToNextBytecode top argsBeingUsed jumpErrors |
+	| n aTFExternalFunction runner externalFunctionAddr jumpBadArg cif aTFFunctionDefinition cifAddr failure jumpNeg jumpContinue continueToNextBytecode top |
 	
 	n :=  byte1.
 	aTFExternalFunction := self getLiteral: (n bitAnd: 2r1111).
@@ -1762,34 +1762,34 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	cif ifNil: [ self error: 'WAT' ].
 	
 	"Check that the signature of the external function is supported:"												
-	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [ ^ self unknownBytecode ].
+	cif numberArguments = 1 ifFalse: [ ^ self unknownBytecode].
+	cif returnType type = FFI_TYPE_UINT64 ifFalse:  [ ^ self unknownBytecode].
+	(cif argTypeAt: 0) type = FFI_TYPE_UINT64 ifFalse:  [ ^ self unknownBytecode ].
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
-	"argsBeingUsed := self preserveAndAllocateRegisterForExternalFunctionCallWithCif: cif."
 	top := self ssTop.
-		self ssPop: 1.
-		self ssAllocateCallReg: Arg0Reg.
-		top moveToReg: Arg0Reg.
-	"-----"
+	self ssPop: 1.
+	self ssAllocateCallReg: Arg0Reg.
+	top moveToReg: Arg0Reg.
 	
-	
-	"jumpErrors := self checkArgumentsForExternalFunctionWithCif: cif usingRegisters: argsBeingUsed. Esto devuelve {jumps . sizeofjumps}
-	self assert: jumpErrors isNotNil.
-	self assert: jumpErrors size = 2."
-	
+	"Verify if the argument we receive for the C function is in fact an uint64:
+	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
+	jumpBadArg := objectRepresentation genJumpNotSmallInteger: Arg0Reg.
+	objectRepresentation genConvertSmallIntegerToIntegerInReg: Arg0Reg. "We have it in Arg1Reg, but we need to untag it. The C function expects an uint64_t, not a Pharo object (a SmallInteger for example)"
+	self CmpCq: 0 R: Arg0Reg.
+	jumpNeg := self JumpLess: 0.
+		
 	self CallFullRT: externalFunctionAddr.
 	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
 	We need to convert that C integer into a Pharo SmallInteger:"																													
-	"self handleReturnFromExternalFunctionWithCif: cif."	
 	objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
 	self ssPushRegister: TempReg.
-	"----"
-		
 	jumpContinue := self Jump: 0.
+
 	
-	"failure := self Label. jumpError at: 2 esta el size. at: 1 esta el puntero en si.
-	0 to: (jumpErrors at: 2) - 1 do: [:i |
-		((jumpErrors at: 1) at: i) jmpTarget: failure ]."
+	failure := self Label.
+	jumpNeg jmpTarget: failure.
+	jumpBadArg jmpTarget: failure.
 	
 	self Stop.
 	
