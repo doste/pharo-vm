@@ -944,7 +944,6 @@ StackToRegisterMappingCogit >> checkArgumentSint16: aRegister [
 		- value > INT16_MAX 
 		- value < INT16_MIN 
 	"
-	<doNotGenerate>
 	| jumpBadArg jumpBelowRep jumpAboveRep |
 	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.
 	
@@ -965,7 +964,6 @@ StackToRegisterMappingCogit >> checkArgumentUint16: aRegister [
 		- value < 0 
 		- value > UINT16_MAX
 	"
-	<doNotGenerate>
 	| jumpBadArg jumpNeg jumpAboveRep |
 	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.
 	
@@ -1006,7 +1004,7 @@ StackToRegisterMappingCogit >> checkArgumentUint64: aRegister [
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithCif: aCif usingRegisters: usedRegisters [	
-
+	<var: #aCif type: #'ffi_cif *'>
 	[ aCif numberArguments ]
 		caseOf:
 			{([ 1 ]
@@ -1077,7 +1075,6 @@ StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithOneArgWithCi
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithThreeArgsWithCif: aCif usingRegisters: usedRegisters [
 	
-	<doNotGenerate>
 	"Verify if the argument(s) we receive for the C function comply with the ones describes in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
 	
@@ -1181,7 +1178,6 @@ StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithThreeArgsWit
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithTwoArgsWithCif: aCif usingRegisters: usedRegisters [
 	
-	<doNotGenerate>
 	"Verify if the argument(s) we receive for the C function comply with the ones describes in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
 	
@@ -3698,7 +3694,7 @@ StackToRegisterMappingCogit >> getCifFromTFExternalFunction: aTFExternalFunction
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
-	<doNotGenerate>
+	<var: #aCif type: #'ffi_cif *'>
 	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
 	We need to convert that C integer into a Pharo SmallInteger:"																													
 	"objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
@@ -3854,6 +3850,8 @@ StackToRegisterMappingCogit >> isExternalFunctionPrototypeSupported: aCif [
 	"
 												
 	| uint64Uint64 voidUint64 |
+	
+	<var: #aCif type: #'ffi_cif *'>
 	
 	uint64Uint64 := (aCif numberArguments = 1) and: [ aCif returnType type = FFI_TYPE_UINT64 and: [(aCif argTypeAt: 0) type = FFI_TYPE_UINT64]].
 	
