@@ -1765,7 +1765,13 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [ ^ self unknownBytecode ].
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
-	argsBeingUsed := self preserveAndAllocateRegisterForExternalFunctionCallWithCif: cif.
+	"argsBeingUsed := self preserveAndAllocateRegisterForExternalFunctionCallWithCif: cif."
+	top := self ssTop.
+		self ssPop: 1.
+		self ssAllocateCallReg: Arg0Reg.
+		top moveToReg: Arg0Reg.
+	"-----"
+	
 	
 	"jumpErrors := self checkArgumentsForExternalFunctionWithCif: cif usingRegisters: argsBeingUsed. Esto devuelve {jumps . sizeofjumps}
 	self assert: jumpErrors isNotNil.
