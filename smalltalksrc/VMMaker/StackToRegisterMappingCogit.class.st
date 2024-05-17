@@ -1760,23 +1760,24 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	cif ifNil: [ self error: 'WAT' ].
 	
 	"Check that the signature of the external function is supported:"												
-	"(self isExternalFunctionPrototypeSupported: cif) ifFalse: [ ^ self unknownBytecode ]."
+	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [ ^ self unknownBytecode ].
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
-	"argsBeingUsed := self preserveAndAllocateRegisterForExternalFunctionCallWithCif: cif."  "implicitly return. 1->Arg0Reg . 2->Arg0Reg and Arg1Reg . ..."
-	argsBeingUsed := 1.
+	argsBeingUsed := self preserveAndAllocateRegisterForExternalFunctionCallWithCif: cif.  "implicitly return. 1->Arg0Reg . 2->Arg0Reg and Arg1Reg . ..."
+	"argsBeingUsed := 1."
 	
 	"Verify that the argument(s) we receive for the C function complies with those specified in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
-	jumpSomeError := self checkArgumentsForExternalFunctionWithCif: cif usingRegisters: argsBeingUsed.
-		
+	"jumpSomeError := self checkArgumentsForExternalFunctionWithCif: cif usingRegisters: argsBeingUsed."
+	jumpSomeError := self Jump:0.	
+	
 	self CallFullRT: externalFunctionAddr.
 	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
 	We need to convert that C integer into a Pharo SmallInteger:"																													
 	"objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
 	self ssPushRegister: TempReg."
 	
-	"self handleReturnFromExternalFunctionWithCif: cif."
+	self handleReturnFromExternalFunctionWithCif: cif.
 	
 	jumpContinue := self Jump: 0.
 	
