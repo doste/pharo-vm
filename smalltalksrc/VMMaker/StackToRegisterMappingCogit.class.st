@@ -943,18 +943,18 @@ StackToRegisterMappingCogit >> checkArgumentSint16: aRegister [
 	value:= value inside aRegister. We want to check that:
 		- value > INT16_MAX 
 		- value < INT16_MIN 
-	"
+	
 	| jumpBadArg jumpBelowRep jumpAboveRep |
 	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.
 	
-	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister. "Untag the result"
+	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister.
 	self CmpCq: INT16_MIN R: aRegister.
 	jumpBelowRep := self JumpLess: 0.
 	
 	self CmpCq: INT16_MAX R: aRegister.
 	jumpAboveRep := self JumpGreater: 0.
 	
-	^{jumpBadArg . jumpBelowRep . jumpAboveRep }
+	^{jumpBadArg . jumpBelowRep . jumpAboveRep }"
 ]
 
 { #category : #'compile abstract instructions' }
@@ -963,18 +963,18 @@ StackToRegisterMappingCogit >> checkArgumentUint16: aRegister [
 	value:= value inside aRegister. We want to check that:
 		- value < 0 
 		- value > UINT16_MAX
-	"
+	
 	| jumpBadArg jumpNeg jumpAboveRep |
 	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.
 	
-	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister. "Untag the result"
+	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister.
 	self CmpCq: 0 R: aRegister.
 	jumpNeg := self JumpLess: 0.
 	
 	self CmpCq: INT16_MAX R: aRegister.
 	jumpAboveRep := self JumpGreater: 0.
 	
-	^{jumpBadArg . jumpNeg . jumpAboveRep }
+	^{jumpBadArg . jumpNeg . jumpAboveRep }"
 ]
 
 { #category : #'compile abstract instructions' }
