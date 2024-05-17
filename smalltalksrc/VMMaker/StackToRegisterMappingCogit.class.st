@@ -1747,7 +1747,7 @@ StackToRegisterMappingCogit >> genBlockReturn [
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> genBytecodeFFICall [
-	| n aTFExternalFunction runner externalFunctionAddr jumpBadArg cif aTFFunctionDefinition cifAddr failure jumpNeg jumpContinue continueToNextBytecode top |
+	| n aTFExternalFunction runner externalFunctionAddr jumpBadArg cif aTFFunctionDefinition cifAddr failure jumpNeg jumpContinue continueToNextBytecode top argsBeingUsed |
 	
 	n :=  byte1.
 	aTFExternalFunction := self getLiteral: (n bitAnd: 2r1111).
@@ -1767,10 +1767,11 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	(cif argTypeAt: 0) type = FFI_TYPE_UINT64 ifFalse:  [ ^ self unknownBytecode ].
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
-	top := self ssTop.
+	argsBeingUsed := self preserveAndAllocateRegisterForExternalFunctionCallWithCif: cif.
+	"top := self ssTop.
 	self ssPop: 1.
 	self ssAllocateCallReg: Arg0Reg.
-	top moveToReg: Arg0Reg.
+	top moveToReg: Arg0Reg."
 	
 	"Verify if the argument we receive for the C function is in fact an uint64:
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
@@ -4246,8 +4247,6 @@ StackToRegisterMappingCogit >> populate: tuple withPICInfoFor: cPIC firstCacheTa
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> preserveAndAllocateRegisterForExternalFunctionCallWithCif: aCif [
-	<doNotGenerate>
-	
 	| top regsUsed |
 	
 	regsUsed := OrderedCollection new.
