@@ -1616,8 +1616,11 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [ ^ self unknownBytecode ].
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
-	"argsBeingUsed := self preserveAndAllocateRegisterForExternalFunctionCallWithCif: cif."  "implicitly return. 1->Arg0Reg . 2->Arg0Reg and Arg1Reg . ..."
-	self prepareExternalCallWithCif: cif.
+	"self prepareExternalCallWithCif: cif."
+	top := self ssTop.
+			self ssPop: 1.
+			self ssAllocateCallReg: Arg0Reg.
+			top moveToReg: Arg0Reg.
 	
 	
 	"Verify that the argument(s) we receive for the C function complies with those specified in the cif.
@@ -4119,58 +4122,6 @@ StackToRegisterMappingCogit >> populate: tuple withPICInfoFor: cPIC firstCacheTa
 				self assert: targetMethod cmType = CMMethod.
 				value := targetMethod methodObject ].
 		objectMemory storePointer: i * 2 ofObject: tuple withValue: value ]
-]
-
-{ #category : #'bytecode generators' }
-StackToRegisterMappingCogit >> prepareExternalCallWithCif: aCif [
-	"According to the cif, we'll extract the values from the stack and put them in registers.
-	These registers will be chosen according to the calling convention, this is: they will be chosen
-	as the external C function expects them to be. 
-	For example if our cif says there is only one argument and its type is integer, then Arg0Reg will be chosen for SystemV."
-	| top |
-	<var: #aCif type: #'ffi_cif *'>
-	
-	(aCif numberArguments = 1) ifTrue: [  
-		"Preserve Arg0Reg because it corresponds to the first C argument" 
-		
-		(self isIntegerOrPointerType: (aCif argTypeAt: 0) type) ifTrue: [   
-			top := self ssTop.
-			self ssPop: 1.
-			self ssAllocateCallReg: Arg0Reg.
-			top moveToReg: Arg0Reg.
-		] ifFalse: [ 
-			"floats not supported yet."
-		]
-	].
-
-	(aCif numberArguments = 2) ifTrue: [  
-		"Preserve Arg0Reg because it corresponds to the first C argument" 
-		top := self ssTop.
-		self ssPop: 1.
-		self ssAllocateCallReg: Arg0Reg.
-		top moveToReg: Arg0Reg.
-		
-		top := self ssTop.
-		self ssPop: 1.
-		self ssAllocateCallReg: Arg1Reg.
-		top moveToReg: Arg1Reg.
-		
-		"Este codigo asi spillea de mas al pedo. Podria mejorarse haciendo algo mas asi:
-		
-		arg0 := self ssValue:0.
-		arg1 := self ssValue: 1.
-		
-		self ssPop: 2.
-		
-		arg0 moveToReg: Arg1Reg.
-		
-		...........................................
-		"
-		
-	].
-	
-	
-	
 ]
 
 { #category : #testing }
