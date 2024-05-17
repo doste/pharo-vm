@@ -1033,7 +1033,7 @@ StackToRegisterMappingCogit >> checkArgumentUint64: aRegister [
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithCif: aCif [
 	<var: #aCif type: #'ffi_cif *'>
-	[ aCif numberArguments ]
+	"[ aCif numberArguments ]
 		caseOf:
 			{([ 1 ]
 				-> [ ^ self checkArgumentsForExternalFunctionWithOneArgWithCif: aCif ]).
@@ -1042,7 +1042,7 @@ StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithCif: aCif [
 			([ 3 ]
 				-> [ ]).}
 				
-		otherwise: [ ^ nil ].
+		otherwise: [ ^ nil ]."
 
 	
 	
@@ -1062,7 +1062,7 @@ StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithOneArgWithCi
 	
 	"Here we have just one argument. Looking at the cif we should know in which register that argument is.
 	An integer argument we know it's going to be in Arg0Reg."
-	
+"	
 	[ (aCif argTypeAt: 0) type ]
 		caseOf:
 			{([ FFI_TYPE_POINTER ]
@@ -1091,7 +1091,7 @@ StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithOneArgWithCi
 				-> [ ^self checkArgumentUint64: Arg0Reg ])}
 				
 		otherwise: [ ^ nil ].
-	
+	"
 
 
 	
@@ -1625,7 +1625,7 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	
 	"Verify that the argument(s) we receive for the C function complies with those specified in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
-	jumpSomeError := self checkArgumentsForExternalFunctionWithCif: cif.
+	"jumpSomeError := self checkArgumentsForExternalFunctionWithCif: cif."
 	
 	
 	self CallFullRT: externalFunctionAddr.
