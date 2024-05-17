@@ -982,10 +982,7 @@ StackToRegisterMappingCogit >> checkArgumentUint16: aRegister [
 { #category : #'compile abstract instructions' }
 StackToRegisterMappingCogit >> checkArgumentUint64: aRegister [ 
 	""
-	<doNotGenerate>
-	| jumpBadArg jumpNeg jumps |
-	
-	jumps := self alloca: 2 type: (self cCode: [#'AbstractInstruction *'] inSmalltalk: [self backEnd class]).
+	| jumpBadArg jumpNeg mergePointToExit fallthroughJump fallbackJump fallthroughLabel |
 	
 	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.
 	
@@ -993,15 +990,23 @@ StackToRegisterMappingCogit >> checkArgumentUint64: aRegister [
 	self CmpCq: 0 R: aRegister.
 	jumpNeg := self JumpLess: 0.
 	
-	jumps at: 0 put: jumpBadArg.
-	jumps at: 1 put: jumpNeg.
+	"Everything went ok! We need to continue with the next instructions and not fall back to the slow case"
+	fallthroughJump := self Jump: 0.
 	
-	^{jumps . 2 }
+	mergePointToExit := self Label.				
+	jumpBadArg jmpTarget: mergePointToExit.
+	jumpNeg jmpTarget: mergePointToExit.
+	fallbackJump := self Jump: 0.
+	
+	fallthroughLabel := self Label.
+	fallthroughJump jmpTarget: fallthroughLabel.
+
+	^ fallbackJump
 ]
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithCif: aCif usingRegisters: usedRegisters [	
-	<doNotGenerate>
+
 	[ aCif numberArguments ]
 		caseOf:
 			{([ 1 ]
@@ -1024,12 +1029,11 @@ StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithCif: aCif us
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithOneArgWithCif: aCif usingRegisters: usedRegisters [
 	
-	<doNotGenerate>
 	"Verify if the argument(s) we receive for the C function comply with the ones describes in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
 	
 	self assert: aCif numberArguments = 1.
-	self assert: (usedRegisters size = 1 and: [ (usedRegisters at: 1) = Arg0Reg ]).
+	"self assert: (usedRegisters size) = 1 and: [ (usedRegisters at: 1) = Arg0Reg ])."
 	
 	[ (aCif argTypeAt: 0) type ]
 		caseOf:
@@ -1747,7 +1751,7 @@ StackToRegisterMappingCogit >> genBlockReturn [
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> genBytecodeFFICall [
-	| n aTFExternalFunction runner externalFunctionAddr jumpBadArg cif aTFFunctionDefinition cifAddr failure jumpNeg jumpContinue continueToNextBytecode top argsBeingUsed |
+	| n aTFExternalFunction runner externalFunctionAddr jumpBadArg cif failure jumpNeg jumpContinue continueToNextBytecode top argsBeingUsed jumpSomeError |
 	
 	n :=  byte1.
 	aTFExternalFunction := self getLiteral: (n bitAnd: 2r1111).
@@ -1756,41 +1760,31 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	externalFunctionAddr := coInterpreter getHandler: aTFExternalFunction.
 	externalFunctionAddr ifNil: [ self error: 'WAT' ]. 
 	
-	aTFFunctionDefinition := objectMemory fetchPointer: 1 ofObject: aTFExternalFunction.
-	cifAddr := coInterpreter getHandler: aTFFunctionDefinition.
-	cif := coInterpreter getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction).	
+	cif := self getCifFromTFExternalFunction: aTFExternalFunction.	
 	cif ifNil: [ self error: 'WAT' ].
 	
 	"Check that the signature of the external function is supported:"												
-	cif numberArguments = 1 ifFalse: [ ^ self unknownBytecode].
-	cif returnType type = FFI_TYPE_UINT64 ifFalse:  [ ^ self unknownBytecode].
-	(cif argTypeAt: 0) type = FFI_TYPE_UINT64 ifFalse:  [ ^ self unknownBytecode ].
+	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [ ^ self unknownBytecode ].
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
 	argsBeingUsed := self preserveAndAllocateRegisterForExternalFunctionCallWithCif: cif.  "implicitly return. 1->Arg0Reg . 2->Arg0Reg and Arg1Reg . ..."
-	"top := self ssTop.
-	self ssPop: 1.
-	self ssAllocateCallReg: Arg0Reg.
-	top moveToReg: Arg0Reg."
 	
-	"Verify if the argument we receive for the C function is in fact an uint64:
+	"Verify that the argument(s) we receive for the C function complies with those specified in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
-	jumpBadArg := objectRepresentation genJumpNotSmallInteger: Arg0Reg.
-	objectRepresentation genConvertSmallIntegerToIntegerInReg: Arg0Reg. "We have it in Arg1Reg, but we need to untag it. The C function expects an uint64_t, not a Pharo object (a SmallInteger for example)"
-	self CmpCq: 0 R: Arg0Reg.
-	jumpNeg := self JumpLess: 0.
+	jumpSomeError := self checkArgumentsForExternalFunctionWithCif: cif usingRegisters: argsBeingUsed.
 		
 	self CallFullRT: externalFunctionAddr.
 	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
 	We need to convert that C integer into a Pharo SmallInteger:"																													
-	objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
-	self ssPushRegister: TempReg.
+	"objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
+	self ssPushRegister: TempReg."
+	
+	self handleReturnFromExternalFunctionWithCif: cif.
+	
 	jumpContinue := self Jump: 0.
-
 	
 	failure := self Label.
-	jumpNeg jmpTarget: failure.
-	jumpBadArg jmpTarget: failure.
+	jumpSomeError jmpTarget: failure.
 	
 	self Stop.
 	
@@ -3689,6 +3683,17 @@ StackToRegisterMappingCogit >> generateTracingTrampolines [
 		[ceTraceLinkedSendTrampoline := self simulatedTrampolineFor: #ceShortCutTraceLinkedSend:.
 		 ceTraceBlockActivationTrampoline := self simulatedTrampolineFor: #ceShortCutTraceBlockActivation:.
 		 ceTraceStoreTrampoline := self simulatedTrampolineFor: #ceShortCutTraceStore:]
+]
+
+{ #category : #'bytecode generators' }
+StackToRegisterMappingCogit >> getCifFromTFExternalFunction: aTFExternalFunction [
+	
+	| aTFFunctionDefinition cifAddr cif |
+	aTFFunctionDefinition := objectMemory fetchPointer: 1 ofObject: aTFExternalFunction.
+	cifAddr := coInterpreter getHandler: aTFFunctionDefinition.
+	cif := coInterpreter getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction).	
+	
+	^ cif
 ]
 
 { #category : #'bytecode generators' }
