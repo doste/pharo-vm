@@ -1031,6 +1031,28 @@ StackToRegisterMappingCogit >> checkArgumentUint64: aRegister [
 ]
 
 { #category : #'bytecode generators' }
+StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithCif: aCif [
+	<var: #aCif type: #'ffi_cif *'>
+	[ aCif numberArguments ]
+		caseOf:
+			{([ 1 ]
+				-> [ ^ self checkArgumentsForExternalFunctionWithOneArgWithCif: aCif ]).
+			([ 2 ]
+				-> [  ]).
+			([ 3 ]
+				-> [ ]).}
+				
+		otherwise: [ ^ nil ].
+
+	
+	
+	
+	
+	
+
+]
+
+{ #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithCif: aCif usingRegisters: usedRegisters [	
 	<var: #aCif type: #'ffi_cif *'>
 	[ aCif numberArguments ]
@@ -1040,9 +1062,59 @@ StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithCif: aCif us
 			([ 2 ]
 				-> [ ^ self checkArgumentsForExternalFunctionWithTwoArgsWithCif: aCif usingRegisters: usedRegisters ]).
 			([ 3 ]
-				-> [ ^ self checkArgumentsForExternalFunctionWithThreeArgsWithCif: aCif usingRegisters: usedRegisters ]).}
+				-> [ ^ self checkArgumentsForExternalFunctionWithThreeArgsWithCif: aCif ]).}
 				
 		otherwise: [ ^ nil ].
+
+	
+	
+	
+	
+	
+
+]
+
+{ #category : #'bytecode generators' }
+StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithOneArgWithCif: aCif [
+	<var: #aCif type: #'ffi_cif *'>
+	"Verify if the argument(s) we receive for the C function comply with the ones describes in the cif.
+	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
+	
+	self assert: aCif numberArguments = 1.
+	
+	"Here we have just one argument. Looking at the cif we should know in which register that argument is.
+	An integer argument we know it's going to be in Arg0Reg."
+	
+	[ (aCif argTypeAt: 0) type ]
+		caseOf:
+			{([ FFI_TYPE_POINTER ]
+				-> [  ]).
+			([ FFI_TYPE_STRUCT ]
+				-> [ ]).
+			([ FFI_TYPE_FLOAT ]
+				-> [ ]).
+			([ FFI_TYPE_DOUBLE ]
+				-> [ ]).
+			([ FFI_TYPE_SINT8 ]
+				-> [  ]).
+			([ FFI_TYPE_UINT8 ]
+				-> [  ]).
+			([ FFI_TYPE_SINT16 ]
+				-> [ ^self checkArgumentSint16: Arg0Reg ]).
+			([ FFI_TYPE_UINT16 ]
+				-> [ ^self checkArgumentUint16: Arg0Reg ]).
+			([ FFI_TYPE_SINT32 ]
+				-> [  ]).
+			([ FFI_TYPE_UINT32 ]
+				-> [  ]).
+			([ FFI_TYPE_SINT64 ]
+				-> [ ]).
+			([ FFI_TYPE_UINT64 ]
+				-> [ ^self checkArgumentUint64: Arg0Reg ])}
+				
+		otherwise: [ ^ nil ].
+	
+
 
 	
 	
@@ -1791,11 +1863,14 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [ ^ self unknownBytecode ].
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
-	argsBeingUsed := self preserveAndAllocateRegisterForExternalFunctionCallWithCif: cif.  "implicitly return. 1->Arg0Reg . 2->Arg0Reg and Arg1Reg . ..."
+	"argsBeingUsed := self preserveAndAllocateRegisterForExternalFunctionCallWithCif: cif."  "implicitly return. 1->Arg0Reg . 2->Arg0Reg and Arg1Reg . ..."
+	self prepareExternalCallWithCif: cif.
+	
 	
 	"Verify that the argument(s) we receive for the C function complies with those specified in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
-	jumpSomeError := self checkArgumentsForExternalFunctionWithCif: cif usingRegisters: argsBeingUsed.
+	jumpSomeError := self checkArgumentsForExternalFunctionWithCif: cif.
+	
 	
 	self CallFullRT: externalFunctionAddr.
 	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
@@ -3890,6 +3965,24 @@ StackToRegisterMappingCogit >> isExternalFunctionPrototypeSupported: aCif [
 
 ]
 
+{ #category : #'bytecode generators' }
+StackToRegisterMappingCogit >> isIntegerOrPointerType: aCifArgType [
+	"This method is supposed to be used for the external call through FFI.
+	Integer and pointer types are passes through the same registers."
+	^ {
+		  FFI_TYPE_POINTER.
+		  FFI_TYPE_INT.
+		  FFI_TYPE_UINT8.
+		  FFI_TYPE_SINT8.
+		  FFI_TYPE_UINT16.
+		  FFI_TYPE_SINT16.
+		  FFI_TYPE_UINT32.
+		  FFI_TYPE_SINT32.
+		  FFI_TYPE_UINT64.
+		  FFI_TYPE_SINT64.
+		  FFI_TYPE_POINTER } includes: aCifArgType
+]
+
 { #category : #'span functions' }
 StackToRegisterMappingCogit >> isPushNil: descriptor pc: pc nExts: nExts method: aMethodObj [
 	<inline: true>
@@ -4273,6 +4366,58 @@ StackToRegisterMappingCogit >> populate: tuple withPICInfoFor: cPIC firstCacheTa
 				self assert: targetMethod cmType = CMMethod.
 				value := targetMethod methodObject ].
 		objectMemory storePointer: i * 2 ofObject: tuple withValue: value ]
+]
+
+{ #category : #'bytecode generators' }
+StackToRegisterMappingCogit >> prepareExternalCallWithCif: aCif [
+	"According to the cif, we'll extract the values from the stack and put them in registers.
+	These registers will be chosen according to the calling convention, this is: they will be chosen
+	as the external C function expects them to be. 
+	For example if our cif says there is only one argument and its type is integer, then Arg0Reg will be chosen for SystemV."
+	| top |
+	<var: #aCif type: #'ffi_cif *'>
+	
+	(aCif numberArguments = 1) ifTrue: [  
+		"Preserve Arg0Reg because it corresponds to the first C argument" 
+		
+		(self isIntegerOrPointerType: (aCif argTypeAt: 0) type) ifTrue: [   
+			top := self ssTop.
+			self ssPop: 1.
+			self ssAllocateCallReg: Arg0Reg.
+			top moveToReg: Arg0Reg.
+		] ifFalse: [ 
+			"floats not supported yet."
+		]
+	].
+
+	(aCif numberArguments = 2) ifTrue: [  
+		"Preserve Arg0Reg because it corresponds to the first C argument" 
+		top := self ssTop.
+		self ssPop: 1.
+		self ssAllocateCallReg: Arg0Reg.
+		top moveToReg: Arg0Reg.
+		
+		top := self ssTop.
+		self ssPop: 1.
+		self ssAllocateCallReg: Arg1Reg.
+		top moveToReg: Arg1Reg.
+		
+		"Este codigo asi spillea de mas al pedo. Podria mejorarse haciendo algo mas asi:
+		
+		arg0 := self ssValue:0.
+		arg1 := self ssValue: 1.
+		
+		self ssPop: 2.
+		
+		arg0 moveToReg: Arg1Reg.
+		
+		...........................................
+		"
+		
+	].
+	
+	
+	
 ]
 
 { #category : #'bytecode generators' }
