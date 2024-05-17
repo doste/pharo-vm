@@ -4247,9 +4247,8 @@ StackToRegisterMappingCogit >> populate: tuple withPICInfoFor: cPIC firstCacheTa
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> preserveAndAllocateRegisterForExternalFunctionCallWithCif: aCif [
-	| top regsUsed |
-	
-	regsUsed := OrderedCollection new.
+	| top |
+	<var: #aCif type: #'ffi_cif *'>
 	
 	(aCif numberArguments = 1) ifTrue: [  
 		"Preserve Arg0Reg because it corresponds to the first C argument" 
@@ -4258,7 +4257,7 @@ StackToRegisterMappingCogit >> preserveAndAllocateRegisterForExternalFunctionCal
 		self ssAllocateCallReg: Arg0Reg.
 		top moveToReg: Arg0Reg.
 		
-		regsUsed add: Arg0Reg.
+		 ^ {Arg0Reg}
 	].
 
 	(aCif numberArguments = 2) ifTrue: [  
@@ -4273,12 +4272,10 @@ StackToRegisterMappingCogit >> preserveAndAllocateRegisterForExternalFunctionCal
 		self ssAllocateCallReg: Arg1Reg.
 		top moveToReg: Arg1Reg.
 		
-		regsUsed add: Arg0Reg.
-		regsUsed add: Arg1Reg.
+		 ^ {Arg0Reg . Arg1Reg}
 	].
 	
 	
-	^regsUsed
 	
 ]
 
