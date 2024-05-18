@@ -1616,7 +1616,7 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [ ^ self unknownBytecode ].
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
-	"self prepareExternalCallWithCif: cif."
+	"self prepareExternalCallWithCif: cif.          >>> VSCODE"
 	top := self ssTop.
 			self ssPop: 1.
 			self ssAllocateCallReg: Arg0Reg.
