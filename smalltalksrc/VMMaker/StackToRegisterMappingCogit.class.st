@@ -272,7 +272,7 @@ StackToRegisterMappingCogit class >> initializeBytecodeTableForSistaV1 [
 	BytecodeSetHasDirectedSuperSend := true.
 	BytecodeSetHasExtensions := true.
 	FirstSpecialSelector := 96.
-	NumSpecialSelectors := 32.
+	NumSpecialSelectors := 33.
 	self flag:
 'Special selector send class must be inlined to agree with the interpreter, which
  inlines class.  If class is sent to e.g. a general instance of ProtoObject then unless
@@ -1660,7 +1660,7 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 		self ssPushConstant: runner.
 		self ssPushConstant: aTFExternalFunction.
 		self ssPushRegister: ReceiverResultReg.
-		^ self genSend: -32 "invokeFunction:withArguments:" numArgs: 2.
+		^ self genSend: -33 "invokeFunction:withArguments:" numArgs: 2.
 	].
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
