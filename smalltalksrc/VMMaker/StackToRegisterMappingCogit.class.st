@@ -1639,7 +1639,29 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	cif := self getCifFromTFExternalFunction: aTFExternalFunction.	
 	cif ifNil: [ self error: 'WAT' ].
 									
-	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [ ^ self unknownBytecode ].
+	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [ | size |
+		"Unsupported bytecode. We need to do a message send 
+			runner invokeFunction: function withArguments: aCollection
+		This means that we need to unpack all arguments in the stack into an array, push everything to the stack and do a message send"
+		
+		"Unpack all arguments in an array that is left in the ReceiverResultReg"
+		self voidReceiverResultRegContainsSelf.
+		self ssFlushTo: simStackPtr.
+		size := cif numberArguments.
+		objectRepresentation genNewArrayOfSize: size initialized: false.
+		size - 1 to: 0 by: -1 do: [:i|
+				self PopR: TempReg.
+				objectRepresentation
+					genStoreSourceReg: TempReg
+					slotIndex: i
+					intoNewObjectInDestReg: ReceiverResultReg ].
+		self ssPop: size.
+		
+		self ssPushConstant: runner.
+		self ssPushConstant: aTFExternalFunction.
+		self ssPushRegister: ReceiverResultReg.
+		^ self genSend: 1 numArgs: 2.
+	].
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
 	self prepareExternalCallWithCif: cif.        
