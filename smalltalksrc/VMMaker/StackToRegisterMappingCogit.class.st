@@ -938,6 +938,26 @@ StackToRegisterMappingCogit >> ceStoreCheckTrampoline [
 ]
 
 { #category : #'compile abstract instructions' }
+StackToRegisterMappingCogit >> checkArgumentPointer: aRegister [ 
+	| jumpNeg mergePointToExit fallthroughJump fallbackJump fallthroughLabel |
+
+	self CmpCq: 0 R: aRegister.
+	jumpNeg := self JumpLess: 0.
+	
+	"Everything went ok! We need to continue with the next instructions and not fall back to the slow case"
+	fallthroughJump := self Jump: 0.
+	
+	mergePointToExit := self Label.		
+	jumpNeg jmpTarget: mergePointToExit.
+	fallbackJump := self Jump: 0.
+	
+	fallthroughLabel := self Label.
+	fallthroughJump jmpTarget: fallthroughLabel.
+
+	^ fallbackJump
+]
+
+{ #category : #'compile abstract instructions' }
 StackToRegisterMappingCogit >> checkArgumentSint16: aRegister [ 
 	"
 	value:= value inside aRegister. We want to check that:
@@ -1065,7 +1085,7 @@ StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithOneArgWithCi
 	[ (aCif argTypeAt: 0) type ]
 		caseOf:
 			{([ FFI_TYPE_POINTER ]
-				-> [  ]).
+				-> [ ^self checkArgumentPointer: Arg0Reg ]).
 			([ FFI_TYPE_STRUCT ]
 				-> [ ]).
 			([ FFI_TYPE_FLOAT ]
@@ -1599,7 +1619,7 @@ StackToRegisterMappingCogit >> genBlockReturn [
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> genBytecodeFFICall [
-	| n aTFExternalFunction runner externalFunctionAddr jumpBadArg cif failure jumpNeg jumpContinue continueToNextBytecode top argsBeingUsed jumpSomeError |
+	| n aTFExternalFunction runner externalFunctionAddr cif failure jumpContinue continueToNextBytecode jumpSomeError |
 	
 	n :=  byte1.
 	aTFExternalFunction := self getLiteral: (n bitAnd: 2r1111).
@@ -1622,10 +1642,6 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	
 	
 	self CallFullRT: externalFunctionAddr.
-	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
-	We need to convert that C integer into a Pharo SmallInteger:"																													
-	"objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
-	self ssPushRegister: TempReg."
 	self handleReturnFromExternalFunctionWithCif: cif.
 	
 	jumpContinue := self Jump: 0.
@@ -3696,18 +3712,18 @@ StackToRegisterMappingCogit >> initializeFixupAt: targetPC [
 StackToRegisterMappingCogit >> isExternalFunctionPrototypeSupported: aCif [
 	"For now these are the supported function prototypes:
 	- uint64_t 	fn (uint64_t)
-	- void 		fn (uint64_t)
+	- void 		fn (pointer)
 	"
 												
-	| uint64Uint64 voidUint64 |
+	| uint64Uint64 voidPointer |
 	
 	<var: #aCif type: #'ffi_cif *'>
 	
 	uint64Uint64 := (aCif numberArguments = 1) and: [ aCif returnType type = FFI_TYPE_UINT64 and: [(aCif argTypeAt: 0) type = FFI_TYPE_UINT64]].
 	
-	voidUint64 := (aCif numberArguments = 1) and: [ aCif returnType type = FFI_TYPE_VOID and: [(aCif argTypeAt: 0) type = FFI_TYPE_UINT64]].
+	voidPointer := (aCif numberArguments = 1) and: [ aCif returnType type = FFI_TYPE_VOID and: [(aCif argTypeAt: 0) type = FFI_TYPE_POINTER]].
 	
-	^ (uint64Uint64 or: voidUint64)
+	^ (uint64Uint64 or: voidPointer)
 
 	
 
