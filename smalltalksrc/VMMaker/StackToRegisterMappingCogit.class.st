@@ -939,16 +939,24 @@ StackToRegisterMappingCogit >> ceStoreCheckTrampoline [
 
 { #category : #'compile abstract instructions' }
 StackToRegisterMappingCogit >> checkArgumentPointer: aRegister [ 
-	| jumpNeg mergePointToExit fallthroughJump fallbackJump fallthroughLabel |
+	| mergePointToExit fallthroughJump fallbackJump fallthroughLabel jumpNotImmediate externalAddressIndex jumpBadClass |
 
-	self CmpCq: 0 R: aRegister.
-	jumpNeg := self JumpLess: 0.
+	jumpNotImmediate := objectRepresentation genJumpNotImmediate: aRegister.
+	externalAddressIndex := objectMemory rawHashBitsOf: objectMemory classExternalAddress.
+
+	objectRepresentation genGetClassIndexOfNonImm: aRegister into: TempReg.
+
+	self CmpCq: externalAddressIndex R: TempReg.
+	jumpBadClass := self JumpNonZero: 0.
+	
+	self MoveMw: 0 r: aRegister R: aRegister. 
 	
 	"Everything went ok! We need to continue with the next instructions and not fall back to the slow case"
 	fallthroughJump := self Jump: 0.
 	
 	mergePointToExit := self Label.		
-	jumpNeg jmpTarget: mergePointToExit.
+	jumpBadClass jmpTarget: mergePointToExit.
+	jumpNotImmediate jmpTarget: mergePointToExit.
 	fallbackJump := self Jump: 0.
 	
 	fallthroughLabel := self Label.
@@ -3573,7 +3581,8 @@ StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 
 	"The external function didn't return anything, so we don't push anything."
 	(aCif returnType type = FFI_TYPE_VOID) ifTrue: [ 
-		"nothing to do here"
+		"Return the receiver to guarantee that we push a return value to the stack"
+		self genPushReceiverBytecode.
 	].
 	
 
