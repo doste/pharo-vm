@@ -939,7 +939,6 @@ StackToRegisterMappingCogit >> ceStoreCheckTrampoline [
 
 { #category : #'compile abstract instructions' }
 StackToRegisterMappingCogit >> checkArgumentSint16: aRegister [ 
-	<doNotGenerate>
 	"
 	value:= value inside aRegister. We want to check that:
 		- value > INT16_MAX 
@@ -974,7 +973,6 @@ StackToRegisterMappingCogit >> checkArgumentSint16: aRegister [
 
 { #category : #'compile abstract instructions' }
 StackToRegisterMappingCogit >> checkArgumentUint16: aRegister [ 
-	<doNotGenerate>
 	"
 	value:= value inside aRegister. We want to check that:
 		- value < 0 
@@ -1009,7 +1007,6 @@ StackToRegisterMappingCogit >> checkArgumentUint16: aRegister [
 
 { #category : #'compile abstract instructions' }
 StackToRegisterMappingCogit >> checkArgumentUint64: aRegister [ 
-	<doNotGenerate>
 	| jumpBadArg jumpNeg mergePointToExit fallthroughJump fallbackJump fallthroughLabel |
 	
 	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.
@@ -1034,7 +1031,6 @@ StackToRegisterMappingCogit >> checkArgumentUint64: aRegister [
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithCif: aCif [
-	<doNotGenerate>
 	<var: #aCif type: #'ffi_cif *'>
 	[ aCif numberArguments ]
 		caseOf:
@@ -1057,7 +1053,6 @@ StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithCif: aCif [
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithOneArgWithCif: aCif [
-	<doNotGenerate>
 	<var: #aCif type: #'ffi_cif *'>
 	"Verify if the argument(s) we receive for the C function comply with the ones describes in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
@@ -1604,7 +1599,7 @@ StackToRegisterMappingCogit >> genBlockReturn [
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> genBytecodeFFICall [
-	| n aTFExternalFunction runner externalFunctionAddr jumpBadArg cif aTFFunctionDefinition cifAddr failure jumpNeg jumpContinue continueToNextBytecode top |
+	| n aTFExternalFunction runner externalFunctionAddr jumpBadArg cif failure jumpNeg jumpContinue continueToNextBytecode top argsBeingUsed jumpSomeError |
 	
 	n :=  byte1.
 	aTFExternalFunction := self getLiteral: (n bitAnd: 2r1111).
@@ -1613,40 +1608,30 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	externalFunctionAddr := coInterpreter getHandler: aTFExternalFunction.
 	externalFunctionAddr ifNil: [ self error: 'WAT' ]. 
 	
-	aTFFunctionDefinition := objectMemory fetchPointer: 1 ofObject: aTFExternalFunction.
-	cifAddr := coInterpreter getHandler: aTFFunctionDefinition.
-	cif := coInterpreter getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction).	
+	cif := self getCifFromTFExternalFunction: aTFExternalFunction.	
 	cif ifNil: [ self error: 'WAT' ].
-	
-	"Check that the signature of the external function is supported:"												
-	cif numberArguments = 1 ifFalse: [ ^ self unknownBytecode].
-	cif returnType type = FFI_TYPE_UINT64 ifFalse:  [ ^ self unknownBytecode].
-	(cif argTypeAt: 0) type = FFI_TYPE_UINT64 ifFalse:  [ ^ self unknownBytecode ].
+									
+	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [ ^ self unknownBytecode ].
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
-	top := self ssTop.
-	self ssPop: 1.
-	self ssAllocateCallReg: Arg0Reg.
-	top moveToReg: Arg0Reg.
+	self prepareExternalCallWithCif: cif.        
 	
-	"Verify if the argument we receive for the C function is in fact an uint64:
+	"Verify that the argument(s) we receive for the C function complies with those specified in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
-	jumpBadArg := objectRepresentation genJumpNotSmallInteger: Arg0Reg.
-	objectRepresentation genConvertSmallIntegerToIntegerInReg: Arg0Reg. "We have it in Arg1Reg, but we need to untag it. The C function expects an uint64_t, not a Pharo object (a SmallInteger for example)"
-	self CmpCq: 0 R: Arg0Reg.
-	jumpNeg := self JumpLess: 0.
-		
+	jumpSomeError := self checkArgumentsForExternalFunctionWithCif: cif.
+	
+	
 	self CallFullRT: externalFunctionAddr.
 	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
 	We need to convert that C integer into a Pharo SmallInteger:"																													
-	objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
-	self ssPushRegister: TempReg.
+	"objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
+	self ssPushRegister: TempReg."
+	self handleReturnFromExternalFunctionWithCif: cif.
+	
 	jumpContinue := self Jump: 0.
-
 	
 	failure := self Label.
-	jumpNeg jmpTarget: failure.
-	jumpBadArg jmpTarget: failure.
+	jumpSomeError jmpTarget: failure.
 	
 	self Stop.
 	
@@ -3560,23 +3545,22 @@ StackToRegisterMappingCogit >> getCifFromTFExternalFunction: aTFExternalFunction
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
-	<doNotGenerate>
 	<var: #aCif type: #'ffi_cif *'>
 	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
 	We need to convert that C integer into a Pharo SmallInteger:"																													
-	"objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
-	self ssPushRegister: TempReg."
+	objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
+	self ssPushRegister: TempReg.
 	
 	"We know the external function left us its result in TempReg. So we convert the value inside to a Pharo int and then push it."
-	"(aCif returnType type = FFI_TYPE_UINT64) ifTrue: [ 
+	(aCif returnType type = FFI_TYPE_UINT64) ifTrue: [ 
 		objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
 		self ssPushRegister: TempReg.
-	]."
+	].
 
 	"The external function didn't return anything, so we don't push anything."
-	"(aCif returnType type = FFI_TYPE_VOID) ifTrue: [ "
+	(aCif returnType type = FFI_TYPE_VOID) ifTrue: [ 
 		"nothing to do here"
-	"]."
+	].
 	
 
 ]
@@ -3710,7 +3694,6 @@ StackToRegisterMappingCogit >> initializeFixupAt: targetPC [
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> isExternalFunctionPrototypeSupported: aCif [
-	<doNotGenerate>
 	"For now these are the supported function prototypes:
 	- uint64_t 	fn (uint64_t)
 	- void 		fn (uint64_t)
@@ -3733,19 +3716,16 @@ StackToRegisterMappingCogit >> isExternalFunctionPrototypeSupported: aCif [
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> isIntegerOrPointerType: aCifArgType [
 	"This method is supposed to be used for the external call through FFI.
-	Integer and pointer types are passes through the same registers."
-	^ {
-		  FFI_TYPE_POINTER.
-		  FFI_TYPE_INT.
-		  FFI_TYPE_UINT8.
-		  FFI_TYPE_SINT8.
-		  FFI_TYPE_UINT16.
-		  FFI_TYPE_SINT16.
-		  FFI_TYPE_UINT32.
-		  FFI_TYPE_SINT32.
-		  FFI_TYPE_UINT64.
-		  FFI_TYPE_SINT64.
-		  FFI_TYPE_POINTER } includes: aCifArgType
+	Integer and pointer types are passes through the same registers.
+	
+	Refer to LibFFIConstants >> initialize to see all FFI_TYPEs"
+		
+	^ (aCifArgType = FFI_TYPE_FLOAT) or: [  
+	(aCifArgType = FFI_TYPE_DOUBLE) or:[
+	(aCifArgType = FFI_TYPE_LONGDOUBLE) or: [
+	(aCifArgType = FFI_TYPE_VOID)]]] not
+	
+
 ]
 
 { #category : #'span functions' }
@@ -4131,6 +4111,58 @@ StackToRegisterMappingCogit >> populate: tuple withPICInfoFor: cPIC firstCacheTa
 				self assert: targetMethod cmType = CMMethod.
 				value := targetMethod methodObject ].
 		objectMemory storePointer: i * 2 ofObject: tuple withValue: value ]
+]
+
+{ #category : #'bytecode generators' }
+StackToRegisterMappingCogit >> prepareExternalCallWithCif: aCif [
+	"According to the cif, we'll extract the values from the stack and put them in registers.
+	These registers will be chosen according to the calling convention, this is: they will be chosen
+	as the external C function expects them to be. 
+	For example if our cif says there is only one argument and its type is integer, then Arg0Reg will be chosen for SystemV."
+	| top |
+	<var: #aCif type: #'ffi_cif *'>
+	
+	(aCif numberArguments = 1) ifTrue: [  
+		"Preserve Arg0Reg because it corresponds to the first C argument" 
+		
+		(self isIntegerOrPointerType: (aCif argTypeAt: 0) type) ifTrue: [   
+			top := self ssTop.
+			self ssPop: 1.
+			self ssAllocateCallReg: Arg0Reg.
+			top moveToReg: Arg0Reg.
+		] ifFalse: [ 
+			"floats not supported yet."
+		]
+	].
+
+	(aCif numberArguments = 2) ifTrue: [  
+		"Preserve Arg0Reg because it corresponds to the first C argument" 
+		top := self ssTop.
+		self ssPop: 1.
+		self ssAllocateCallReg: Arg0Reg.
+		top moveToReg: Arg0Reg.
+		
+		top := self ssTop.
+		self ssPop: 1.
+		self ssAllocateCallReg: Arg1Reg.
+		top moveToReg: Arg1Reg.
+		
+		"Este codigo asi spillea de mas al pedo. Podria mejorarse haciendo algo mas asi:
+		
+		arg0 := self ssValue:0.
+		arg1 := self ssValue: 1.
+		
+		self ssPop: 2.
+		
+		arg0 moveToReg: Arg1Reg.
+		
+		...........................................
+		"
+		
+	].
+	
+	
+	
 ]
 
 { #category : #testing }
