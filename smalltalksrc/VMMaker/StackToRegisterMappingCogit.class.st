@@ -3564,8 +3564,6 @@ StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 	<var: #aCif type: #'ffi_cif *'>
 	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
 	We need to convert that C integer into a Pharo SmallInteger:"																													
-	objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
-	self ssPushRegister: TempReg.
 	
 	"We know the external function left us its result in TempReg. So we convert the value inside to a Pharo int and then push it."
 	(aCif returnType type = FFI_TYPE_UINT64) ifTrue: [ 
@@ -3736,10 +3734,10 @@ StackToRegisterMappingCogit >> isIntegerOrPointerType: aCifArgType [
 	
 	Refer to LibFFIConstants >> initialize to see all FFI_TYPEs"
 		
-	^ (aCifArgType = FFI_TYPE_FLOAT) or: [  
+	^ ((aCifArgType = FFI_TYPE_FLOAT) or: [  
 	(aCifArgType = FFI_TYPE_DOUBLE) or:[
 	(aCifArgType = FFI_TYPE_LONGDOUBLE) or: [
-	(aCifArgType = FFI_TYPE_VOID)]]] not
+	(aCifArgType = FFI_TYPE_VOID)]]]) not
 	
 
 ]
