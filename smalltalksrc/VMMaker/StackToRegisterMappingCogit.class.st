@@ -1660,7 +1660,7 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 		self ssPushConstant: runner.
 		self ssPushConstant: aTFExternalFunction.
 		self ssPushRegister: ReceiverResultReg.
-		^ self genSend: 1 numArgs: 2.
+		^ self genSend: -32 "invokeFunction:withArguments:" numArgs: 2.
 	].
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
