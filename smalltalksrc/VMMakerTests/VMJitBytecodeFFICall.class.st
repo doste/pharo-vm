@@ -8,7 +8,7 @@ Class {
 VMJitBytecodeFFICall >> createExternalFunctionForCogitBlock: aCogitBlock withArgumentTypes: argumentTypes withReturnType: returnType [
 
 	| functionAddress tfExternalFunction functionExternalAddress tfFunctionDefinition cif cifExternalAddress |
-
+	
 	functionAddress := self compile: aCogitBlock.
 	tfExternalFunction := self newObjectWithSlots: 2. 
 	functionExternalAddress := self newExternalAddress: functionAddress. 
@@ -27,12 +27,38 @@ VMJitBytecodeFFICall >> createExternalFunctionForCogitBlock: aCogitBlock withArg
 	^ tfExternalFunction
 ]
 
-{ #category : #tests }
-VMJitBytecodeFFICall >> testBytecodeFFICallAVER [
+{ #category : #'tests - extended push bytecode - push inst var' }
+VMJitBytecodeFFICall >> createExternalFunctionWithAddress: anAddress withArgumentTypes: argumentTypes withReturnType: returnType [
 
-	| tfExternalFunction stopAddress addr methodObject |
-	"Test that the C function is called correctly and that the bytecode doesn't mess the stack up, this is: it pops the arguments and pushes the result."
-	tfExternalFunction := 16rffffffffffffffffffffffffffffffff.
+	| tfExternalFunction functionExternalAddress tfFunctionDefinition cif cifExternalAddress |
+
+	tfExternalFunction := self newObjectWithSlots: 2. 
+	functionExternalAddress := self newExternalAddress: anAddress. 
+	tfFunctionDefinition := self newObjectWithSlots:4 .
+	
+	cif := interpreter libFFI newCif.
+	cif argumentTypes: argumentTypes.
+	cif returnType: returnType.
+		
+	cifExternalAddress := self newExternalAddress: (cif address). 
+
+	memory storePointer: 0 ofObject: tfExternalFunction withValue: functionExternalAddress.
+	memory storePointer: 1 ofObject: tfExternalFunction withValue: tfFunctionDefinition.
+	memory storePointer: 0 ofObject: tfFunctionDefinition withValue: cifExternalAddress.	
+
+	^ tfExternalFunction
+]
+
+{ #category : #tests }
+VMJitBytecodeFFICall >> testBytecodeFFICallLargeExternalAddress [
+
+	| aVeryLargeAddress tfExternalFunction stopAddress addr methodObject |
+	
+	"Test that the C function is called correctly: the genBytecodeFFICall jumps to the given address and that it doesn't 'cut' the address."
+	aVeryLargeAddress := 16rFFFFFFFFFFFFFFFF.
+	
+	tfExternalFunction := self createExternalFunctionWithAddress: aVeryLargeAddress withArgumentTypes: { interpreter libFFI uint64.} 
+											withReturnType: interpreter libFFI uint64.
 
 	methodObject := methodBuilder newMethod
 		                literals: {
@@ -64,11 +90,11 @@ VMJitBytecodeFFICall >> testBytecodeFFICallAVER [
 			        stopAddress := cogit Stop ]
 		        bytecodes: 1.
 
-	self runFrom: addr until: stopAddress address.
+	self runFrom: addr until: aVeryLargeAddress.
 
 	self
-		assert: machineSimulator receiverRegisterValue
-		equals: (memory integerObjectOf: 888)
+		assert: machineSimulator instructionPointerRegisterValue
+		equals: aVeryLargeAddress
 ]
 
 { #category : #tests }
@@ -257,4 +283,54 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunction [
 	self
 		assert: machineSimulator receiverRegisterValue
 		equals: (memory integerObjectOf: 888)
+]
+
+{ #category : #tests }
+VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunctionVoidPointer [
+
+	| tfExternalFunction stopAddress addr methodObject pointeeValue somePointer |
+	"Test the prototype void fn(pointer) works.
+	
+	The external function to test doesn't return anything but will just copy the pointer given as argument."
+	tfExternalFunction := self
+		                      createExternalFunctionForCogitBlock: [
+										cogit MoveR: Arg0Reg R: ReceiverResultReg.
+										cogit RetN: 0
+			                      ]
+		                      withArgumentTypes:
+		                         { interpreter libFFI pointer }
+		                      withReturnType: interpreter libFFI void.
+
+	methodObject := methodBuilder newMethod
+		                literals: {
+				                memory nilObject.   "this would be the runner"
+				                tfExternalFunction };
+		                buildMethod.
+	
+	pointeeValue := memory integerObjectOf: 111.
+	somePointer := self newExternalAddress: pointeeValue.
+
+	addr := self
+		        compile: [
+			        cogit methodOrBlockNumTemps: 1.
+			        cogit methodOrBlockNumArgs: 1.
+			        cogit initSimStackForFramefulMethod: 0.
+
+
+			        cogit methodObj: methodObject.
+			    
+					  cogit ssPushConstant: somePointer.
+					  cogit byte0: 230.
+			        cogit byte1: 1.
+			        cogit genBytecodeFFICall.
+
+			        "This instruction should not be called"
+			        stopAddress := cogit Stop ]
+		        bytecodes: 1.
+
+	self runFrom: addr until: stopAddress address.
+
+	self
+		assert: machineSimulator receiverRegisterValue
+		equals: pointeeValue.
 ]

@@ -938,25 +938,25 @@ StackToRegisterMappingCogit >> ceStoreCheckTrampoline [
 ]
 
 { #category : #'compile abstract instructions' }
-StackToRegisterMappingCogit >> checkArgumentPointer: aRegister [ 
-	| mergePointToExit fallthroughJump fallbackJump fallthroughLabel jumpNotImmediate externalAddressIndex jumpBadClass |
+StackToRegisterMappingCogit >> checkAndUnpackArgumentPointer: aRegister [ 
+	| mergePointToExit fallthroughJump fallbackJump fallthroughLabel jumpImmediate externalAddressIndex jumpBadClass |
 
-	jumpNotImmediate := objectRepresentation genJumpNotImmediate: aRegister.
+	"Check that aRegister contains an ExternalAddress"
+	jumpImmediate := objectRepresentation genJumpImmediate: aRegister.
 	externalAddressIndex := objectMemory rawHashBitsOf: objectMemory classExternalAddress.
-
 	objectRepresentation genGetClassIndexOfNonImm: aRegister into: TempReg.
-
 	self CmpCq: externalAddressIndex R: TempReg.
 	jumpBadClass := self JumpNonZero: 0.
 	
-	self MoveMw: 0 r: aRegister R: aRegister. 
+	"At this point we are certain that aRegister contains an instance of ExternalAddress. We need to access the actual external address, to do that we acces to the first slot of the Oop given by aRegister"
+	self MoveMw: objectMemory baseHeaderSize r: aRegister R: aRegister. 
 	
 	"Everything went ok! We need to continue with the next instructions and not fall back to the slow case"
 	fallthroughJump := self Jump: 0.
 	
 	mergePointToExit := self Label.		
 	jumpBadClass jmpTarget: mergePointToExit.
-	jumpNotImmediate jmpTarget: mergePointToExit.
+	jumpImmediate jmpTarget: mergePointToExit.
 	fallbackJump := self Jump: 0.
 	
 	fallthroughLabel := self Label.
@@ -1093,7 +1093,7 @@ StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithOneArgWithCi
 	[ (aCif argTypeAt: 0) type ]
 		caseOf:
 			{([ FFI_TYPE_POINTER ]
-				-> [ ^self checkArgumentPointer: Arg0Reg ]).
+				-> [ ^self checkAndUnpackArgumentPointer: Arg0Reg ]).
 			([ FFI_TYPE_STRUCT ]
 				-> [ ]).
 			([ FFI_TYPE_FLOAT ]
