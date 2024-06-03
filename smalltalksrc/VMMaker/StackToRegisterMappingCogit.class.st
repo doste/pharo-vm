@@ -975,6 +975,7 @@ StackToRegisterMappingCogit >> checkAndUnpackArgumentsForExternalFunctionWithOne
 	
 	"Here we have just one argument. Looking at the cif we should know in which register that argument is.
 	An integer argument we know it's going to be in Arg0Reg."
+	
 
 	[ (aCif argTypeAt: 0) type ]
 		caseOf:
@@ -987,21 +988,21 @@ StackToRegisterMappingCogit >> checkAndUnpackArgumentsForExternalFunctionWithOne
 			([ FFI_TYPE_DOUBLE ]
 				-> [ ]).
 			([ FFI_TYPE_SINT8 ]
-				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forKindOfInteger: 'sint8']).
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 8 signed: 1]).
 			([ FFI_TYPE_UINT8 ]
-				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forKindOfInteger: 'uint8']).
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 8 signed: 0]).
 			([ FFI_TYPE_SINT16 ]
-				-> [ ^self checkAndUntagArgumentIn: Arg0Reg forKindOfInteger: 'sint16' ]).
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 16 signed: 1]).
 			([ FFI_TYPE_UINT16 ]
-				-> [ ^self checkAndUntagArgumentIn: Arg0Reg forKindOfInteger: 'uint16' ]).
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 16 signed: 0]).
 			([ FFI_TYPE_SINT32 ]
-				-> [ ^self checkAndUntagArgumentIn: Arg0Reg forKindOfInteger: 'sint32' ]).
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 32 signed: 1]).
 			([ FFI_TYPE_UINT32 ]
-				-> [ ^self checkAndUntagArgumentIn: Arg0Reg forKindOfInteger: 'uint32' ]).
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 32 signed: 0]).
 			([ FFI_TYPE_SINT64 ]
-				-> [ ^self checkAndUntagArgumentIn: Arg0Reg forKindOfInteger: 'sint64']).
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 64 signed: 1]).
 			([ FFI_TYPE_UINT64 ]
-				-> [ ^self checkAndUntagArgumentIn: Arg0Reg forKindOfInteger: 'uint64'])}
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 64 signed: 0])}
 				
 		otherwise: [ ^ nil ].
 
@@ -1066,6 +1067,120 @@ StackToRegisterMappingCogit >> checkAndUnpackOneArgumentIn: aRegister ForExterna
 ]
 
 { #category : #'compile abstract instructions' }
+StackToRegisterMappingCogit >> checkAndUntagArgumentIn: aRegister forIntegerOfSize: numberOfBits signed: signedOrNot [ 
+	"
+	signedOrNot = 1 -> the value is signed.
+	signedOrNot = 0 -> the value is unsigned
+	
+	value:= value inside aRegister. We want to check that:
+		if signedOrNot = 1 (signed):
+			- value > MAX value possible for numberOfBits
+			- value < MIN value possible for numberOfBits
+		
+		if signedOrNot = 0 (unsigned):
+			- value < 0 
+			- value > MAX value possible for numberOfBits
+	"
+	| jumpBadArg jumpBelowRep jumpAboveRep mergePointToExit fallthroughJump fallbackJump fallthroughLabel |
+	
+	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.
+	
+	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister.
+	
+	[ signedOrNot ] 
+		caseOf: { 
+			[ 0 "unsigned"] -> [ 
+					[ numberOfBits ] 
+							caseOf: { 
+							
+								"self CmpCq: 0 R: aRegister.
+								jumpBelowRep := self JumpLess: 0."		"same for all 'u' cases"
+								
+								[ 8  ] -> [ 
+										self CmpCq: 0 R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+								
+										self CmpCq: UINT8_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 16 ] -> [ 
+								
+										self CmpCq: 0 R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+								
+										self CmpCq: UINT16_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 32 ] -> [ 
+										self CmpCq: 0 R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+								
+										self CmpCq: UINT32_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 64 ] -> [ 
+										self CmpCq: 0 R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+								
+										self CmpCq: UINT64_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+							 } otherwise: [ ^ nil ]
+			
+			 ].
+			[ 1 "unsigned" ] -> [ 
+					[ numberOfBits ] 
+							caseOf: {
+								
+								[ 8  ] -> [ 
+										self CmpCq: INT8_MIN R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+	
+										self CmpCq: INT8_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 16 ] -> [ 
+										self CmpCq: INT16_MIN R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+	
+										self CmpCq: INT16_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 32 ] -> [ 
+										self CmpCq: INT32_MIN R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+	
+										self CmpCq: INT32_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 64 ] -> [ 
+										self CmpCq: INT64_MIN R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+	
+										self CmpCq: INT64_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+							 } otherwise: [ ^ nil ]
+			 ]
+		} otherwise: [ ^ nil ].
+	
+	
+	"Everything went ok! We need to continue with the next instructions and not fall back to the slow case"
+	fallthroughJump := self Jump: 0.
+	
+	mergePointToExit := self Label.				
+	jumpBadArg jmpTarget: mergePointToExit.
+	jumpBelowRep jmpTarget: mergePointToExit.
+	jumpAboveRep jmpTarget: mergePointToExit.
+	fallbackJump := self Jump: 0.
+	
+	fallthroughLabel := self Label.
+	fallthroughJump jmpTarget: fallthroughLabel.
+
+	^ fallbackJump
+]
+
+{ #category : #'compile abstract instructions' }
 StackToRegisterMappingCogit >> checkAndUntagArgumentIn: aRegister forKindOfInteger: aKindOfIntegerAsString [
 	"
 	value:= value inside aRegister. We want to check that:
@@ -1085,16 +1200,17 @@ StackToRegisterMappingCogit >> checkAndUntagArgumentIn: aRegister forKindOfInteg
 	
 	"aKindOfIntegerAsString will look like this: {s | u} int {8 | 16 | 32 | 64}"
 	signedOrNot := aKindOfIntegerAsString first asString.
+	signedOrNot := signedOrNot = 'u' ifTrue: [ 0 ] ifFalse: [ 1 ].
 	numberOfBits := (aKindOfIntegerAsString allButFirst: 4) asInteger. "skips signedness + int"
 	
 	[ signedOrNot ] 
 		caseOf: { 
-			[ 'u' ] -> [ 
+			[ "'u'"0 ] -> [ 
 					[ numberOfBits ] 
 							caseOf: { 
 							
-								self CmpCq: 0 R: aRegister.
-								jumpBelowRep := self JumpLess: 0.		"same for all 'u' cases"
+								"self CmpCq: 0 R: aRegister.
+								jumpBelowRep := self JumpLess: 0."		"same for all 'u' cases"
 								
 								[ 8  ] -> [ 
 										self CmpCq: UINT8_MAX R: aRegister.
@@ -1115,7 +1231,7 @@ StackToRegisterMappingCogit >> checkAndUntagArgumentIn: aRegister forKindOfInteg
 							 } otherwise: [ ^ nil ]
 			
 			 ].
-			[ 's' ] -> [ 
+			[ "'s'"1 ] -> [ 
 					[ numberOfBits ] 
 							caseOf: {
 								
