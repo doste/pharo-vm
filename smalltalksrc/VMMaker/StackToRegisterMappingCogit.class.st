@@ -965,122 +965,8 @@ StackToRegisterMappingCogit >> checkAndUnpackArgumentPointer: aRegister [
 	^ fallbackJump
 ]
 
-{ #category : #'compile abstract instructions' }
-StackToRegisterMappingCogit >> checkArgumentSint16: aRegister [ 
-	"
-	value:= value inside aRegister. We want to check that:
-		- value > INT16_MAX 
-		- value < INT16_MIN 
-	"
-	| jumpBadArg jumpBelowRep jumpAboveRep mergePointToExit fallthroughJump fallbackJump fallthroughLabel |
-	
-	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.
-	
-	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister.
-	self CmpCq: INT16_MIN R: aRegister.
-	jumpBelowRep := self JumpLess: 0.
-	
-	self CmpCq: INT16_MAX R: aRegister.
-	jumpAboveRep := self JumpGreater: 0.
-	
-	
-	"Everything went ok! We need to continue with the next instructions and not fall back to the slow case"
-	fallthroughJump := self Jump: 0.
-	
-	mergePointToExit := self Label.				
-	jumpBadArg jmpTarget: mergePointToExit.
-	jumpBelowRep jmpTarget: mergePointToExit.
-	jumpAboveRep jmpTarget: mergePointToExit.
-	fallbackJump := self Jump: 0.
-	
-	fallthroughLabel := self Label.
-	fallthroughJump jmpTarget: fallthroughLabel.
-
-	^ fallbackJump
-]
-
-{ #category : #'compile abstract instructions' }
-StackToRegisterMappingCogit >> checkArgumentUint16: aRegister [ 
-	"
-	value:= value inside aRegister. We want to check that:
-		- value < 0 
-		- value > UINT16_MAX
-	"
-	| jumpBadArg jumpNeg jumpAboveRep mergePointToExit fallthroughJump fallbackJump fallthroughLabel |
-	
-	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.
-	
-	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister. "Untag the result"
-	self CmpCq: 0 R: aRegister.
-	jumpNeg := self JumpLess: 0.
-	
-	self CmpCq: INT16_MAX R: aRegister.
-	jumpAboveRep := self JumpGreater: 0.
-	
-	
-	"Everything went ok! We need to continue with the next instructions and not fall back to the slow case"
-	fallthroughJump := self Jump: 0.
-	
-	mergePointToExit := self Label.				
-	jumpBadArg jmpTarget: mergePointToExit.
-	jumpNeg jmpTarget: mergePointToExit.
-	jumpAboveRep jmpTarget: mergePointToExit.
-	fallbackJump := self Jump: 0.
-	
-	fallthroughLabel := self Label.
-	fallthroughJump jmpTarget: fallthroughLabel.
-
-	^ fallbackJump
-]
-
-{ #category : #'compile abstract instructions' }
-StackToRegisterMappingCogit >> checkArgumentUint64: aRegister [ 
-	| jumpBadArg jumpNeg mergePointToExit fallthroughJump fallbackJump fallthroughLabel |
-	
-	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.
-	
-	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister. "Untag the result"
-	self CmpCq: 0 R: aRegister.
-	jumpNeg := self JumpLess: 0.
-	
-	"Everything went ok! We need to continue with the next instructions and not fall back to the slow case"
-	fallthroughJump := self Jump: 0.
-	
-	mergePointToExit := self Label.				
-	jumpBadArg jmpTarget: mergePointToExit.
-	jumpNeg jmpTarget: mergePointToExit.
-	fallbackJump := self Jump: 0.
-	
-	fallthroughLabel := self Label.
-	fallthroughJump jmpTarget: fallthroughLabel.
-
-	^ fallbackJump
-]
-
 { #category : #'bytecode generators' }
-StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithCif: aCif [
-	<var: #aCif type: #'ffi_cif *'>
-	[ aCif numberArguments ]
-		caseOf:
-			{([ 1 ]
-				-> [ ^ self checkArgumentsForExternalFunctionWithOneArgWithCif: aCif ]).
-			([ 2 ]
-				-> [  ]).
-			([ 3 ]
-				-> [ ]).}
-				
-		otherwise: [ ^ nil ].
-
-	
-	
-	
-	
-	
-
-]
-
-{ #category : #'bytecode generators' }
-StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithOneArgWithCif: aCif [
+StackToRegisterMappingCogit >> checkAndUnpackArgumentsForExternalFunctionWithOneArgWithCif: aCif [
 	<var: #aCif type: #'ffi_cif *'>
 	"Verify if the argument(s) we receive for the C function comply with the ones describes in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
@@ -1101,25 +987,202 @@ StackToRegisterMappingCogit >> checkArgumentsForExternalFunctionWithOneArgWithCi
 			([ FFI_TYPE_DOUBLE ]
 				-> [ ]).
 			([ FFI_TYPE_SINT8 ]
-				-> [  ]).
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forKindOfInteger: 'sint8']).
 			([ FFI_TYPE_UINT8 ]
-				-> [  ]).
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forKindOfInteger: 'uint8']).
 			([ FFI_TYPE_SINT16 ]
-				-> [ ^self checkArgumentSint16: Arg0Reg ]).
+				-> [ ^self checkAndUntagArgumentIn: Arg0Reg forKindOfInteger: 'sint16' ]).
 			([ FFI_TYPE_UINT16 ]
-				-> [ ^self checkArgumentUint16: Arg0Reg ]).
+				-> [ ^self checkAndUntagArgumentIn: Arg0Reg forKindOfInteger: 'uint16' ]).
 			([ FFI_TYPE_SINT32 ]
-				-> [  ]).
+				-> [ ^self checkAndUntagArgumentIn: Arg0Reg forKindOfInteger: 'sint32' ]).
 			([ FFI_TYPE_UINT32 ]
-				-> [  ]).
+				-> [ ^self checkAndUntagArgumentIn: Arg0Reg forKindOfInteger: 'uint32' ]).
 			([ FFI_TYPE_SINT64 ]
-				-> [ ]).
+				-> [ ^self checkAndUntagArgumentIn: Arg0Reg forKindOfInteger: 'sint64']).
 			([ FFI_TYPE_UINT64 ]
-				-> [ ^self checkArgumentUint64: Arg0Reg ])}
+				-> [ ^self checkAndUntagArgumentIn: Arg0Reg forKindOfInteger: 'uint64'])}
 				
 		otherwise: [ ^ nil ].
 
 
+
+	
+	
+	
+	
+	
+
+]
+
+{ #category : #'bytecode generators' }
+StackToRegisterMappingCogit >> checkAndUnpackOneArgumentIn: aRegister ForExternalFunctionWithCif: aCif [
+	<var: #aCif type: #'ffi_cif *'>
+	"Verify if the argument(s) we receive for the C function comply with the ones describes in the cif.
+	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
+	
+	self assert: aCif numberArguments = 1.
+	
+	"Here we have just one argument. Looking at the cif we should know in which register that argument is.
+	An integer argument we know it's going to be in Arg0Reg."
+
+	[ (aCif argTypeAt: 0) type ]
+		caseOf:
+			{([ FFI_TYPE_POINTER ]
+				-> [ ^self checkAndUnpackArgumentPointer: aRegister ]).
+			([ FFI_TYPE_STRUCT ]
+				-> [ ]).
+			([ FFI_TYPE_FLOAT ]
+				-> [ ]).
+			([ FFI_TYPE_DOUBLE ]
+				-> [ ]).
+			([ FFI_TYPE_SINT8 ]
+				-> [  ^self checkAndUntagArgumentIn: aRegister forKindOfInteger: 'sint8']).
+			([ FFI_TYPE_UINT8 ]
+				-> [  ^self checkAndUntagArgumentIn: aRegister forKindOfInteger: 'uint8']).
+			([ FFI_TYPE_SINT16 ]
+				-> [ ^self checkAndUntagArgumentIn: aRegister forKindOfInteger: 'sint16' ]).
+			([ FFI_TYPE_UINT16 ]
+				-> [ ^self checkAndUntagArgumentIn: aRegister forKindOfInteger: 'uint16' ]).
+			([ FFI_TYPE_SINT32 ]
+				-> [ ^self checkAndUntagArgumentIn: aRegister forKindOfInteger: 'sint32' ]).
+			([ FFI_TYPE_UINT32 ]
+				-> [ ^self checkAndUntagArgumentIn: aRegister forKindOfInteger: 'uint32' ]).
+			([ FFI_TYPE_SINT64 ]
+				-> [ ^self checkAndUntagArgumentIn: aRegister forKindOfInteger: 'sint64']).
+			([ FFI_TYPE_UINT64 ]
+				-> [ ^self checkAndUntagArgumentIn: aRegister forKindOfInteger: 'uint64'])}
+				
+		otherwise: [ ^ nil ].
+
+
+
+	
+	
+	
+	
+	
+
+]
+
+{ #category : #'compile abstract instructions' }
+StackToRegisterMappingCogit >> checkAndUntagArgumentIn: aRegister forKindOfInteger: aKindOfIntegerAsString [
+	"
+	value:= value inside aRegister. We want to check that:
+		if aKindOfInteger is signed:
+			- value > MAX value possible for aKindOfInteger
+			- value < MIN value possible for aKindOfInteger
+		
+		if aKindOfInteger is unsigned:
+			- value < 0 
+			- value > MAX value possible for aKindOfInteger
+	"
+	| jumpBadArg jumpBelowRep jumpAboveRep mergePointToExit fallthroughJump fallbackJump fallthroughLabel numberOfBits signedOrNot |
+	
+	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.
+	
+	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister.
+	
+	"aKindOfIntegerAsString will look like this: {s | u} int {8 | 16 | 32 | 64}"
+	signedOrNot := aKindOfIntegerAsString first asString.
+	numberOfBits := (aKindOfIntegerAsString allButFirst: 4) asInteger. "skips signedness + int"
+	
+	[ signedOrNot ] 
+		caseOf: { 
+			[ 'u' ] -> [ 
+					[ numberOfBits ] 
+							caseOf: { 
+							
+								self CmpCq: 0 R: aRegister.
+								jumpBelowRep := self JumpLess: 0.		"same for all 'u' cases"
+								
+								[ 8  ] -> [ 
+										self CmpCq: UINT8_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 16 ] -> [ 
+										self CmpCq: UINT16_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 32 ] -> [ 
+										self CmpCq: UINT32_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 64 ] -> [ 
+										self CmpCq: UINT64_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+							 } otherwise: [ ^ nil ]
+			
+			 ].
+			[ 's' ] -> [ 
+					[ numberOfBits ] 
+							caseOf: {
+								
+								[ 8  ] -> [ 
+										self CmpCq: INT8_MIN R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+	
+										self CmpCq: INT8_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 16 ] -> [ 
+										self CmpCq: INT16_MIN R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+	
+										self CmpCq: INT16_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 32 ] -> [ 
+										self CmpCq: INT32_MIN R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+	
+										self CmpCq: INT32_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 64 ] -> [ 
+										self CmpCq: INT64_MIN R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+	
+										self CmpCq: INT64_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+							 } otherwise: [ ^ nil ]
+			 ]
+		} otherwise: [ ^ nil ].
+	
+	
+	"Everything went ok! We need to continue with the next instructions and not fall back to the slow case"
+	fallthroughJump := self Jump: 0.
+	
+	mergePointToExit := self Label.				
+	jumpBadArg jmpTarget: mergePointToExit.
+	jumpBelowRep jmpTarget: mergePointToExit.
+	jumpAboveRep jmpTarget: mergePointToExit.
+	fallbackJump := self Jump: 0.
+	
+	fallthroughLabel := self Label.
+	fallthroughJump jmpTarget: fallthroughLabel.
+
+	^ fallbackJump
+]
+
+{ #category : #'bytecode generators' }
+StackToRegisterMappingCogit >> checkAndUntagArgumentsForExternalFunctionWithCif: aCif [
+	<var: #aCif type: #'ffi_cif *'>
+	
+	"The registers used "
+	
+	[ aCif numberArguments ]
+		caseOf:
+			{([ 1 ]
+				-> [ ^ self checkAndUnpackArgumentsForExternalFunctionWithOneArgWithCif: aCif ]).
+			([ 2 ]
+				-> [  ]).
+			([ 3 ]
+				-> [ ]).}
+				
+		otherwise: [ ^ nil ].
 
 	
 	
@@ -1668,7 +1731,7 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	
 	"Verify that the argument(s) we receive for the C function complies with those specified in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
-	jumpSomeError := self checkArgumentsForExternalFunctionWithCif: cif.
+	jumpSomeError := self checkAndUntagArgumentsForExternalFunctionWithCif: cif.
 	
 	
 	self CallFullRT: externalFunctionAddr.

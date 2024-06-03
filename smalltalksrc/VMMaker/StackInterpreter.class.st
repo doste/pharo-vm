@@ -7272,8 +7272,36 @@ StackInterpreter >> handleFFIError [
 
 { #category : #'stack bytecodes' }
 StackInterpreter >> handleFFIErrorWithFunctionDefinition: aFunctionDefinition runner: aRunner andCif: cif [  
+		"<doNotGenerate>   quizas deberia tener esto? "
+	| numberOfArguments arguments lookupClassTag |
 	
-	"<doNotGenerate>   quizas deberia tener esto? y todo el codigo anterior [ver historial]"
+	numberOfArguments := cif ifNil: [ 0 ] ifNotNil: [ cif numberArguments ] . "si cif es nil que hacemos?"
+
+	arguments := objectMemory
+		         eeInstantiateSmallClassIndex: ClassArrayCompactIndex
+		         format: objectMemory arrayFormat
+		         numSlots: numberOfArguments.
+	
+	0 to: numberOfArguments - 1 do: [ :i | 
+		"Assume: have just allocated a new Array; it must be young. Thus, can use unchecked stores."
+				objectMemory
+					storePointerUnchecked: i
+					ofObject: arguments
+					withValue: (self stackValue: numberOfArguments - i - 1) ].
+	self pop: numberOfArguments.
+	
+	"setup send of: aRunner invokeFunction: aFunctionDefinition withArguments: arguments"
+	self push: aRunner.
+	self push: aFunctionDefinition.
+	self push: arguments.
+
+	messageSelector := objectMemory splObj: SelectorInvokeFunctionWithArguments.
+	argumentCount := 2.
+
+	lookupClassTag := objectMemory fetchClassTagOf: aRunner.
+	self findNewMethodInClassTag: lookupClassTag.
+	self executeNewMethod.  
+
 
 ]
 
