@@ -1122,8 +1122,8 @@ StackToRegisterMappingCogit >> checkAndUntagArgumentIn: aRegister forIntegerOfSi
 										self CmpCq: 0 R: aRegister.
 										jumpBelowRep := self JumpLess: 0.
 								
-										self CmpCq: UINT64_MAX R: aRegister.
-										jumpAboveRep := self JumpGreater: 0.
+										"self CmpCq: UINT64_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.					TIENE SENTIDO PREGUNTARSE ESTO???"
 								 ].
 							 } otherwise: [ ^ nil ]
 			
