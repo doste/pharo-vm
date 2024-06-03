@@ -974,7 +974,7 @@ StackToRegisterMappingCogit >> checkAndUnpackArgumentsForExternalFunctionWithOne
 	self assert: aCif numberArguments = 1.
 	
 	"Here we have just one argument. Looking at the cif we should know in which register that argument is.
-	An integer argument we know it's going to be in Arg0Reg."
+	An integer or pointer argument we know it's going to be in Arg0Reg [THIS IS SysV x86]"
 	
 
 	[ (aCif argTypeAt: 0) type ]
@@ -1003,6 +1003,89 @@ StackToRegisterMappingCogit >> checkAndUnpackArgumentsForExternalFunctionWithOne
 				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 64 signed: 1]).
 			([ FFI_TYPE_UINT64 ]
 				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 64 signed: 0])}
+				
+		otherwise: [ ^ nil ].
+
+
+
+	
+	
+	
+	
+	
+
+]
+
+{ #category : #'bytecode generators' }
+StackToRegisterMappingCogit >> checkAndUnpackArgumentsForExternalFunctionWithTwoArgsWithCif: aCif [
+	<var: #aCif type: #'ffi_cif *'>
+	"Verify if the argument(s) we receive for the C function comply with the ones describes in the cif.
+	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
+	
+	self assert: aCif numberArguments = 2.
+	
+	"Looking at the cif we should know in which registers the arguments are.
+	An integer or pointer argument we know it's going to be in Arg0Reg (rdi)                             [[[ THIS IS FOR SysV x86 ]]] TEMPORARIE!
+	And the second one, if it's a pointer or integer too, it's going to be in Arg1Reg (rsi)"
+	
+
+	"Esto se podria extrar en un metodo aparte que haga todo el switch case recibiendo el registro y el tipo del arg del cif pero quiero esperar porque capaz vuela todo esta logica cuando tengamos que implementar otras ABI"
+	
+	[ (aCif argTypeAt: 0) type ]
+		caseOf:
+			{([ FFI_TYPE_POINTER ]
+				-> [ ^self checkAndUnpackArgumentPointer: Arg0Reg ]).
+			([ FFI_TYPE_STRUCT ]
+				-> [ ]).
+			([ FFI_TYPE_FLOAT ]
+				-> [ ]).
+			([ FFI_TYPE_DOUBLE ]
+				-> [ ]).
+			([ FFI_TYPE_SINT8 ]
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 8 signed: 1]).
+			([ FFI_TYPE_UINT8 ]
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 8 signed: 0]).
+			([ FFI_TYPE_SINT16 ]
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 16 signed: 1]).
+			([ FFI_TYPE_UINT16 ]
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 16 signed: 0]).
+			([ FFI_TYPE_SINT32 ]
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 32 signed: 1]).
+			([ FFI_TYPE_UINT32 ]
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 32 signed: 0]).
+			([ FFI_TYPE_SINT64 ]
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 64 signed: 1]).
+			([ FFI_TYPE_UINT64 ]
+				-> [  ^self checkAndUntagArgumentIn: Arg0Reg forIntegerOfSize: 64 signed: 0])}
+				
+		otherwise: [ ^ nil ].
+		
+	[ (aCif argTypeAt: 1) type ]
+		caseOf:
+			{([ FFI_TYPE_POINTER ]
+				-> [ ^self checkAndUnpackArgumentPointer: Arg1Reg ]).
+			([ FFI_TYPE_STRUCT ]
+				-> [ ]).
+			([ FFI_TYPE_FLOAT ]
+				-> [ ]).
+			([ FFI_TYPE_DOUBLE ]
+				-> [ ]).
+			([ FFI_TYPE_SINT8 ]
+				-> [  ^self checkAndUntagArgumentIn: Arg1Reg forIntegerOfSize: 8 signed: 1]).
+			([ FFI_TYPE_UINT8 ]
+				-> [  ^self checkAndUntagArgumentIn: Arg1Reg forIntegerOfSize: 8 signed: 0]).
+			([ FFI_TYPE_SINT16 ]
+				-> [  ^self checkAndUntagArgumentIn: Arg1Reg forIntegerOfSize: 16 signed: 1]).
+			([ FFI_TYPE_UINT16 ]
+				-> [  ^self checkAndUntagArgumentIn: Arg1Reg forIntegerOfSize: 16 signed: 0]).
+			([ FFI_TYPE_SINT32 ]
+				-> [  ^self checkAndUntagArgumentIn: Arg1Reg forIntegerOfSize: 32 signed: 1]).
+			([ FFI_TYPE_UINT32 ]
+				-> [  ^self checkAndUntagArgumentIn: Arg1Reg forIntegerOfSize: 32 signed: 0]).
+			([ FFI_TYPE_SINT64 ]
+				-> [  ^self checkAndUntagArgumentIn: Arg1Reg forIntegerOfSize: 64 signed: 1]).
+			([ FFI_TYPE_UINT64 ]
+				-> [  ^self checkAndUntagArgumentIn: Arg1Reg forIntegerOfSize: 64 signed: 0])}
 				
 		otherwise: [ ^ nil ].
 
@@ -1293,14 +1376,12 @@ StackToRegisterMappingCogit >> checkAndUntagArgumentIn: aRegister forKindOfInteg
 StackToRegisterMappingCogit >> checkAndUntagArgumentsForExternalFunctionWithCif: aCif [
 	<var: #aCif type: #'ffi_cif *'>
 	
-	"The registers used "
-	
 	[ aCif numberArguments ]
 		caseOf:
 			{([ 1 ]
 				-> [ ^ self checkAndUnpackArgumentsForExternalFunctionWithOneArgWithCif: aCif ]).
 			([ 2 ]
-				-> [  ]).
+				-> [ ^ self checkAndUnpackArgumentsForExternalFunctionWithTwoArgsWithCif: aCif ]).
 			([ 3 ]
 				-> [ ]).}
 				
@@ -3926,18 +4007,21 @@ StackToRegisterMappingCogit >> initializeFixupAt: targetPC [
 StackToRegisterMappingCogit >> isExternalFunctionPrototypeSupported: aCif [
 	"For now these are the supported function prototypes:
 	- uint64_t 	fn (uint64_t)
+   - void 		fn (uint64_t, uint64_t)
 	- void 		fn (pointer)
 	"
 												
-	| uint64Uint64 voidPointer |
+	| uint64Uint64 void64Uint64Uint64 voidPointer |
 	
 	<var: #aCif type: #'ffi_cif *'>
 	
 	uint64Uint64 := (aCif numberArguments = 1) and: [ aCif returnType type = FFI_TYPE_UINT64 and: [(aCif argTypeAt: 0) type = FFI_TYPE_UINT64]].
 	
+	void64Uint64Uint64 := (aCif numberArguments = 2) and: [ aCif returnType type = FFI_TYPE_VOID and: [(aCif argTypeAt: 0) type = FFI_TYPE_UINT64 and: [(aCif argTypeAt: 1) type = FFI_TYPE_UINT64 ]]].
+	
 	voidPointer := (aCif numberArguments = 1) and: [ aCif returnType type = FFI_TYPE_VOID and: [(aCif argTypeAt: 0) type = FFI_TYPE_POINTER]].
 	
-	^ (uint64Uint64 or: voidPointer)
+	^ (uint64Uint64 or: (void64Uint64Uint64 or: voidPointer))
 
 	
 
