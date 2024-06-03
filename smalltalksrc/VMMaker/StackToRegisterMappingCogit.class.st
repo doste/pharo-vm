@@ -1784,6 +1784,31 @@ StackToRegisterMappingCogit >> extractMaybeBranchDescriptorInto: fourArgBlock [
 	fourArgBlock value: branchDescriptor value: nextPC value: postBranchPC value: targetBytecodePC
 ]
 
+{ #category : #'bytecode generators' }
+StackToRegisterMappingCogit >> fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: aCif usingRunner: aRunner [
+	"Unpack all arguments in an array that is left in the ReceiverResultReg"
+
+	| size |
+	<inline: true>
+
+	self voidReceiverResultRegContainsSelf.
+	self ssFlushTo: simStackPtr.
+	size := aCif numberArguments.
+	objectRepresentation genNewArrayOfSize: size initialized: false.
+	size - 1 to: 0 by: -1 do: [ :i |
+		self PopR: TempReg.
+		objectRepresentation
+			genStoreSourceReg: TempReg
+			slotIndex: i
+			intoNewObjectInDestReg: ReceiverResultReg ].
+	self ssPop: size.
+
+	self ssPushConstant: aRunner.
+	self ssPushConstant: aTFExternalFunction.
+	self ssPushRegister: ReceiverResultReg.
+	^ self genSend: -33 numArgs: 2 "invokeFunction:withArguments:"
+]
+
 { #category : #'compile abstract instructions' }
 StackToRegisterMappingCogit >> fixupAtIndex: index [
 	"The fixups Array maps to bytecode pcs such that initialPC maps to index 0.
@@ -1905,28 +1930,11 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	cif := self getCifFromTFExternalFunction: aTFExternalFunction.	
 	cif ifNil: [ self error: 'WAT' ].
 									
-	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [ | size |
+	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [
 		"Unsupported bytecode. We need to do a message send 
 			runner invokeFunction: function withArguments: aCollection
 		This means that we need to unpack all arguments in the stack into an array, push everything to the stack and do a message send"
-		
-		"Unpack all arguments in an array that is left in the ReceiverResultReg"
-		self voidReceiverResultRegContainsSelf.
-		self ssFlushTo: simStackPtr.
-		size := cif numberArguments.
-		objectRepresentation genNewArrayOfSize: size initialized: false.
-		size - 1 to: 0 by: -1 do: [:i|
-				self PopR: TempReg.
-				objectRepresentation
-					genStoreSourceReg: TempReg
-					slotIndex: i
-					intoNewObjectInDestReg: ReceiverResultReg ].
-		self ssPop: size.
-		
-		self ssPushConstant: runner.
-		self ssPushConstant: aTFExternalFunction.
-		self ssPushRegister: ReceiverResultReg.
-		^ self genSend: -33 "invokeFunction:withArguments:" numArgs: 2.
+		^ self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: cif usingRunner: runner.
 	].
 	
 	"Preserve Arg0Reg because it corresponds to the first C argument" 
@@ -1949,8 +1957,6 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	
 	continueToNextBytecode := self Label.
 	jumpContinue jmpTarget: continueToNextBytecode.
-	
-	self Stop. " 																		<<<<<<<<<<<<<<<<<<<<<<SACARRRRRRRRRRRRRRRR"
 	
 	^0
 ]
