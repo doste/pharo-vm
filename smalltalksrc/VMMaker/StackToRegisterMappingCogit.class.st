@@ -943,6 +943,7 @@ StackToRegisterMappingCogit >> checkAndUnpackArgumentPointer: aRegister [
 
 	"Check that aRegister contains an ExternalAddress"
 	jumpImmediate := objectRepresentation genJumpImmediate: aRegister.
+																																							"NO HAY OPERACIONES DESTRUCTIVAS ACA"
 	externalAddressIndex := objectMemory rawHashBitsOf: objectMemory classExternalAddress.
 	objectRepresentation genGetClassIndexOfNonImm: aRegister into: TempReg.
 	self CmpCq: externalAddressIndex R: TempReg.
@@ -957,6 +958,8 @@ StackToRegisterMappingCogit >> checkAndUnpackArgumentPointer: aRegister [
 	mergePointToExit := self Label.		
 	jumpBadClass jmpTarget: mergePointToExit.
 	jumpImmediate jmpTarget: mergePointToExit.
+	
+	
 	fallbackJump := self Jump: 0.
 	
 	fallthroughLabel := self Label.
@@ -1166,21 +1169,19 @@ StackToRegisterMappingCogit >> checkAndUntagArgumentIn: aRegister forIntegerOfSi
 	"
 	| jumpBadArg jumpBelowRep jumpAboveRep mergePointToExit fallthroughJump fallbackJump fallthroughLabel notJumpAbove |
 	
-	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.
+	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.					"NO destructiva"
 	
-	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister.
+	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister.					"SI es destructiva. el valor en aRegister queda shifteado.     ES LA UNICA OP DESTRUCTIVAA
+																													2 opciones para restaurar el valor: 1) usar un registro auxiliar 2) hacerle shift contrario al mismo registro"
 	
-	notJumpAbove := false.
+	notJumpAbove := false.																						"<<<<<<<< esto no me gusta"
 	
 	[ signedOrNot ] 
 		caseOf: { 
 			[ 0 "unsigned"] -> [ 
 					[ numberOfBits ] 
 							caseOf: { 
-							
-								"self CmpCq: 0 R: aRegister.
-								jumpBelowRep := self JumpLess: 0."		"same for all 'u' cases"
-								
+				
 								[ 8  ] -> [ 
 										self CmpCq: 0 R: aRegister.
 										jumpBelowRep := self JumpLess: 0.
@@ -1260,6 +1261,9 @@ StackToRegisterMappingCogit >> checkAndUntagArgumentIn: aRegister forIntegerOfSi
 	
 	notJumpAbove ifFalse: [  
 	jumpAboveRep jmpTarget: mergePointToExit. ].
+
+	"Undo the untagging of the value in aRegister. The checks were not successfull so we need to leave aRegister as it was before"
+	objectRepresentation genConvertIntegerToSmallIntegerInReg: aRegister.
 
 	fallbackJump := self Jump: 0.
 	
@@ -1793,7 +1797,7 @@ StackToRegisterMappingCogit >> fallbackToPrimitiveWithFunction: aTFExternalFunct
 
 	self voidReceiverResultRegContainsSelf.
 	self ssFlushTo: simStackPtr.
-	size := aCif numberArguments.
+	size := aCif ifNil: [0] ifNotNil: [aCif numberArguments].				"tara bien?"
 	objectRepresentation genNewArrayOfSize: size initialized: false.
 	size - 1 to: 0 by: -1 do: [ :i |
 		self PopR: TempReg.
@@ -1925,10 +1929,10 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	runner := self getLiteral: ((n >> 4) bitAnd: 2r1111).
 	
 	externalFunctionAddr := coInterpreter getHandler: aTFExternalFunction.
-	externalFunctionAddr ifNil: [ self error: 'WAT' ]. 
+	externalFunctionAddr ifNil: [ ^ self fallbackToPrimitiveWithFunction: nil andCif: nil usingRunner: runner ]. 
 	
 	cif := self getCifFromTFExternalFunction: aTFExternalFunction.	
-	cif ifNil: [ self error: 'WAT' ].
+	cif ifNil: [ ^ self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: nil usingRunner: runner ].
 									
 	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [
 		"Unsupported bytecode. We need to do a message send 
@@ -1943,7 +1947,6 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	"Verify that the argument(s) we receive for the C function complies with those specified in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
 	jumpSomeError := self checkAndUntagArgumentsForExternalFunctionWithCif: cif.
-	
 	
 	self CallFullRT: externalFunctionAddr.
 	self handleReturnFromExternalFunctionWithCif: cif.
