@@ -2802,10 +2802,10 @@ StackInterpreter >> bytecodeFFICall [
 	self fetchNextBytecode.
 	
 	externalFunction := self getHandler: fdef.
-	self failed ifTrue: [ ^self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil].
+	(self failed or: (externalFunction isNil)) ifTrue: [ ^self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil].
 	cif := self getHandlerAsCif:
 		       (objectMemory fetchPointer: 1 ofObject: fdef).
-	self failed ifTrue: [ ^self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil].
+	(self failed or: (cif isNil)) ifTrue: [ ^self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil].
 	
 	(self doCall: externalFunction withCif: cif)
 		ifFalse: [ ^self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil]
@@ -7272,7 +7272,6 @@ StackInterpreter >> handleFFIError [
 
 { #category : #'stack bytecodes' }
 StackInterpreter >> handleFFIErrorWithFunctionDefinition: aFunctionDefinition runner: aRunner andCif: cif [  
-		"<doNotGenerate>   quizas deberia tener esto? "
 	| numberOfArguments arguments lookupClassTag |
 	
 	numberOfArguments := cif ifNil: [ 0 ] ifNotNil: [ cif numberArguments ] . "si cif es nil que hacemos?"
