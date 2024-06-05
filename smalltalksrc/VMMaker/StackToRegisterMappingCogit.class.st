@@ -1376,29 +1376,6 @@ StackToRegisterMappingCogit >> checkAndUntagArgumentIn: aRegister forKindOfInteg
 	^ fallbackJump
 ]
 
-{ #category : #'bytecode generators' }
-StackToRegisterMappingCogit >> checkAndUntagArgumentsForExternalFunctionWithCif: aCif [
-	<var: #aCif type: #'ffi_cif *'>
-	
-	[ aCif numberArguments ]
-		caseOf:
-			{([ 1 ]
-				-> [ ^ self checkAndUnpackArgumentsForExternalFunctionWithOneArgWithCif: aCif ]).
-			([ 2 ]
-				-> [ ^ self checkAndUnpackArgumentsForExternalFunctionWithTwoArgsWithCif: aCif ]).
-			([ 3 ]
-				-> [ ]).}
-				
-		otherwise: [ ^ nil ].
-
-	
-	
-	
-	
-	
-
-]
-
 { #category : #'compile abstract instructions' }
 StackToRegisterMappingCogit >> compileAbstractInstructionsFrom: start through: end [
 	"Loop over bytecodes, dispatching to the generator for each bytecode, handling fixups in due course."
@@ -3856,17 +3833,6 @@ StackToRegisterMappingCogit >> generateTracingTrampolines [
 ]
 
 { #category : #'bytecode generators' }
-StackToRegisterMappingCogit >> getCifFromTFExternalFunction: aTFExternalFunction [
-	
-	| aTFFunctionDefinition cifAddr cif |
-	aTFFunctionDefinition := objectMemory fetchPointer: 1 ofObject: aTFExternalFunction.
-	cifAddr := coInterpreter getHandler: aTFFunctionDefinition.
-	cif := coInterpreter getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction).	
-	
-	^ cif
-]
-
-{ #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 	<var: #aCif type: #'ffi_cif *'>
 	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
@@ -4012,45 +3978,6 @@ StackToRegisterMappingCogit >> initializeFixupAt: targetPC [
 	| fixup |
 	fixup := self fixupAt: targetPC.
 	self initializeFixup: fixup
-]
-
-{ #category : #'bytecode generators' }
-StackToRegisterMappingCogit >> isExternalFunctionPrototypeSupported: aCif [
-	"For now these are the supported function prototypes:
-	- uint64_t 	fn (uint64_t)
-   - void 		fn (uint64_t, uint64_t)
-	- void 		fn (pointer)
-	"
-												
-	| uint64Uint64 void64Uint64Uint64 voidPointer |
-	
-	<var: #aCif type: #'ffi_cif *'>
-	
-	uint64Uint64 := (aCif numberArguments = 1) and: [ aCif returnType type = FFI_TYPE_UINT64 and: [(aCif argTypeAt: 0) type = FFI_TYPE_UINT64]].
-	
-	void64Uint64Uint64 := (aCif numberArguments = 2) and: [ aCif returnType type = FFI_TYPE_VOID and: [(aCif argTypeAt: 0) type = FFI_TYPE_UINT64 and: [(aCif argTypeAt: 1) type = FFI_TYPE_UINT64 ]]].
-	
-	voidPointer := (aCif numberArguments = 1) and: [ aCif returnType type = FFI_TYPE_VOID and: [(aCif argTypeAt: 0) type = FFI_TYPE_POINTER]].
-	
-	^ (uint64Uint64 or: (void64Uint64Uint64 or: voidPointer))
-
-	
-
-]
-
-{ #category : #'bytecode generators' }
-StackToRegisterMappingCogit >> isIntegerOrPointerType: aCifArgType [
-	"This method is supposed to be used for the external call through FFI.
-	Integer and pointer types are passes through the same registers.
-	
-	Refer to LibFFIConstants >> initialize to see all FFI_TYPEs"
-		
-	^ ((aCifArgType = FFI_TYPE_FLOAT) or: [  
-	(aCifArgType = FFI_TYPE_DOUBLE) or:[
-	(aCifArgType = FFI_TYPE_LONGDOUBLE) or: [
-	(aCifArgType = FFI_TYPE_VOID)]]]) not
-	
-
 ]
 
 { #category : #'span functions' }

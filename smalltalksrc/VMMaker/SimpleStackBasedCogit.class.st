@@ -297,6 +297,29 @@ SimpleStackBasedCogit >> ceShortCutTraceStore: aProcessorSimulationTrap [
 				into: (processor registerAt: ReceiverResultReg)]
 ]
 
+{ #category : #'bytecode generators' }
+SimpleStackBasedCogit >> checkAndUntagArgumentsForExternalFunctionWithCif: aCif [
+	<var: #aCif type: #'ffi_cif *'>
+	
+	[ aCif numberArguments ]
+		caseOf:
+			{([ 1 ]
+				-> [ ^ self checkAndUnpackArgumentsForExternalFunctionWithOneArgWithCif: aCif ]).
+			([ 2 ]
+				-> [ ^ self checkAndUnpackArgumentsForExternalFunctionWithTwoArgsWithCif: aCif ]).
+			([ 3 ]
+				-> [ ]).}
+				
+		otherwise: [ ^ nil ].
+
+	
+	
+	
+	
+	
+
+]
+
 { #category : #'compile abstract instructions' }
 SimpleStackBasedCogit >> compileFrameBuild [
 	"Build a frame for a CogMethod activation.  See CoInterpreter class>>initializeFrameIndices.
@@ -1069,6 +1092,31 @@ SimpleStackBasedCogit >> extendedStoreAndPopBytecode [
 	^EncounteredUnknownBytecode
 ]
 
+{ #category : #'bytecode generators' }
+SimpleStackBasedCogit >> fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: aCif usingRunner: aRunner [
+	"Unpack all arguments in an array that is left in the ReceiverResultReg"
+
+	| size |
+	<inline: true>
+
+	"self voidReceiverResultRegContainsSelf.
+	self ssFlushTo: simStackPtr. 																						<<<<<<<<<< tara bien?"
+	size := aCif ifNil: [0] ifNotNil: [aCif numberArguments].				"tara bien?"
+					
+	objectRepresentation genNewArrayOfSize: size initialized: false.
+	size - 1 to: 0 by: -1 do: [ :i |
+		self PopR: TempReg.
+		objectRepresentation
+			genStoreSourceReg: TempReg
+			slotIndex: i
+			intoNewObjectInDestReg: ReceiverResultReg ].
+
+	self PushC64: aRunner.
+	self PushC64: aTFExternalFunction.
+	self PushR: ReceiverResultReg.
+	^ self genSend: -33 numArgs: 2 "invokeFunction:withArguments:"
+]
+
 { #category : #'bytecode generator support' }
 SimpleStackBasedCogit >> firstSpecialSelectorBytecodeOffset [
 	<inline: true>
@@ -1117,75 +1165,47 @@ SimpleStackBasedCogit >> genBlockReturn [
 
 { #category : #'bytecode generators' }
 SimpleStackBasedCogit >> genBytecodeFFICall [
-	| n aTFExternalFunction runner externalFunctionAddr jumpInvalidCifNargs jumpInvalidCifRtype jumpInvalidCifArgtype jumpBadArg cif aTFFunctionDefinition cifAddr failure jumpNeg jumpContinue continueToNextBytecode |
-	
-	<var: #cif type: #'ffi_cif *'>
+	| n aTFExternalFunction runner externalFunctionAddr cif failure jumpContinue continueToNextBytecode jumpSomeError |
 	
 	n :=  byte1.
+	aTFExternalFunction := self getLiteral: (n bitAnd: 2r1111).
+	runner := self getLiteral: ((n >> 4) bitAnd: 2r1111).
 	
-	"fdef := self getLiteral: (n bitAnd: 2r1111)."
-	
-	"aTFExternalFunction := self getLiteral: ((n >> 4) bitAnd: 2r1111)."   "<<<<<<<<<<<<<<<<<<<<<<<<<< Por ahora ignoramos          <<<<<<< FIXEAR! deberia ser el runner"
-	aTFExternalFunction := self getLiteral: n.
-	
-	"self genLoadArgAtDepth: -1 into: Arg1Reg."  "stack[0] <- argument of the C function (an uint64)      <<<< MAL. mejor popearlo de una!            <<<<<<<<<< por que primitivas SI???????????????????????"
-	self PopR: Arg1Reg.
-	
-	"externalFunctionAddr := self getHandler: aTFExternalFunction.   asi no tenemos que redefinir getHandler:"
 	externalFunctionAddr := coInterpreter getHandler: aTFExternalFunction.
+	externalFunctionAddr ifNil: [ ^ self fallbackToPrimitiveWithFunction: nil andCif: nil usingRunner: runner ]. 											
 	
-	externalFunctionAddr ifNil: [ self error ]. 
+	cif := self getCifFromTFExternalFunction: aTFExternalFunction.	
+	cif ifNil: [ ^ self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: nil usingRunner: runner ].												
+									
+	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [
+		"Unsupported bytecode. We need to do a message send 
+			runner invokeFunction: function withArguments: aCollection
+		This means that we need to unpack all arguments in the stack into an array, push everything to the stack and do a message send"
+		^ self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: cif usingRunner: runner.																	
+	].
 	
-	self MoveCw: externalFunctionAddr R: TempReg.  
+	"Preserve Arg0Reg because it corresponds to the first C argument" 
+	self prepareExternalCallWithCif: cif.        																																	
 	
-	aTFFunctionDefinition := objectMemory fetchPointer: 1 ofObject: aTFExternalFunction.
-	
-	cifAddr := coInterpreter getHandler: aTFFunctionDefinition.
-
-	"cif := self getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction)."
-	cif := coInterpreter getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction).
-	
-	cif ifNil: [ self error ].
-	
-	"Check that the signature of the external function is supported:"															
-	"cif numberArguments = 1 ifFalse: [ ^ self unknownBytecode ].
-	cif returnType type = FFI_TYPE_UINT64 ifFalse:  [ ^ self unknownBytecode ].
-	(cif argTypeAt: 0) type = FFI_TYPE_UINT64 ifFalse:  [ ^ self unknownBytecode ]."
-	cif numberArguments = 1 ifFalse: [ self error  ].
-	cif returnType type = FFI_TYPE_UINT64 ifFalse:  [ self error  ].
-	(cif argTypeAt: 0) type = FFI_TYPE_UINT64 ifFalse:  [ self error  ].
-	
-	
-	"Verify if the argument we receive for the C function is in fact an uint64:
+	"Verify that the argument(s) we receive for the C function complies with those specified in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
-	jumpBadArg := objectRepresentation genJumpNotSmallInteger: Arg1Reg.
-	objectRepresentation genConvertSmallIntegerToIntegerInReg: Arg1Reg. "We have it in Arg1Reg, but we need to untag it. The C function expects an uint64_t, not a Pharo object (a SmallInteger for example)"
-	self CmpCq: 0 R: Arg1Reg.
-	jumpNeg := self JumpLess: 0.
+	jumpSomeError := self checkAndUntagArgumentsForExternalFunctionWithCif: cif.
 	
-	"The C function we are about to call expects its (unique) argument in Arg0Reg."
-	self MoveR: Arg1Reg R: Arg0Reg.
+	self CallFullRT: externalFunctionAddr.
+	self handleReturnFromExternalFunctionWithCif: cif.																															
 	
-	"Call the C function"
-	self CallR: TempReg.
-	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
-	We need to convert that C integer into a Pharo SmallInteger:"																													
-	objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
-	self PushR: TempReg.
-	"los bytecodes pusehan el resultado"
 	jumpContinue := self Jump: 0.
-
 	
 	failure := self Label.
-	jumpNeg jmpTarget: failure.
-	jumpBadArg jmpTarget: failure.
+	jumpSomeError jmpTarget: failure.
 	
 	self Stop.
 	
 	continueToNextBytecode := self Label.
 	jumpContinue jmpTarget: continueToNextBytecode.
 	
-	^0																				"<<<<<<<<<<<<<<<<<<<<<<<<<<<<< ??????????????????????????????????????????????????"
+	
+	^0																			
 ]
 
 { #category : #'bytecode generators' }
@@ -2917,10 +2937,81 @@ SimpleStackBasedCogit >> generateTracingTrampolines [
 		 ceTraceStoreTrampoline := self simulatedTrampolineFor: #ceShortCutTraceStore:]
 ]
 
+{ #category : #'bytecode generators' }
+SimpleStackBasedCogit >> getCifFromTFExternalFunction: aTFExternalFunction [
+	
+	| aTFFunctionDefinition cifAddr cif |
+	aTFFunctionDefinition := objectMemory fetchPointer: 1 ofObject: aTFExternalFunction.
+	cifAddr := coInterpreter getHandler: aTFFunctionDefinition.
+	cif := coInterpreter getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction).	
+	
+	^ cif
+]
+
+{ #category : #'simulation only' }
+SimpleStackBasedCogit >> handleReturnFromExternalFunctionWithCif: aCif [
+	<var: #aCif type: #'ffi_cif *'>
+	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
+	We need to convert that C integer into a Pharo SmallInteger:"																													
+	
+	"We know the external function left us its result in TempReg. So we convert the value inside to a Pharo int and then push it."
+	(aCif returnType type = FFI_TYPE_UINT64) ifTrue: [ 
+		objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
+		self PushR: TempReg.
+	].
+
+	"The external function didn't return anything, so we don't push anything."
+	(aCif returnType type = FFI_TYPE_VOID) ifTrue: [ 
+		"Return the receiver to guarantee that we push a return value to the stack"
+		self genPushReceiverBytecode.
+	].
+	
+
+]
+
 { #category : #'register management' }
 SimpleStackBasedCogit >> isCallerSavedReg: reg [
 	<inline: true>
 	^self register: reg isInMask: CallerSavedRegisterMask
+]
+
+{ #category : #'bytecode generators' }
+SimpleStackBasedCogit >> isExternalFunctionPrototypeSupported: aCif [
+	"For now these are the supported function prototypes:
+	- uint64_t 	fn (uint64_t)
+   - void 		fn (uint64_t, uint64_t)
+	- void 		fn (pointer)
+	"
+												
+	| uint64Uint64 void64Uint64Uint64 voidPointer |
+	
+	<var: #aCif type: #'ffi_cif *'>
+	
+	uint64Uint64 := (aCif numberArguments = 1) and: [ aCif returnType type = FFI_TYPE_UINT64 and: [(aCif argTypeAt: 0) type = FFI_TYPE_UINT64]].
+	
+	void64Uint64Uint64 := (aCif numberArguments = 2) and: [ aCif returnType type = FFI_TYPE_VOID and: [(aCif argTypeAt: 0) type = FFI_TYPE_UINT64 and: [(aCif argTypeAt: 1) type = FFI_TYPE_UINT64 ]]].
+	
+	voidPointer := (aCif numberArguments = 1) and: [ aCif returnType type = FFI_TYPE_VOID and: [(aCif argTypeAt: 0) type = FFI_TYPE_POINTER]].
+	
+	^ (uint64Uint64 or: (void64Uint64Uint64 or: voidPointer))
+
+	
+
+]
+
+{ #category : #'bytecode generators' }
+SimpleStackBasedCogit >> isIntegerOrPointerType: aCifArgType [
+	"This method is supposed to be used for the external call through FFI.
+	Integer and pointer types are passes through the same registers.
+	
+	Refer to LibFFIConstants >> initialize to see all FFI_TYPEs"
+		
+	^ ((aCifArgType = FFI_TYPE_FLOAT) or: [  
+	(aCifArgType = FFI_TYPE_DOUBLE) or:[
+	(aCifArgType = FFI_TYPE_LONGDOUBLE) or: [
+	(aCifArgType = FFI_TYPE_VOID)]]]) not
+	
+
 ]
 
 { #category : #'method introspection' }
@@ -3098,6 +3189,50 @@ SimpleStackBasedCogit >> pcDataFor: descriptor Annotation: isBackwardBranchAndAn
 { #category : #trampolines }
 SimpleStackBasedCogit >> picAbortTrampolineFor: numArgs [
 	^cePICAbortTrampoline
+]
+
+{ #category : #'bytecode generators' }
+SimpleStackBasedCogit >> prepareExternalCallWithCif: aCif [
+	"According to the cif, we'll extract the values from the stack and put them in registers.
+	These registers will be chosen according to the calling convention, this is: they will be chosen
+	as the external C function expects them to be. 
+	For example if our cif says there is only one argument and its type is integer, then Arg0Reg will be chosen for SystemV."
+	| liveRegsMask |
+	<var: #aCif type: #'ffi_cif *'>
+	
+	"TODO ESTO ES DE: SimpleStackCogit >> compileMachineCodeInterpreterPrimitive: primitiveRoutine"
+	liveRegsMask := (aCif numberArguments = 1)
+						ifTrue:
+							[self registerMaskFor: Arg0Reg]
+						ifFalse:
+							[(aCif numberArguments = 2) ifTrue: [[self registerMaskFor: Arg0Reg and: Arg1Reg ]]].
+
+	"As this is using a call, I need to store the Link register."
+	"backEnd hasLinkRegister 
+		ifTrue: [ self MoveR: LinkReg R: Extra0Reg ].															HARA FALTA?"
+	
+	backEnd genSaveRegs: (liveRegsMask bitAnd: CallerSavedRegisterMask).
+
+	(aCif numberArguments = 1) ifTrue: [  
+		(self isIntegerOrPointerType: (aCif argTypeAt: 0) type) ifTrue: [   
+			self PopR: Arg0Reg.
+		] ifFalse: [ 
+			"floats not supported yet."
+		]
+	].
+
+	(aCif numberArguments = 2) ifTrue: [  
+		((self isIntegerOrPointerType: (aCif argTypeAt: 0) type) and: (self isIntegerOrPointerType: (aCif argTypeAt: 1) type)) ifTrue: [   
+			self PopR: Arg0Reg.
+			self PopR: Arg1Reg.
+		] ifFalse: [ 
+			"floats not supported yet."
+		]
+		
+	].
+	
+	
+	
 ]
 
 { #category : #'primitive generators' }
