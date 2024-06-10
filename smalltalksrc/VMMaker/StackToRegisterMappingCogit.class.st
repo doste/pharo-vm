@@ -1918,12 +1918,12 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 		^ self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: cif usingRunner: runner.
 	].
 	
-	"Preserve Arg0Reg because it corresponds to the first C argument" 
-	self prepareExternalCallWithCif: cif.        
+	"self prepareExternalCallWithCif: cif."   
+	backEnd prepareForExternalCallWithCif: cif.
 	
 	"Verify that the argument(s) we receive for the C function complies with those specified in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
-	jumpSomeError := self checkAndUntagArgumentsForExternalFunctionWithCif: cif.
+	jumpSomeError := self checkAndUnpackArgumentsForExternalFunctionWithCif: cif.
 	
 	self CallFullRT: externalFunctionAddr.
 	self handleReturnFromExternalFunctionWithCif: cif.
@@ -3839,7 +3839,7 @@ StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 	We need to convert that C integer into a Pharo SmallInteger:"																													
 	
 	"We know the external function left us its result in TempReg. So we convert the value inside to a Pharo int and then push it."
-	(aCif returnType type = FFI_TYPE_UINT64) ifTrue: [ 
+	(self isIntegerType: aCif returnType type) ifTrue: [ 
 		objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
 		self ssPushRegister: TempReg.
 	].
@@ -3848,6 +3848,13 @@ StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 	(aCif returnType type = FFI_TYPE_VOID) ifTrue: [ 
 		"Return the receiver to guarantee that we push a return value to the stack"
 		self genPushReceiverBytecode.
+	].
+
+	"The external function returned a pointer, so we have to:
+	1) convert it to an ExternalAddress
+	2) push it."
+	(aCif returnType type = FFI_TYPE_POINTER) ifTrue: [ 
+		"genPrimitiveStoreInt64IntoExternalAddress podria ser?"
 	].
 	
 
@@ -4336,6 +4343,16 @@ StackToRegisterMappingCogit >> picMissTrampolines [
 
 ]
 
+{ #category : #'bytecode generators' }
+StackToRegisterMappingCogit >> popIntoRegisterAndPreserveIt: aRegister [ 				"IMPLEMENTAR ESTE EN EL SIMPLESTACK TAMBIEN!!!!!!!!!!!!!!!!"
+
+	| top |
+	top := self ssTop.
+	self ssPop: 1.
+	self ssAllocateCallReg: aRegister.
+	top moveToReg: aRegister
+]
+
 { #category : #'method introspection' }
 StackToRegisterMappingCogit >> populate: tuple withPICInfoFor: cPIC firstCacheTag: firstCacheTag [
 	"Populate tuple (which must be large enough) with the ClosedPIC's target method class pairs.
@@ -4372,7 +4389,7 @@ StackToRegisterMappingCogit >> prepareExternalCallWithCif: aCif [
 	as the external C function expects them to be. 
 	For example if our cif says there is only one argument and its type is integer, then Arg0Reg will be chosen for SystemV."
 	| top |
-	<var: #aCif type: #'ffi_cif *'>
+	<var: #aCif type: #'ffi_cif *'>	
 	
 	(aCif numberArguments = 1) ifTrue: [  
 		"Preserve Arg0Reg because it corresponds to the first C argument" 
@@ -4415,6 +4432,11 @@ StackToRegisterMappingCogit >> prepareExternalCallWithCif: aCif [
 	
 	
 	
+]
+
+{ #category : #'mapped inline primitive generators - vectorial' }
+StackToRegisterMappingCogit >> preserveRegister: aReg [
+	"BORRAR!!!!"
 ]
 
 { #category : #testing }

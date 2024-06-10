@@ -4504,6 +4504,54 @@ CogX64Compiler >> padIfPossibleWithStopsFrom: startAddr to: endAddr [
 	self stopsFrom: startAddr to: endAddr
 ]
 
+{ #category : #abi }
+CogX64Compiler >> prepareForExternalCallWithCif: aCif [
+	"Argument registers for args 0 to 3 in SysV are RDI RSI RDX RCX, and in Win64 are RCX RDX R8 R9"
+	<inline: true>
+	| numArgs |
+	SysV ifFalse: "WIN64 ABI allways reserve shadow space on the stack for callee to save up to 4 register parameters"
+		[cogit SubCq: 32 R: RSP].
+	
+	numArgs := aCif numberArguments.
+	numArgs = 0 ifTrue: [^self].
+	
+	SysV
+		 ifTrue:[
+			(cogit isIntegerOrPointerType: (aCif argTypeAt: 0) type) ifTrue: [   "a.k.a. Arg0Reg"
+				cogit popIntoRegisterAndPreserveIt: Arg0Reg
+			] ifFalse: [ 
+				"floats not supported yet."
+			].
+			numArgs = 1 ifTrue: [^self].
+			
+			(cogit isIntegerOrPointerType: (aCif argTypeAt: 1) type) ifTrue: [   "a.k.a. Arg1Reg"
+				cogit popIntoRegisterAndPreserveIt: Arg1Reg
+			] ifFalse: [ 
+				"floats not supported yet."
+			].
+			numArgs = 2 ifTrue: [^self].
+			
+			(cogit isIntegerOrPointerType: (aCif argTypeAt: 2) type) ifTrue: [   "a.k.a. ReceiverResultReg"
+				cogit popIntoRegisterAndPreserveIt: ReceiverResultReg
+			] ifFalse: [ 
+				"floats not supported yet."
+			].
+			numArgs = 3 ifTrue: [^self].
+			
+			(cogit isIntegerOrPointerType: (aCif argTypeAt: 3) type) ifTrue: [   "a.k.a. ClassReg"
+				cogit popIntoRegisterAndPreserveIt: ClassReg
+			] ifFalse: [ 
+				"floats not supported yet."
+			].
+			] 
+		ifFalse: [ "WIN64"
+			
+			"TODO: para windows . los dos primeros por Arg0Reg y Arg1Reg igual pero tercero y cuarto no me queda claro por donde vienen:
+			CogX64Compiler >> initializeAbstractRegistersWin64 		NO condice con
+			CogX64Compiler >> genMarshallNArgs: numArgs arg: regOrConst0 arg: regOrConst1 arg: regOrConst2 arg: regOrConst3"  
+		 ]
+]
+
 { #category : #'calling C function in Smalltalk stack' }
 CogX64Compiler >> prepareStackToCallCFunctionInSmalltalkStack: anInteger [ 
 

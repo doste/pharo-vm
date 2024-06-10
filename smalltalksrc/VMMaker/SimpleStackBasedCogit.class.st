@@ -298,7 +298,7 @@ SimpleStackBasedCogit >> ceShortCutTraceStore: aProcessorSimulationTrap [
 ]
 
 { #category : #'bytecode generators' }
-SimpleStackBasedCogit >> checkAndUntagArgumentsForExternalFunctionWithCif: aCif [
+SimpleStackBasedCogit >> checkAndUnpackArgumentsForExternalFunctionWithCif: aCif [
 	<var: #aCif type: #'ffi_cif *'>
 	
 	[ aCif numberArguments ]
@@ -1189,7 +1189,7 @@ SimpleStackBasedCogit >> genBytecodeFFICall [
 	
 	"Verify that the argument(s) we receive for the C function complies with those specified in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
-	jumpSomeError := self checkAndUntagArgumentsForExternalFunctionWithCif: cif.
+	jumpSomeError := self checkAndUnpackArgumentsForExternalFunctionWithCif: cif.
 	
 	self CallFullRT: externalFunctionAddr.
 	self handleReturnFromExternalFunctionWithCif: cif.																															
@@ -2955,7 +2955,7 @@ SimpleStackBasedCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 	We need to convert that C integer into a Pharo SmallInteger:"																													
 	
 	"We know the external function left us its result in TempReg. So we convert the value inside to a Pharo int and then push it."
-	(aCif returnType type = FFI_TYPE_UINT64) ifTrue: [ 
+	(self isIntegerType: aCif returnType type) ifTrue: [ 
 		objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
 		self PushR: TempReg.
 	].
@@ -3005,11 +3005,24 @@ SimpleStackBasedCogit >> isIntegerOrPointerType: aCifArgType [
 	Integer and pointer types are passes through the same registers.
 	
 	Refer to LibFFIConstants >> initialize to see all FFI_TYPEs"
+	
+	^ (self isIntegerType: aCifArgType) or: (aCifArgType = FFI_TYPE_POINTER)
+
+]
+
+{ #category : #'bytecode generators' }
+SimpleStackBasedCogit >> isIntegerType: aCifArgType [
+	"This method is supposed to be used for the external call through FFI.
+	Integer types are passed through the same registers.
+	
+	Refer to LibFFIConstants >> initialize to see all FFI_TYPEs"
 		
 	^ ((aCifArgType = FFI_TYPE_FLOAT) or: [  
 	(aCifArgType = FFI_TYPE_DOUBLE) or:[
 	(aCifArgType = FFI_TYPE_LONGDOUBLE) or: [
-	(aCifArgType = FFI_TYPE_VOID)]]]) not
+	(aCifArgType = FFI_TYPE_VOID) or: [ 
+	(aCifArgType = FFI_TYPE_POINTER)	
+		]]]]) not
 	
 
 ]
@@ -3191,7 +3204,7 @@ SimpleStackBasedCogit >> picAbortTrampolineFor: numArgs [
 	^cePICAbortTrampoline
 ]
 
-{ #category : #'bytecode generators' }
+{ #category : #'compile abstract instructions' }
 SimpleStackBasedCogit >> prepareExternalCallWithCif: aCif [
 	"According to the cif, we'll extract the values from the stack and put them in registers.
 	These registers will be chosen according to the calling convention, this is: they will be chosen

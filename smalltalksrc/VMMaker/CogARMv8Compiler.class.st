@@ -5465,6 +5465,32 @@ CogARMv8Compiler >> prefetchMemory: prefetchOperationFlags sourceRegister: sourc
 		bitOr: (prefetchOperationFlags bitAnd: 16r1f)))
 ]
 
+{ #category : #'as yet unclassified' }
+CogARMv8Compiler >> prepareForExternalCallWithCif: aCif [
+	"INSPIRACION: CogARMv8Compiler >> genMarshallNArgs: numArgs arg: regOrConst0 arg: regOrConst1 arg: regOrConst2 arg: regOrConst3"
+
+	<inline: true>
+	| numArgs |
+	numArgs := aCif numberArguments.
+
+	(cogit isIntegerOrPointerType: (aCif argTypeAt: 0) type)
+		ifTrue: [ "a.k.a. Arg0Reg"
+		cogit popIntoRegisterAndPreserveIt: CArg0Reg ]
+		ifFalse: [ "floats not supported yet." ].
+	numArgs = 1 ifTrue: [ ^ self ].
+
+	"a.k.a. Arg1Reg"
+	cogit popIntoRegisterAndPreserveIt: CArg1Reg.
+	numArgs = 2 ifTrue: [ ^ self ].
+
+	"a.k.a. ReceiverResultReg"
+	cogit popIntoRegisterAndPreserveIt: CArg2Reg.
+	numArgs = 3 ifTrue: [ ^ self ].
+
+	"a.k.a. ClassReg"
+	cogit popIntoRegisterAndPreserveIt: CArg3Reg
+]
+
 { #category : #'calling C function in Smalltalk stack' }
 CogARMv8Compiler >> prepareStackToCallCFunctionInSmalltalkStack: anObject [ 
 
