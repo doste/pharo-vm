@@ -4507,7 +4507,9 @@ CogX64Compiler >> padIfPossibleWithStopsFrom: startAddr to: endAddr [
 { #category : #abi }
 CogX64Compiler >> prepareForExternalCallWithCif: aCif [
 	"Argument registers for args 0 to 3 in SysV are RDI RSI RDX RCX, and in Win64 are RCX RDX R8 R9"
-	<inline: true>
+	
+	"<inline: true>     AVERRRRRRRR"
+	
 	| numArgs  numberOfFloatArgs |
 	SysV ifFalse: "WIN64 ABI allways reserve shadow space on the stack for callee to save up to 4 register parameters"
 		[cogit SubCq: 32 R: RSP].
