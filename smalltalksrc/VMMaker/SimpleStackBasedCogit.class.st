@@ -492,30 +492,34 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentPointer: aRegister [
 
 { #category : #'bytecode generators' }
 SimpleStackBasedCogit >> checkAndUnpackArgumentPointer: aRegister withIncomingFallbackJump: aFallbackJumpToMerge [
-	| mergePointToExit fallthroughJump fallbackJump fallthroughLabel jumpImmediate externalAddressIndex jumpBadClass |
 
+	| mergePointToExit fallthroughJump fallbackJump fallthroughLabel jumpImmediate externalAddressIndex jumpBadClass |
 	"Check that aRegister contains an ExternalAddress"
 	jumpImmediate := objectRepresentation genJumpImmediate: aRegister.
-																																							"NO HAY OPERACIONES DESTRUCTIVAS ACA"
-	externalAddressIndex := objectMemory rawHashBitsOf: objectMemory classExternalAddress.
-	objectRepresentation genGetClassIndexOfNonImm: aRegister into: TempReg.
+	"NO HAY OPERACIONES DESTRUCTIVAS ACA"
+	externalAddressIndex := objectMemory rawHashBitsOf:
+		                        objectMemory classExternalAddress.
+	objectRepresentation
+		genGetClassIndexOfNonImm: aRegister
+		into: TempReg.
 	self CmpCq: externalAddressIndex R: TempReg.
 	jumpBadClass := self JumpNonZero: 0.
-	
+
 	"At this point we are certain that aRegister contains an instance of ExternalAddress. We need to access the actual external address, to do that we acces to the first slot of the Oop given by aRegister"
-	self MoveMw: objectMemory baseHeaderSize r: aRegister R: aRegister. 
-	
+	self MoveMw: objectMemory baseHeaderSize r: aRegister R: aRegister.
+
 	"Everything went ok! We need to continue with the next instructions and not fall back to the slow case"
 	fallthroughJump := self Jump: 0.
-	
-	mergePointToExit := self Label.		
+
+	mergePointToExit := self Label.
 	jumpBadClass jmpTarget: mergePointToExit.
 	jumpImmediate jmpTarget: mergePointToExit.
 
-	aFallbackJumpToMerge jmpTarget: mergePointToExit.
-	
+	aFallbackJumpToMerge ifNotNil: [
+		aFallbackJumpToMerge jmpTarget: mergePointToExit ].
+
 	fallbackJump := self Jump: 0.
-	
+
 	fallthroughLabel := self Label.
 	fallthroughJump jmpTarget: fallthroughLabel.
 
@@ -930,111 +934,98 @@ SimpleStackBasedCogit >> checkAndUntagArgumentIn: aRegister forIntegerOfSize: nu
 			- value < 0 
 			- value > MAX value possible for numberOfBits
 	"
+
 	| jumpBadArg jumpBelowRep jumpAboveRep mergePointToExit fallthroughJump fallbackJump fallthroughLabel notJumpAbove exitWithoutModifyingRegister |
-	
-	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.					"NO destructiva"
-	
-	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister.					"SI es destructiva. el valor en aRegister queda shifteado.     ES LA UNICA OP DESTRUCTIVAA
+	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister. "NO destructiva"
+
+	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister. "SI es destructiva. el valor en aRegister queda shifteado.     ES LA UNICA OP DESTRUCTIVAA
 																													2 opciones para restaurar el valor: 1) usar un registro auxiliar 2) hacerle shift contrario al mismo registro"
-	
-	notJumpAbove := false.																						"<<<<<<<< esto no me gusta"
-	
-	[ signedOrNot ] 
-		caseOf: { 
-			[ 0 "unsigned"] -> [ 
-					[ numberOfBits ] 
-							caseOf: { 
-				
-								[ 8  ] -> [ 
-										self CmpCq: 0 R: aRegister.
-										jumpBelowRep := self JumpLess: 0.
-								
-										self CmpCq: UINT8_MAX R: aRegister.
-										jumpAboveRep := self JumpGreater: 0.
-								 ].
-								[ 16 ] -> [ 
-								
-										self CmpCq: 0 R: aRegister.
-										jumpBelowRep := self JumpLess: 0.
-								
-										self CmpCq: UINT16_MAX R: aRegister.
-										jumpAboveRep := self JumpGreater: 0.
-								 ].
-								[ 32 ] -> [ 
-										self CmpCq: 0 R: aRegister.
-										jumpBelowRep := self JumpLess: 0.
-								
-										self CmpCq: UINT32_MAX R: aRegister.
-										jumpAboveRep := self JumpGreater: 0.
-								 ].
-								[ 64 ] -> [ 
-										self CmpCq: 0 R: aRegister.
-										jumpBelowRep := self JumpLess: 0.
-								
-										"self CmpCq: UINT64_MAX R: aRegister.
+
+	notJumpAbove := false. "<<<<<<<< esto no me gusta"
+
+	[ signedOrNot ]
+		caseOf: {
+				([ 0 "unsigned" ] -> [
+				 [ numberOfBits ]
+					 caseOf: {
+							 ([ 8 ] -> [
+							  self CmpCq: 0 R: aRegister.
+							  jumpBelowRep := self JumpLess: 0.
+
+							  self CmpCq: UINT8_MAX R: aRegister.
+							  jumpAboveRep := self JumpGreater: 0 ]).
+							 ([ 16 ] -> [
+							  self CmpCq: 0 R: aRegister.
+							  jumpBelowRep := self JumpLess: 0.
+
+							  self CmpCq: UINT16_MAX R: aRegister.
+							  jumpAboveRep := self JumpGreater: 0 ]).
+							 ([ 32 ] -> [
+							  self CmpCq: 0 R: aRegister.
+							  jumpBelowRep := self JumpLess: 0.
+
+							  self CmpCq: UINT32_MAX R: aRegister.
+							  jumpAboveRep := self JumpGreater: 0 ]).
+							 ([ 64 ] -> [
+							  self CmpCq: 0 R: aRegister.
+							  jumpBelowRep := self JumpLess: 0.
+
+							  "self CmpCq: UINT64_MAX R: aRegister.
 										jumpAboveRep := self JumpGreater: 0.					>>>>>>>>>>>>>>>>>>>>>> TIENE SENTIDO CHEQUEAR ESTO???"
-										notJumpAbove := true.
-								 ].
-							 } otherwise: [ ^ nil ]
-			
-			 ].
-			[ 1 "unsigned" ] -> [ 
-					[ numberOfBits ] 
-							caseOf: {
-								
-								[ 8  ] -> [ 
-										self CmpCq: INT8_MIN R: aRegister.
-										jumpBelowRep := self JumpLess: 0.
-	
-										self CmpCq: INT8_MAX R: aRegister.
-										jumpAboveRep := self JumpGreater: 0.
-								 ].
-								[ 16 ] -> [ 
-										self CmpCq: INT16_MIN R: aRegister.
-										jumpBelowRep := self JumpLess: 0.
-	
-										self CmpCq: INT16_MAX R: aRegister.
-										jumpAboveRep := self JumpGreater: 0.
-								 ].
-								[ 32 ] -> [ 
-										self CmpCq: INT32_MIN R: aRegister.
-										jumpBelowRep := self JumpLess: 0.
-	
-										self CmpCq: INT32_MAX R: aRegister.
-										jumpAboveRep := self JumpGreater: 0.
-								 ].
-								[ 64 ] -> [ 
-										self CmpCq: INT64_MIN R: aRegister.
-										jumpBelowRep := self JumpLess: 0.
-	
-										self CmpCq: INT64_MAX R: aRegister.
-										jumpAboveRep := self JumpGreater: 0.
-								 ].
-							 } otherwise: [ ^ nil ]
-			 ]
-		} otherwise: [ ^ nil ].
-	
-	
+							  notJumpAbove := true ]) }
+					 otherwise: [ ^ nil ] ]).
+				([ 1 "unsigned" ] -> [
+				 [ numberOfBits ]
+					 caseOf: {
+							 ([ 8 ] -> [
+							  self CmpCq: INT8_MIN R: aRegister.
+							  jumpBelowRep := self JumpLess: 0.
+
+							  self CmpCq: INT8_MAX R: aRegister.
+							  jumpAboveRep := self JumpGreater: 0 ]).
+							 ([ 16 ] -> [
+							  self CmpCq: INT16_MIN R: aRegister.
+							  jumpBelowRep := self JumpLess: 0.
+
+							  self CmpCq: INT16_MAX R: aRegister.
+							  jumpAboveRep := self JumpGreater: 0 ]).
+							 ([ 32 ] -> [
+							  self CmpCq: INT32_MIN R: aRegister.
+							  jumpBelowRep := self JumpLess: 0.
+
+							  self CmpCq: INT32_MAX R: aRegister.
+							  jumpAboveRep := self JumpGreater: 0 ]).
+							 ([ 64 ] -> [
+							  self CmpCq: INT64_MIN R: aRegister.
+							  jumpBelowRep := self JumpLess: 0.
+
+							  self CmpCq: INT64_MAX R: aRegister.
+							  jumpAboveRep := self JumpGreater: 0 ]) }
+					 otherwise: [ ^ nil ] ]) }
+		otherwise: [ ^ nil ].
+
+
 	"Everything went ok! We need to continue with the next instructions and not fall back to the slow case"
 	fallthroughJump := self Jump: 0.
-	
-	mergePointToExit := self Label.				
-	"fallbackJumpToMerge is a fallback jump so we need to set its target to our 'failure' case"
-	fallbackJumpToMerge jmpTarget: mergePointToExit.
+
+	mergePointToExit := self Label.
 
 	jumpBelowRep jmpTarget: mergePointToExit.
-	notJumpAbove ifFalse: [  
-	jumpAboveRep jmpTarget: mergePointToExit. ].
+	notJumpAbove ifFalse: [ jumpAboveRep jmpTarget: mergePointToExit ].
 
 	"Undo the untagging of the value in aRegister. The checks were not successfull so we need to leave aRegister as it was before.
 	BUT only if we already modified aRegister. In the case of jumpBadArg we have not touched the register yet."
 	objectRepresentation genConvertIntegerToSmallIntegerInReg: aRegister.
-	
+
 	exitWithoutModifyingRegister := self Label.
 	jumpBadArg jmpTarget: exitWithoutModifyingRegister.
+	
+	"fallbackJumpToMerge is a fallback jump so we need to set its target to our 'failure' case"
+	fallbackJumpToMerge ifNotNil: [
+		fallbackJumpToMerge jmpTarget: exitWithoutModifyingRegister ].
 
 	fallbackJump := self Jump: 0.
-	
+
 	fallthroughLabel := self Label.
 	fallthroughJump jmpTarget: fallthroughLabel.
 
