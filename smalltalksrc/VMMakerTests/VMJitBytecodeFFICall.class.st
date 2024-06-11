@@ -227,7 +227,7 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithComplexExternalFunctionAndPreserv
 				"This instruction should not be called"
             stopAddress := cogit Stop.]
         bytecodes: 1.
-
+1halt.
 	self runFrom: addr until: stopAddress address . 
 
 	self assert: machineSimulator receiverRegisterValue equals: (memory integerObjectOf: (7 + 6 + 5 + 4 + 3 + 2 + 1)).
@@ -277,7 +277,6 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunction [
 			        "This instruction should not be called"
 			        stopAddress := cogit Stop ]
 		        bytecodes: 1.
-
 	self runFrom: addr until: stopAddress address.
 1halt. "self openMachineDebuggerAt: addr."
 	self
@@ -286,9 +285,60 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunction [
 ]
 
 { #category : #tests }
-VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunctionVoidPointer [
+VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunctionWithTwoArgs [
 
-	| tfExternalFunction stopAddress addr methodObject pointeeValue somePointer |
+	| tfExternalFunction stopAddress addr methodObject |
+	"Test that the C function is called correctly and that the bytecode doesn't mess the stack up, this is: it pops the arguments and pushes the result."
+	tfExternalFunction := self
+		                      createExternalFunctionForCogitBlock: [
+			                       cogit MoveR: Arg0Reg R: TempReg.
+										  cogit AddR: Arg1Reg R: TempReg. 
+			                       cogit RetN: 0 ]
+		                      withArgumentTypes:
+		                      { interpreter libFFI uint64 . interpreter libFFI uint64 }
+		                      withReturnType: interpreter libFFI void.
+
+	methodObject := methodBuilder newMethod
+		                literals: {
+				                memory nilObject.
+				                tfExternalFunction };
+		                buildMethod.
+
+	addr := self
+		        compile: [
+			        cogit methodOrBlockNumTemps: 1.
+			        cogit methodOrBlockNumArgs: 1.
+			        cogit initSimStackForFramefulMethod: 0.
+
+
+			        cogit methodObj: methodObject.
+			        cogit ssPushConstant: (memory integerObjectOf: 10).
+			        cogit ssPushConstant: (memory integerObjectOf: 20).
+			        cogit byte0: 230.
+			        cogit byte1: 1.
+			        cogit genBytecodeFFICall.
+
+			        "The bytecode (as all bytecodes) will push its result to the stack. We move it to a register so we can then assert about its value."
+
+			        "cogit PopR: ReceiverResultReg."
+			        cogit ssTop moveToReg: ReceiverResultReg.
+			        cogit ssPop: 1.
+
+			        "This instruction should not be called"
+			        stopAddress := cogit Stop ]
+		        bytecodes: 1.
+		1halt.
+	self runFrom: addr until: stopAddress address.
+1halt. "self openMachineDebuggerAt: addr."
+	self
+		assert: machineSimulator receiverRegisterValue
+		equals: (memory integerObjectOf: 30)
+]
+
+{ #category : #tests }
+VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionVoidPointerExtractsExternalAddress [
+
+	| tfExternalFunction stopAddress addr methodObject actualExternalAddress anExternalAddressObject |
 	"Test the prototype void fn(pointer) works.
 	
 	The external function to test doesn't return anything but will just copy the pointer given as argument."
@@ -307,19 +357,18 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunctionVoidPointer
 				                tfExternalFunction };
 		                buildMethod.
 	
-	pointeeValue := memory integerObjectOf: 111.
-	somePointer := self newExternalAddress: pointeeValue.
+	actualExternalAddress := memory integerObjectOf: 16rffff.
+	anExternalAddressObject := self newExternalAddress: actualExternalAddress.
 
 	addr := self
 		        compile: [
 			        cogit methodOrBlockNumTemps: 1.
 			        cogit methodOrBlockNumArgs: 1.
+					  cogit needsFrame: true. "<<<<<< ojo"
 			        cogit initSimStackForFramefulMethod: 0.
-
-
 			        cogit methodObj: methodObject.
 			    
-					  cogit ssPushConstant: somePointer.
+					  cogit ssPushConstant: anExternalAddressObject.
 					  cogit byte0: 230.
 			        cogit byte1: 1.
 			        cogit genBytecodeFFICall.
@@ -327,10 +376,56 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunctionVoidPointer
 			        "This instruction should not be called"
 			        stopAddress := cogit Stop ]
 		        bytecodes: 1.
-
+1halt. "self openMachineDebuggerAt: addr"
 	self runFrom: addr until: stopAddress address.
 
 	self
 		assert: machineSimulator receiverRegisterValue
-		equals: pointeeValue.
+		equals: actualExternalAddress.
+]
+
+{ #category : #tests }
+VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionVoidPointerValidatesExternalAddress [
+
+	| tfExternalFunction stopAddress addr methodObject anInvalidExternalAddress |
+	"Test the prototype void fn(pointer) works.
+	
+	The external function to test doesn't return anything but will just copy the pointer given as argument."
+	tfExternalFunction := self
+		                      createExternalFunctionForCogitBlock: [
+										cogit MoveR: Arg0Reg R: ReceiverResultReg.
+										cogit RetN: 0
+			                      ]
+		                      withArgumentTypes:
+		                         { interpreter libFFI pointer }
+		                      withReturnType: interpreter libFFI void.
+
+	methodObject := methodBuilder newMethod
+		                literals: {
+				                memory nilObject.   "this would be the runner"
+				                tfExternalFunction };
+		                buildMethod.
+	
+	anInvalidExternalAddress := memory integerObjectOf: 16rffff.
+
+	addr := self
+		        compile: [
+			        cogit methodOrBlockNumTemps: 1.
+			        cogit methodOrBlockNumArgs: 1.
+					  cogit needsFrame: true. "<<<<<< ojo"
+			        cogit initSimStackForFramefulMethod: 0.
+			        cogit methodObj: methodObject.
+			    
+					  cogit ssPushConstant: anInvalidExternalAddress.
+					  cogit byte0: 230.
+			        cogit byte1: 1.
+			        cogit genBytecodeFFICall.
+
+			        "This instruction should not be called"
+			        stopAddress := cogit Stop ]
+		        bytecodes: 1.
+1halt. "self openMachineDebuggerAt: addr"
+	self runFrom:  0 until: 0  .																							"TODO: como hacer para obtener el Stop que esta 'adentro' de genBytecodeFFICall"
+
+	self assert: machineSimulator instructionPointerRegisterValue equals:  0
 ]

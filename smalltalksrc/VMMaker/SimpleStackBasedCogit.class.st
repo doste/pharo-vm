@@ -367,53 +367,56 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentInIndex: indexOfArg forExternalFu
 
 { #category : #'bytecode generators' }
 SimpleStackBasedCogit >> checkAndUnpackArgumentInIndex: indexOfArg forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif usingRegister: aRegister withIncomingFallbackJump: aFallbackJumpToMerge [
-        
-        | numberOfBits signedOrNot |
-numberOfBits := 0.
+
+	| numberOfBits signedOrNot |
+	numberOfBits := 0.
 	signedOrNot := -1.
 
-        self assert: (indexOfArg > 0 and: (indexOfArg < aCif nargs)).
+	self assert: (indexOfArg > 0 and: indexOfArg < aCif nargs).
 
-	[ ((aCif argTypeAt: indexOfArg) type) ]
-		caseOf:
-			{([ FFI_TYPE_POINTER ] 
-				-> [ ^self checkAndUnpackArgumentPointer: aRegister withIncomingFallbackJump: aFallbackJumpToMerge]).
-			([ FFI_TYPE_STRUCT ]
-				-> [ ]).
-			([ FFI_TYPE_FLOAT ]
-				-> [ ]).
-			([ FFI_TYPE_DOUBLE ]
-				-> [ ]).
-			([ FFI_TYPE_SINT8 ]
-				-> [  numberOfBits := 8 . signedOrNot := 1]).
-			([ FFI_TYPE_UINT8 ]
-				-> [   numberOfBits := 8 . signedOrNot := 0]).
-			([ FFI_TYPE_SINT16 ]
-				-> [  numberOfBits := 16 . signedOrNot := 1]).
-			([ FFI_TYPE_UINT16 ]
-				-> [  numberOfBits := 16 . signedOrNot := 0]).
-			([ FFI_TYPE_SINT32 ]
-				-> [ numberOfBits := 32 . signedOrNot := 1]).
-			([ FFI_TYPE_UINT32 ]
-				-> [  numberOfBits := 32 . signedOrNot := 0]).
-			([ FFI_TYPE_SINT64 ]
-				-> [  numberOfBits := 64 . signedOrNot := 1]).
-			([ FFI_TYPE_UINT64 ]
-				-> [  numberOfBits := 64 . signedOrNot := 0])}
-				
+	[ (aCif argTypeAt: indexOfArg) type ]
+		caseOf: {
+				([ FFI_TYPE_POINTER ] -> [
+				 ^ self
+					   checkAndUnpackArgumentPointer: aRegister
+					   withIncomingFallbackJump: aFallbackJumpToMerge ]).
+				([ FFI_TYPE_STRUCT ] -> [  ]).
+				([ FFI_TYPE_FLOAT ] -> [  ]).
+				([ FFI_TYPE_DOUBLE ] -> [  ]).
+				([ FFI_TYPE_SINT8 ] -> [
+				 numberOfBits := 8.
+				 signedOrNot := 1 ]).
+				([ FFI_TYPE_UINT8 ] -> [
+				 numberOfBits := 8.
+				 signedOrNot := 0 ]).
+				([ FFI_TYPE_SINT16 ] -> [
+				 numberOfBits := 16.
+				 signedOrNot := 1 ]).
+				([ FFI_TYPE_UINT16 ] -> [
+				 numberOfBits := 16.
+				 signedOrNot := 0 ]).
+				([ FFI_TYPE_SINT32 ] -> [
+				 numberOfBits := 32.
+				 signedOrNot := 1 ]).
+				([ FFI_TYPE_UINT32 ] -> [
+				 numberOfBits := 32.
+				 signedOrNot := 0 ]).
+				([ FFI_TYPE_SINT64 ] -> [
+				 numberOfBits := 64.
+				 signedOrNot := 1 ]).
+				([ FFI_TYPE_UINT64 ] -> [
+				 numberOfBits := 64.
+				 signedOrNot := 0 ]) }
 		otherwise: [ ^ nil ].
 		
-	"Si caemos en este caso es porque el primer arg es un entero osea sabemos que en RDI hay un entero"
+	(numberOfBits = 0 and: (signedOrNot = -1)) ifTrue: [ ^ nil ].
+
+	^ self
+		  checkAndUntagArgumentIn: aRegister
+		  forIntegerOfSize: numberOfBits
+		  signed: signedOrNot
+		  withIncomingFallbackJump: aFallbackJumpToMerge
 	
-	"Si ambos args son enteros el 1 va a Arg0Reg y el 2 a Arg1Reg CASO FACIL"
-	^ self checkAndUntagArgumentIn: aRegister
-                        forIntegerOfSize: 
-                                numberOfBits 
-                        signed: 
-                                signedOrNot 
-                        withIncomingFallbackJump:
-                                aFallbackJumpToMerge
-                                "(self checkAndUnpackArgumentInIndex: 1 forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif usingRegister: [SIGUIENTE REGISTRO A aRegister] )"
 ]
 
 { #category : #'bytecode generators' }
@@ -2185,47 +2188,59 @@ SimpleStackBasedCogit >> genBlockReturn [
 
 { #category : #'bytecode generators' }
 SimpleStackBasedCogit >> genBytecodeFFICall [
+
 	| n aTFExternalFunction runner externalFunctionAddr cif failure jumpContinue continueToNextBytecode jumpSomeError |
-	
-	n :=  byte1.
+	n := byte1.
 	aTFExternalFunction := self getLiteral: (n bitAnd: 2r1111).
-	runner := self getLiteral: ((n >> 4) bitAnd: 2r1111).
-	
+	runner := self getLiteral: (n >> 4 bitAnd: 2r1111).
+
 	externalFunctionAddr := coInterpreter getHandler: aTFExternalFunction.
-	externalFunctionAddr ifNil: [ ^ self fallbackToPrimitiveWithFunction: nil andCif: nil usingRunner: runner ]. 											
-	
-	cif := self getCifFromTFExternalFunction: aTFExternalFunction.	
-	cif ifNil: [ ^ self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: nil usingRunner: runner ].												
-									
-	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [
-		"Unsupported bytecode. We need to do a message send 
+	externalFunctionAddr ifNil: [
+		^ self
+			  fallbackToPrimitiveWithFunction: nil
+			  andCif: nil
+			  usingRunner: runner ].
+
+	cif := self getCifFromTFExternalFunction: aTFExternalFunction.
+	cif ifNil: [
+		^ self
+			  fallbackToPrimitiveWithFunction: aTFExternalFunction
+			  andCif: nil
+			  usingRunner: runner ].
+
+	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [ "Unsupported bytecode. We need to do a message send 
 			runner invokeFunction: function withArguments: aCollection
 		This means that we need to unpack all arguments in the stack into an array, push everything to the stack and do a message send"
-		^ self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: cif usingRunner: runner.																	
-	].
-	
-	"Preserve Arg0Reg because it corresponds to the first C argument" 
-	self prepareExternalCallWithCif: cif.        																																	
-	
+		^ self
+			  fallbackToPrimitiveWithFunction: aTFExternalFunction
+			  andCif: cif
+			  usingRunner: runner ].
+
+	"Preserve Arg0Reg because it corresponds to the first C argument"
+	self prepareExternalCallWithCif: cif.
+
 	"Verify that the argument(s) we receive for the C function complies with those specified in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
-	jumpSomeError := self checkAndUnpackArgumentsForExternalFunctionWithCif: cif.
-	
+	jumpSomeError := self
+		                 checkAndUnpackArgumentsForExternalFunctionWithCif:
+		                 cif.
+	self assert: jumpSomeError isNotNil.
+
 	self CallFullRT: externalFunctionAddr.
-	self handleReturnFromExternalFunctionWithCif: cif.																															
-	
+	self handleReturnFromExternalFunctionWithCif: cif.
+
 	jumpContinue := self Jump: 0.
-	
+
 	failure := self Label.
 	jumpSomeError jmpTarget: failure.
-	
+
 	self Stop.
-	
+
 	continueToNextBytecode := self Label.
 	jumpContinue jmpTarget: continueToNextBytecode.
-	
-	
-	^0																			
+
+
+	^ 0
 ]
 
 { #category : #'bytecode generators' }
