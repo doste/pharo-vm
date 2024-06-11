@@ -567,38 +567,39 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentsForExternalFunctionWithCif: aCif
 	[ aCif numberArguments ]
 		caseOf: {
 				([ 1 ]
-				 -> [ "^ self checkAndUnpackArgumentsForExternalFunctionWithOneArgWithCif: aCif"
+				 -> [ 	"si es uno solo -> int/pointer viene por Arg0Reg (RDI) . Cogit ya nos resuelve tema ABI con solo usar Arg0Reg.
+						Pero para float ???"
 					 ^ self
 						   checkAndUnpackArgumentInIndex: 0
 						   forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
 						   usingRegister: Arg0Reg
 						   withIncomingFallbackJump: nil ]).
 				([ 2 ]
-				 -> [ "^ self checkAndUnpackArgumentsForExternalFunctionWithTwoArgsWithCif: aCif"
+				 -> [ 
 					 ^ self
 						   checkAndUnpackArgumentInIndex: 0
 						   forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
-						   usingRegister: Arg0Reg
+						   usingRegister: "Arg0Reg" (self getRegisterForArgumentInIndex: 0 fromCif: aCif)
 						   withIncomingFallbackJump: (self
 								    checkAndUnpackArgumentInIndex: 1
 								    forExternalFunctionWithOutgoingJumpFallbackAndWithCif:
 								    aCif
-								    usingRegister: Arg1Reg
+								    usingRegister: "Arg1Reg" (self getRegisterForArgumentInIndex: 1 fromCif: aCif)
 								    withIncomingFallbackJump: nil) ]).
 				([ 3 ] -> [
 				 ^ self
 					   checkAndUnpackArgumentInIndex: 0
 					   forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
-					   usingRegister: Arg0Reg
+					   usingRegister: "Arg0Reg" (self getRegisterForArgumentInIndex: 0 fromCif: aCif)
 					   withIncomingFallbackJump: (self
 							    checkAndUnpackArgumentInIndex: 1
 							    forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
-							    usingRegister: Arg1Reg
+							    usingRegister: "Arg1Reg" (self getRegisterForArgumentInIndex: 1 fromCif: aCif)
 							    withIncomingFallbackJump: (self
 									     checkAndUnpackArgumentInIndex: 2
 									     forExternalFunctionWithOutgoingJumpFallbackAndWithCif:
 									     aCif
-									     usingRegister: ReceiverResultReg
+									     usingRegister: "ReceiverResultReg" (self getRegisterForArgumentInIndex: 2 fromCif: aCif)
 									     withIncomingFallbackJump: nil)) ]) }
 		otherwise: [ ^ nil ]
 ]
@@ -3965,6 +3966,93 @@ SimpleStackBasedCogit >> getCifFromTFExternalFunction: aTFExternalFunction [
 	cif := coInterpreter getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction).	
 	
 	^ cif
+]
+
+{ #category : #'bytecode generators' }
+SimpleStackBasedCogit >> getRegisterForArgumentInIndex: indexOfArg fromCif: aCif [
+
+	"esto es para SysV!!!"
+
+	<var: #aCif type: #'ffi_cif *'>
+	self assert: (indexOfArg > 0 and: indexOfArg < aCif numberArguments).
+
+	[ aCif numberArguments ]
+		caseOf: {
+				([ 1 ] -> [ ^ Arg0Reg ]).
+				([ 2 ] -> [ "posibles combinaciones:    1) i/p i/p 
+																   2) i/p f 
+														 			3) f i/p
+														 			4) f f "
+					 (self isIntegerOrPointerType: ((aCif argTypeAt: 0) type)) ifTrue: [ 
+							 (self isIntegerOrPointerType: ((aCif argTypeAt: 1) type)) ifTrue: [ 
+									"caso 1) -> primer arg va en RDI y el segundo en RSI. entonces devolvemos acorde a cual nos esta pidiendo"
+									(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ ^ Arg1Reg ]
+								] ifFalse: [ 
+									"caso 2) -> primer arg va en RDI y el segundo en RSI. entonces devolvemos acorde a cual nos esta pidiendo"
+									(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ "^ POR DONDE VAYA EL PRIMER FLOAT" ]
+								 ]
+						 ] ifFalse: [ 
+								(self isIntegerOrPointerType: ((aCif argTypeAt: 1) type)) ifTrue: [ 
+									"caso 3)"
+									(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT"] ifFalse: [ ^ Arg0Reg ]
+								] ifFalse: [ 
+									"caso 4)"
+									(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT"] ifFalse: [ "^ POR DONDE VAYA EL SEGUNDO FLOAT" ]
+								 ]
+						 ]	
+					 ]).
+				([ 3 ] -> [ "posibles combinaciones:    1) i/p  i/p  i/p
+																   2) i/p  i/p   f
+														 			3) i/p  f     i/p
+																	4) i/p  f     f
+																	5) f    i/p   i/p
+														 			6) f    i/p   f 
+																	7) f    f    i/p
+																	8) f    f     f"
+					 (self isIntegerOrPointerType: ((aCif argTypeAt: 0) type)) ifTrue: [ 
+							 (self isIntegerOrPointerType: ((aCif argTypeAt: 1) type)) ifTrue: [ 	
+									(self isIntegerOrPointerType: ((aCif argTypeAt: 2) type)) ifTrue: [
+											"caso 1) -> primer arg va en RDI y el segundo en RSI y el tercero en RDX"
+											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg1Reg ] ifFalse: [ ^ ReceiverResultReg  ] ]
+										 ] ifFalse: [ 
+											"caso 2) -> primer arg va en RDI y el segundo en RSI."
+											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg1Reg ] ifFalse: [ "^ POR DONDE VAYA EL PRIMER FLOAT"  ] ]
+										 ].
+									
+									(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ ^ Arg1Reg ]
+								] ifFalse: [ 
+									(self isIntegerOrPointerType: ((aCif argTypeAt: 2) type)) ifTrue: [
+											"caso 3) "
+											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT" ] ifFalse: [ ^ Arg1Reg   ] ]
+										 ] ifFalse: [ 
+											"caso 4)"
+											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT" ] ifFalse: [ "^ POR DONDE VAYA EL SEGUNDO FLOAT"  ] ]
+										 ].
+								 ]
+						 ] ifFalse: [ 
+							(self isIntegerOrPointerType: ((aCif argTypeAt: 1) type)) ifTrue: [ 	
+									(self isIntegerOrPointerType: ((aCif argTypeAt: 2) type)) ifTrue: [
+											"caso 5)"
+											(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT"] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg0Reg ] ifFalse: [ ^ Arg1Reg  ] ]
+										 ] ifFalse: [ 
+											"caso 6)"
+											(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT" ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg0Reg ] ifFalse: [ "^ POR DONDE VAYA EL SEGUNDO FLOAT"  ] ]
+										 ].
+								] ifFalse: [ 
+									(self isIntegerOrPointerType: ((aCif argTypeAt: 2) type)) ifTrue: [
+											"caso 7) "
+											(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT"] ifFalse: [ (indexOfArg = 1) ifTrue: [ "^ POR DONDE VAYA EL SEGUNDO FLOAT" ] ifFalse: [ ^ Arg0Reg   ] ]
+										 ] ifFalse: [ 
+											"caso 8)"
+											(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT" ] ifFalse: [ (indexOfArg = 1) ifTrue: [ "^ POR DONDE VAYA EL SEGUNDO FLOAT" ] ifFalse: [ "^ POR DONDE VAYA EL TERCER FLOAT"  ] ]
+										 ].
+								 ]
+					
+						 ]
+					
+					
+					 ]) }
+		otherwise: [ ^ nil ]
 ]
 
 { #category : #'simulation only' }
