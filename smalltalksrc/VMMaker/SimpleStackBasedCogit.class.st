@@ -374,7 +374,7 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentPointer: aRegister [
 { #category : #'bytecode generators' }
 SimpleStackBasedCogit >> checkAndUnpackArgumentUsingWithCif: aCif withFallbackJump: fallbackJumpToMerge [  				"MOMENTANEAAAAAAAA"
 
-	| jumpBadArg jumpBelowRep fallthroughJump mergePointToExit fallbackJump fallthroughLabel |
+	| jumpBadArg jumpBelowRep fallthroughJump mergePointToExit fallbackJump fallthroughLabel exitWithoutModifyingRegister |
 	jumpBadArg := objectRepresentation genJumpNotSmallInteger: Arg0Reg.				
 	
 	objectRepresentation genConvertSmallIntegerToIntegerInReg: Arg0Reg.					
@@ -388,11 +388,14 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentUsingWithCif: aCif withFallbackJu
 	mergePointToExit := self Label.		
 	fallbackJumpToMerge jmpTarget: mergePointToExit.				"<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 			
-	jumpBadArg jmpTarget: mergePointToExit.
+	"jumpBadArg jmpTarget: mergePointToExit."
 	jumpBelowRep jmpTarget: mergePointToExit.
 
 	"Undo the untagging of the value in aRegister. The checks were not successfull so we need to leave aRegister as it was before"
 	objectRepresentation genConvertIntegerToSmallIntegerInReg: Arg0Reg.
+	
+	exitWithoutModifyingRegister := self Label.
+	jumpBadArg jmpTarget: exitWithoutModifyingRegister .
 
 	fallbackJump := self Jump: 0.
 	
@@ -631,7 +634,7 @@ SimpleStackBasedCogit >> checkAndUntagArgumentIn: aRegister forIntegerOfSize: nu
 			- value < 0 
 			- value > MAX value possible for numberOfBits
 	"
-	| jumpBadArg jumpBelowRep jumpAboveRep mergePointToExit fallthroughJump fallbackJump fallthroughLabel notJumpAbove |
+	| jumpBadArg jumpBelowRep jumpAboveRep mergePointToExit fallthroughJump fallbackJump fallthroughLabel notJumpAbove exitWithoutModifyingRegister |
 	
 	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.					"NO destructiva"
 	
@@ -720,14 +723,18 @@ SimpleStackBasedCogit >> checkAndUntagArgumentIn: aRegister forIntegerOfSize: nu
 	fallthroughJump := self Jump: 0.
 	
 	mergePointToExit := self Label.				
-	jumpBadArg jmpTarget: mergePointToExit.
+	"jumpBadArg jmpTarget: mergePointToExit."
 	jumpBelowRep jmpTarget: mergePointToExit.
 	
 	notJumpAbove ifFalse: [  
 	jumpAboveRep jmpTarget: mergePointToExit. ].
 
-	"Undo the untagging of the value in aRegister. The checks were not successfull so we need to leave aRegister as it was before"
+	"Undo the untagging of the value in aRegister. The checks were not successfull so we need to leave aRegister as it was before.
+	BUT only if we already modified aRegister. In the case of jumpBadArg we have not touched the register yet."
 	objectRepresentation genConvertIntegerToSmallIntegerInReg: aRegister.
+	
+	exitWithoutModifyingRegister := self Label.
+	jumpBadArg jmpTarget: exitWithoutModifyingRegister .
 
 	fallbackJump := self Jump: 0.
 	

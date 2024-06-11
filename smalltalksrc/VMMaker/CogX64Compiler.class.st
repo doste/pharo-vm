@@ -4511,6 +4511,9 @@ CogX64Compiler >> prepareForExternalCallWithCif: aCif [
 	"<inline: true>     AVERRRRRRRR"
 	
 	| numArgs  numberOfFloatArgs |
+	
+	<var: #aCif type: #'ffi_cif *'>
+	
 	SysV ifFalse: "WIN64 ABI allways reserve shadow space on the stack for callee to save up to 4 register parameters"
 		[cogit SubCq: 32 R: RSP].
 	
