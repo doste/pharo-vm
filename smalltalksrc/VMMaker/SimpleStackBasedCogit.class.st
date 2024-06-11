@@ -298,6 +298,125 @@ SimpleStackBasedCogit >> ceShortCutTraceStore: aProcessorSimulationTrap [
 ]
 
 { #category : #'bytecode generators' }
+SimpleStackBasedCogit >> checkAndUnpackArgumentForExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif [
+	<var: #aCif type: #'ffi_cif *'>
+	"Verify if the argument(s) we receive for the C function comply with the ones describes in the cif.
+	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
+	
+	self assert: aCif numberArguments = 1.
+	
+	"Here we have just one argument. Looking at the cif we should know in which register that argument is.
+	An integer or pointer argument we know it's going to be in Arg0Reg [Regardless the ABI]"
+	
+
+	^ self checkAndUnpackArgumentOfType: ((aCif argTypeAt: 0) type) forExternalFunctionUsing: Arg0Reg
+
+
+
+	
+	
+	
+	
+	
+
+]
+
+{ #category : #'bytecode generators' }
+SimpleStackBasedCogit >> checkAndUnpackArgumentForExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif usingRegister: aRegister [
+	<var: #aCif type: #'ffi_cif *'>
+	"Verify if the argument(s) we receive for the C function comply with the ones describes in the cif.
+	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
+	
+	self assert: aCif numberArguments = 1.
+	
+	"Here we have just one argument. Looking at the cif we should know in which register that argument is.
+	An integer or pointer argument we know it's going to be in Arg0Reg [Regardless the ABI]"
+	
+
+	^ self checkAndUnpackArgumentOfType: ((aCif argTypeAt: 0) type) forExternalFunctionUsing: aRegister
+
+
+
+	
+	
+	
+	
+	
+
+]
+
+{ #category : #'bytecode generators' }
+SimpleStackBasedCogit >> checkAndUnpackArgumentInIndex: indexOfArg forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif usingRegister: aRegister [
+	<var: #aCif type: #'ffi_cif *'>
+	"indexOfArg is 0-based"
+	
+	"Verify if the argument(s) we receive for the C function comply with the ones describes in the cif"
+	
+
+	^ self checkAndUnpackArgumentOfType: ((aCif argTypeAt: indexOfArg) type) forExternalFunctionUsing: aRegister
+
+
+
+	
+	
+	
+	
+	
+
+]
+
+{ #category : #'bytecode generators' }
+SimpleStackBasedCogit >> checkAndUnpackArgumentInIndex: indexOfArg forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif usingRegister: aRegister withIncomingFallbackJump: aFallbackJumpToMerge [
+        
+        | numberOfBits signedOrNot |
+numberOfBits := 0.
+	signedOrNot := -1.
+
+        self assert: (indexOfArg > 0 and: (indexOfArg < aCif nargs)).
+
+	[ ((aCif argTypeAt: indexOfArg) type) ]
+		caseOf:
+			{([ FFI_TYPE_POINTER ] 
+				-> [ ^self checkAndUnpackArgumentPointer: aRegister withIncomingFallbackJump: aFallbackJumpToMerge]).
+			([ FFI_TYPE_STRUCT ]
+				-> [ ]).
+			([ FFI_TYPE_FLOAT ]
+				-> [ ]).
+			([ FFI_TYPE_DOUBLE ]
+				-> [ ]).
+			([ FFI_TYPE_SINT8 ]
+				-> [  numberOfBits := 8 . signedOrNot := 1]).
+			([ FFI_TYPE_UINT8 ]
+				-> [   numberOfBits := 8 . signedOrNot := 0]).
+			([ FFI_TYPE_SINT16 ]
+				-> [  numberOfBits := 16 . signedOrNot := 1]).
+			([ FFI_TYPE_UINT16 ]
+				-> [  numberOfBits := 16 . signedOrNot := 0]).
+			([ FFI_TYPE_SINT32 ]
+				-> [ numberOfBits := 32 . signedOrNot := 1]).
+			([ FFI_TYPE_UINT32 ]
+				-> [  numberOfBits := 32 . signedOrNot := 0]).
+			([ FFI_TYPE_SINT64 ]
+				-> [  numberOfBits := 64 . signedOrNot := 1]).
+			([ FFI_TYPE_UINT64 ]
+				-> [  numberOfBits := 64 . signedOrNot := 0])}
+				
+		otherwise: [ ^ nil ].
+		
+	"Si caemos en este caso es porque el primer arg es un entero osea sabemos que en RDI hay un entero"
+	
+	"Si ambos args son enteros el 1 va a Arg0Reg y el 2 a Arg1Reg CASO FACIL"
+	^ self checkAndUntagArgumentIn: aRegister
+                        forIntegerOfSize: 
+                                numberOfBits 
+                        signed: 
+                                signedOrNot 
+                        withIncomingFallbackJump:
+                                aFallbackJumpToMerge
+                                "(self checkAndUnpackArgumentInIndex: 1 forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif usingRegister: [SIGUIENTE REGISTRO A aRegister] )"
+]
+
+{ #category : #'bytecode generators' }
 SimpleStackBasedCogit >> checkAndUnpackArgumentOfType: typeOfArgument forExternalFunctionUsing: aRegister [
 
 	[ typeOfArgument ]
@@ -372,6 +491,38 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentPointer: aRegister [
 ]
 
 { #category : #'bytecode generators' }
+SimpleStackBasedCogit >> checkAndUnpackArgumentPointer: aRegister withIncomingFallbackJump: aFallbackJumpToMerge [
+	| mergePointToExit fallthroughJump fallbackJump fallthroughLabel jumpImmediate externalAddressIndex jumpBadClass |
+
+	"Check that aRegister contains an ExternalAddress"
+	jumpImmediate := objectRepresentation genJumpImmediate: aRegister.
+																																							"NO HAY OPERACIONES DESTRUCTIVAS ACA"
+	externalAddressIndex := objectMemory rawHashBitsOf: objectMemory classExternalAddress.
+	objectRepresentation genGetClassIndexOfNonImm: aRegister into: TempReg.
+	self CmpCq: externalAddressIndex R: TempReg.
+	jumpBadClass := self JumpNonZero: 0.
+	
+	"At this point we are certain that aRegister contains an instance of ExternalAddress. We need to access the actual external address, to do that we acces to the first slot of the Oop given by aRegister"
+	self MoveMw: objectMemory baseHeaderSize r: aRegister R: aRegister. 
+	
+	"Everything went ok! We need to continue with the next instructions and not fall back to the slow case"
+	fallthroughJump := self Jump: 0.
+	
+	mergePointToExit := self Label.		
+	jumpBadClass jmpTarget: mergePointToExit.
+	jumpImmediate jmpTarget: mergePointToExit.
+
+	aFallbackJumpToMerge jmpTarget: mergePointToExit.
+	
+	fallbackJump := self Jump: 0.
+	
+	fallthroughLabel := self Label.
+	fallthroughJump jmpTarget: fallthroughLabel.
+
+	^ fallbackJump
+]
+
+{ #category : #'bytecode generators' }
 SimpleStackBasedCogit >> checkAndUnpackArgumentUsingWithCif: aCif withFallbackJump: fallbackJumpToMerge [  				"MOMENTANEAAAAAAAA"
 
 	| jumpBadArg jumpBelowRep fallthroughJump mergePointToExit fallbackJump fallthroughLabel exitWithoutModifyingRegister |
@@ -407,25 +558,45 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentUsingWithCif: aCif withFallbackJu
 
 { #category : #'bytecode generators' }
 SimpleStackBasedCogit >> checkAndUnpackArgumentsForExternalFunctionWithCif: aCif [
+
 	<var: #aCif type: #'ffi_cif *'>
-	
 	[ aCif numberArguments ]
-		caseOf:
-			{([ 1 ]
-				-> [ ^ self checkAndUnpackArgumentsForExternalFunctionWithOneArgWithCif: aCif ]).
-			([ 2 ]
-				-> [ ^ self checkAndUnpackArgumentsForExternalFunctionWithTwoArgsWithCif: aCif ]).
-			([ 3 ]
-				-> [ ]).}
-				
-		otherwise: [ ^ nil ].
-
-	
-	
-	
-	
-	
-
+		caseOf: {
+				([ 1 ]
+				 -> [ "^ self checkAndUnpackArgumentsForExternalFunctionWithOneArgWithCif: aCif"
+					 ^ self
+						   checkAndUnpackArgumentInIndex: 0
+						   forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
+						   usingRegister: Arg0Reg
+						   withIncomingFallbackJump: nil ]).
+				([ 2 ]
+				 -> [ "^ self checkAndUnpackArgumentsForExternalFunctionWithTwoArgsWithCif: aCif"
+					 ^ self
+						   checkAndUnpackArgumentInIndex: 0
+						   forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
+						   usingRegister: Arg0Reg
+						   withIncomingFallbackJump: (self
+								    checkAndUnpackArgumentInIndex: 1
+								    forExternalFunctionWithOutgoingJumpFallbackAndWithCif:
+								    aCif
+								    usingRegister: Arg1Reg
+								    withIncomingFallbackJump: nil) ]).
+				([ 3 ] -> [
+				 ^ self
+					   checkAndUnpackArgumentInIndex: 0
+					   forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
+					   usingRegister: Arg0Reg
+					   withIncomingFallbackJump: (self
+							    checkAndUnpackArgumentInIndex: 1
+							    forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
+							    usingRegister: Arg1Reg
+							    withIncomingFallbackJump: (self
+									     checkAndUnpackArgumentInIndex: 2
+									     forExternalFunctionWithOutgoingJumpFallbackAndWithCif:
+									     aCif
+									     usingRegister: ReceiverResultReg
+									     withIncomingFallbackJump: nil)) ]) }
+		otherwise: [ ^ nil ]
 ]
 
 { #category : #'bytecode generators' }
@@ -735,6 +906,132 @@ SimpleStackBasedCogit >> checkAndUntagArgumentIn: aRegister forIntegerOfSize: nu
 	
 	exitWithoutModifyingRegister := self Label.
 	jumpBadArg jmpTarget: exitWithoutModifyingRegister .
+
+	fallbackJump := self Jump: 0.
+	
+	fallthroughLabel := self Label.
+	fallthroughJump jmpTarget: fallthroughLabel.
+
+	^ fallbackJump
+]
+
+{ #category : #'bytecode generators' }
+SimpleStackBasedCogit >> checkAndUntagArgumentIn: aRegister forIntegerOfSize: numberOfBits signed: signedOrNot withIncomingFallbackJump: fallbackJumpToMerge [
+	"
+	signedOrNot = 1 -> the value is signed.
+	signedOrNot = 0 -> the value is unsigned
+	
+	value:= value inside aRegister. We want to check that:
+		if signedOrNot = 1 (signed):
+			- value > MAX value possible for numberOfBits
+			- value < MIN value possible for numberOfBits
+		
+		if signedOrNot = 0 (unsigned):
+			- value < 0 
+			- value > MAX value possible for numberOfBits
+	"
+	| jumpBadArg jumpBelowRep jumpAboveRep mergePointToExit fallthroughJump fallbackJump fallthroughLabel notJumpAbove exitWithoutModifyingRegister |
+	
+	jumpBadArg := objectRepresentation genJumpNotSmallInteger: aRegister.					"NO destructiva"
+	
+	objectRepresentation genConvertSmallIntegerToIntegerInReg: aRegister.					"SI es destructiva. el valor en aRegister queda shifteado.     ES LA UNICA OP DESTRUCTIVAA
+																													2 opciones para restaurar el valor: 1) usar un registro auxiliar 2) hacerle shift contrario al mismo registro"
+	
+	notJumpAbove := false.																						"<<<<<<<< esto no me gusta"
+	
+	[ signedOrNot ] 
+		caseOf: { 
+			[ 0 "unsigned"] -> [ 
+					[ numberOfBits ] 
+							caseOf: { 
+				
+								[ 8  ] -> [ 
+										self CmpCq: 0 R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+								
+										self CmpCq: UINT8_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 16 ] -> [ 
+								
+										self CmpCq: 0 R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+								
+										self CmpCq: UINT16_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 32 ] -> [ 
+										self CmpCq: 0 R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+								
+										self CmpCq: UINT32_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 64 ] -> [ 
+										self CmpCq: 0 R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+								
+										"self CmpCq: UINT64_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.					>>>>>>>>>>>>>>>>>>>>>> TIENE SENTIDO CHEQUEAR ESTO???"
+										notJumpAbove := true.
+								 ].
+							 } otherwise: [ ^ nil ]
+			
+			 ].
+			[ 1 "unsigned" ] -> [ 
+					[ numberOfBits ] 
+							caseOf: {
+								
+								[ 8  ] -> [ 
+										self CmpCq: INT8_MIN R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+	
+										self CmpCq: INT8_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 16 ] -> [ 
+										self CmpCq: INT16_MIN R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+	
+										self CmpCq: INT16_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 32 ] -> [ 
+										self CmpCq: INT32_MIN R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+	
+										self CmpCq: INT32_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+								[ 64 ] -> [ 
+										self CmpCq: INT64_MIN R: aRegister.
+										jumpBelowRep := self JumpLess: 0.
+	
+										self CmpCq: INT64_MAX R: aRegister.
+										jumpAboveRep := self JumpGreater: 0.
+								 ].
+							 } otherwise: [ ^ nil ]
+			 ]
+		} otherwise: [ ^ nil ].
+	
+	
+	"Everything went ok! We need to continue with the next instructions and not fall back to the slow case"
+	fallthroughJump := self Jump: 0.
+	
+	mergePointToExit := self Label.				
+	"fallbackJumpToMerge is a fallback jump so we need to set its target to our 'failure' case"
+	fallbackJumpToMerge jmpTarget: mergePointToExit.
+
+	jumpBelowRep jmpTarget: mergePointToExit.
+	notJumpAbove ifFalse: [  
+	jumpAboveRep jmpTarget: mergePointToExit. ].
+
+	"Undo the untagging of the value in aRegister. The checks were not successfull so we need to leave aRegister as it was before.
+	BUT only if we already modified aRegister. In the case of jumpBadArg we have not touched the register yet."
+	objectRepresentation genConvertIntegerToSmallIntegerInReg: aRegister.
+	
+	exitWithoutModifyingRegister := self Label.
+	jumpBadArg jmpTarget: exitWithoutModifyingRegister.
 
 	fallbackJump := self Jump: 0.
 	
