@@ -4114,8 +4114,8 @@ SimpleStackBasedCogit >> isExternalFunctionPrototypeSupported: aCif [
 	
 	argsTypesSupported := true.
 	
-	(0 to: aCif numberArguments) do: [ :indexArg | 
-		(self isIntegerOrPointerType: (aCif argTypeAt: indexArg type)) ifFalse: [ argsTypesSupported := false  ]
+	0 to: (aCif numberArguments - 1) do: [:indexArg |
+		(self isIntegerOrPointerType: (aCif argTypeAt: indexArg type)) ifFalse: [ argsTypesSupported := false ]
 	].
 
 	^ (numberOfArgumentsSupported and: (returnTypeSupported and: argsTypesSupported))
