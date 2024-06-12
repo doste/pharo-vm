@@ -1478,14 +1478,19 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 		This means that we need to unpack all arguments in the stack into an array, push everything to the stack and do a message send"
 		^ self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: cif usingRunner: runner.
 	].
-	
+
+	(self isBackendSupportedForJITtedBytecodeFFI) ifFalse: [ ^ self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: cif usingRunner: runner ].
+		
+	"Move the arguments for the external function from the stack where we received them to the corresponding registers depending on the ABI,
+	that is why we rely on the backEnd to choose the registers."
 	backEnd prepareForExternalCallWithCif: cif.
 	
-	"Verify that the argument(s) we receive for the C function complies with those specified in the cif.
-	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
+	"Verify that the argument(s) we receive for the C function comply with those specified in the cif."
 	jumpSomeError  := self checkAndUnpackArgumentsForExternalFunctionWithCifAVER: cif.
 	
 	self CallFullRT: externalFunctionAddr.
+	
+	"Push the return value converting it if necessary."
 	self handleReturnFromExternalFunctionWithCif: cif.
 	
 	jumpContinue := self Jump: 0.
@@ -3394,30 +3399,24 @@ StackToRegisterMappingCogit >> generateTracingTrampolines [
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
-	<var: #aCif type: #'ffi_cif *'>
-	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
-	We need to convert that C integer into a Pharo SmallInteger:"																													
-	
-	"We know the external function left us its result in TempReg. So we convert the value inside to a Pharo int and then push it."
-	(self isIntegerType: aCif returnType type) ifTrue: [ 
-		objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
-		self ssPushRegister: TempReg.
-	].
+	"We know the external function left us its result in TempReg. So we convert the value inside to a Pharo SmallInteger and then push it."
 
-	"The external function didn't return anything, so we don't push anything."
-	(aCif returnType type = FFI_TYPE_VOID) ifTrue: [ 
-		"Return the receiver to guarantee that we push a return value to the stack"
-		self genPushReceiverBytecode.
-	].
+	<var: #aCif type: #'ffi_cif *'>
+	(self isIntegerType: aCif returnType type) ifTrue: [
+		backEnd ISA = #X64
+			ifTrue: [ "Both SysV and Win64 returns through RAX. This register is mapped to TempReg in both ABIs."
+				objectRepresentation genConvertIntegerToSmallIntegerInReg: TempReg.
+				self ssPushRegister: TempReg ]
+			ifFalse: [ "TODO: handle for ARM" ] ].
+
+	aCif returnType type = FFI_TYPE_VOID ifTrue: [ "Return the receiver to guarantee that we push a return value, to not mess up the stack."
+		self genPushReceiverBytecode ].
 
 	"The external function returned a pointer, so we have to:
 	1) convert it to an ExternalAddress
 	2) push it."
-	(aCif returnType type = FFI_TYPE_POINTER) ifTrue: [ 
-		"genPrimitiveStoreInt64IntoExternalAddress podria ser?"
-	].
-	
-
+	aCif returnType type = FFI_TYPE_POINTER ifTrue: [ "genPrimitiveStorePointerIntoExternalAddress podria ser?"
+		 ]
 ]
 
 { #category : #'simulation stack' }
@@ -3545,6 +3544,12 @@ StackToRegisterMappingCogit >> initializeFixupAt: targetPC [
 	| fixup |
 	fixup := self fixupAt: targetPC.
 	self initializeFixup: fixup
+]
+
+{ #category : #'bytecode generators' }
+StackToRegisterMappingCogit >> isBackendSupportedForJITtedBytecodeFFI [
+	
+	^backEnd ISA = #aarch64 or: (backEnd ISA = #X64)
 ]
 
 { #category : #'span functions' }

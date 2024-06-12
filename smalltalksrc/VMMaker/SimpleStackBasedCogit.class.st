@@ -619,10 +619,10 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentsForExternalFunctionWithCifAVER: 
 			                        checkAndUnpackArgumentInIndex: index - 1
 			                        forExternalFunctionWithOutgoingJumpFallbackAndWithCif:
 			                        aCif
-			                        usingRegister:
-			                        (self
-				                         getRegisterForArgumentInIndex: index - 1
-				                         fromCif: aCif)
+			                        usingRegister: (backEnd
+					                         getRegisterForExternalFunctionArgumentInIndex:
+					                         index - 1
+					                         FromCif: aCif)
 			                        withIncomingFallbackJump:
 			                        incomingFallbackJump ].
 
@@ -4175,7 +4175,7 @@ SimpleStackBasedCogit >> isExternalFunctionPrototypeSupported: aCif [
 	argsTypesSupported := true.
 	
 	0 to: (aCif numberArguments - 1) do: [:indexArg |
-		(self isIntegerOrPointerType: (aCif argTypeAt: (indexArg type))) ifFalse: [ argsTypesSupported := false ]
+		(self isIntegerOrPointerType: ((aCif argTypeAt: indexArg) type)) ifFalse: [ argsTypesSupported := false ]
 	].
 
 	^ (numberOfArgumentsSupported and: (returnTypeSupported and: argsTypesSupported))

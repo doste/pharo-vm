@@ -4228,6 +4228,190 @@ CogX64Compiler >> generateLowLevelUnlock: vmOwnerLockAddress [
 	cogit RetN: 0
 ]
 
+{ #category : #abi }
+CogX64Compiler >> getRegisterForExternalFunctionArgumentInIndex: indexOfArg FromCif: aCif [
+
+	SysV
+		ifTrue: [
+			^ self
+				  getRegisterForExternalFunctionArgumentInIndex: indexOfArg
+				  forSysVFromCif: aCif ]
+		ifFalse: [
+			^ self
+				  getRegisterForExternalFunctionArgumentInIndex: indexOfArg
+				  forWin64FromCif: aCif ]
+]
+
+{ #category : #abi }
+CogX64Compiler >> getRegisterForExternalFunctionArgumentInIndex: indexOfArg forSysVFromCif: aCif [
+
+	<var: #aCif type: #'ffi_cif *'>
+	self assert: (indexOfArg >= 0 and: indexOfArg < aCif numberArguments).
+
+	[ aCif numberArguments ]
+		caseOf: {
+				([ 1 ] -> [ ^ Arg0Reg ]).
+				([ 2 ] -> [ "Possibles combinations:    1) i/p i/p 
+																   2) i/p f 
+														 			3) f i/p
+														 			4) f f "
+					 (cogit isIntegerOrPointerType: ((aCif argTypeAt: 0) type)) ifTrue: [ 
+							 (cogit isIntegerOrPointerType: ((aCif argTypeAt: 1) type)) ifTrue: [ 
+									"caso 1) -> primer arg va en RDI y el segundo en RSI. entonces devolvemos acorde a cual nos esta pidiendo"
+									(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ ^ Arg1Reg ]
+								] ifFalse: [ 
+									"caso 2) -> primer arg va en RDI y el segundo en RSI. entonces devolvemos acorde a cual nos esta pidiendo"
+									(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ "^ POR DONDE VAYA EL PRIMER FLOAT" ]
+								 ]
+						 ] ifFalse: [ 
+								(cogit isIntegerOrPointerType: ((aCif argTypeAt: 1) type)) ifTrue: [ 
+									"caso 3)"
+									(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT"] ifFalse: [ ^ Arg0Reg ]
+								] ifFalse: [ 
+									"caso 4)"
+									(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT"] ifFalse: [ "^ POR DONDE VAYA EL SEGUNDO FLOAT" ]
+								 ]
+						 ]	
+					 ]).
+				([ 3 ] -> [ "Possibles combinations:    1) i/p  i/p  i/p
+																   2) i/p  i/p   f
+														 			3) i/p  f     i/p
+																	4) i/p  f     f
+																	5) f    i/p   i/p
+														 			6) f    i/p   f 
+																	7) f    f    i/p
+																	8) f    f     f"
+					 (cogit isIntegerOrPointerType: ((aCif argTypeAt: 0) type)) ifTrue: [ 
+							 (cogit isIntegerOrPointerType: ((aCif argTypeAt: 1) type)) ifTrue: [ 	
+									(cogit isIntegerOrPointerType: ((aCif argTypeAt: 2) type)) ifTrue: [
+											"caso 1) -> primer arg va en RDI y el segundo en RSI y el tercero en RDX"
+											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg1Reg ] ifFalse: [ ^ ReceiverResultReg  ] ]
+										 ] ifFalse: [ 
+											"caso 2) -> primer arg va en RDI y el segundo en RSI."
+											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg1Reg ] ifFalse: [ "^ POR DONDE VAYA EL PRIMER FLOAT"  ] ]
+										 ].
+									
+									(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ ^ Arg1Reg ]
+								] ifFalse: [ 
+									(cogit isIntegerOrPointerType: ((aCif argTypeAt: 2) type)) ifTrue: [
+											"caso 3) "
+											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT" ] ifFalse: [ ^ Arg1Reg   ] ]
+										 ] ifFalse: [ 
+											"caso 4)"
+											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT" ] ifFalse: [ "^ POR DONDE VAYA EL SEGUNDO FLOAT"  ] ]
+										 ].
+								 ]
+						 ] ifFalse: [ 
+							(cogit isIntegerOrPointerType: ((aCif argTypeAt: 1) type)) ifTrue: [ 	
+									(cogit isIntegerOrPointerType: ((aCif argTypeAt: 2) type)) ifTrue: [
+											"caso 5)"
+											(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT"] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg0Reg ] ifFalse: [ ^ Arg1Reg  ] ]
+										 ] ifFalse: [ 
+											"caso 6)"
+											(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT" ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg0Reg ] ifFalse: [ "^ POR DONDE VAYA EL SEGUNDO FLOAT"  ] ]
+										 ].
+								] ifFalse: [ 
+									(cogit isIntegerOrPointerType: ((aCif argTypeAt: 2) type)) ifTrue: [
+											"caso 7) "
+											(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT"] ifFalse: [ (indexOfArg = 1) ifTrue: [ "^ POR DONDE VAYA EL SEGUNDO FLOAT" ] ifFalse: [ ^ Arg0Reg   ] ]
+										 ] ifFalse: [ 
+											"caso 8)"
+											(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT" ] ifFalse: [ (indexOfArg = 1) ifTrue: [ "^ POR DONDE VAYA EL SEGUNDO FLOAT" ] ifFalse: [ "^ POR DONDE VAYA EL TERCER FLOAT"  ] ]
+										 ].
+								 ]
+					
+						 ]
+					
+					
+					 ]) }
+		otherwise: [ ^ nil ]
+]
+
+{ #category : #abi }
+CogX64Compiler >> getRegisterForExternalFunctionArgumentInIndex: indexOfArg forWin64FromCif: aCif [
+
+	<var: #aCif type: #'ffi_cif *'>
+	self assert: (indexOfArg >= 0 and: indexOfArg < aCif numberArguments).
+
+	[ aCif numberArguments ]
+		caseOf: {
+				([ 1 ] -> [ ^ Arg0Reg ]).
+				([ 2 ] -> [ "Possibles combinations:    1) i/p i/p 
+																   2) i/p f 
+														 			3) f i/p
+														 			4) f f "
+					 (cogit isIntegerOrPointerType: ((aCif argTypeAt: 0) type)) ifTrue: [ 
+							 (cogit isIntegerOrPointerType: ((aCif argTypeAt: 1) type)) ifTrue: [ 
+									"caso 1) -> primer arg va en RDI y el segundo en RSI. entonces devolvemos acorde a cual nos esta pidiendo"
+									(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ ^ Arg1Reg ]
+								] ifFalse: [ 
+									"caso 2) -> primer arg va en RDI y el segundo en RSI. entonces devolvemos acorde a cual nos esta pidiendo"
+									(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ "^ XMM0 " ]
+								 ]
+						 ] ifFalse: [ 
+								(cogit isIntegerOrPointerType: ((aCif argTypeAt: 1) type)) ifTrue: [ 
+									"caso 3)"
+									(indexOfArg = 0) ifTrue: [ "^ XMM0 "] ifFalse: [ ^ Arg1Reg ]
+								] ifFalse: [ 
+									"caso 4)"
+									(indexOfArg = 0) ifTrue: [ "^ XMM0 "] ifFalse: [ "^ XMM1 " ]
+								 ]
+						 ]	
+					 ]).
+				([ 3 ] -> [ "Possibles combinations:    1) i/p  i/p  i/p
+																   2) i/p  i/p   f
+														 			3) i/p  f     i/p
+																	4) i/p  f     f
+																	5) f    i/p   i/p
+														 			6) f    i/p   f 
+																	7) f    f    i/p
+																	8) f    f     f"
+					 (cogit isIntegerOrPointerType: ((aCif argTypeAt: 0) type)) ifTrue: [ 
+							 (cogit isIntegerOrPointerType: ((aCif argTypeAt: 1) type)) ifTrue: [ 	
+									(cogit isIntegerOrPointerType: ((aCif argTypeAt: 2) type)) ifTrue: [
+											"caso 1) -> primer arg va en RDI y el segundo en RSI y el tercero en RDX"
+											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg1Reg ] ifFalse: [ ^ ReceiverResultReg  ] ]
+										 ] ifFalse: [ 
+											"caso 2) -> primer arg va en RDI y el segundo en RSI."
+											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg1Reg ] ifFalse: [ "^ XMM2 "  ] ]
+										 ].
+									
+									(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ ^ Arg1Reg ]
+								] ifFalse: [ 
+									(cogit isIntegerOrPointerType: ((aCif argTypeAt: 2) type)) ifTrue: [
+											"caso 3) "
+											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ "^ XMM1 " ] ifFalse: [ ^ ClassReg "R8"   ] ]
+										 ] ifFalse: [ 
+											"caso 4)"
+											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ "^ XMM1 " ] ifFalse: [ "^ XMM2 "  ] ]
+										 ].
+								 ]
+						 ] ifFalse: [ 
+							(cogit isIntegerOrPointerType: ((aCif argTypeAt: 1) type)) ifTrue: [ 	
+									(cogit isIntegerOrPointerType: ((aCif argTypeAt: 2) type)) ifTrue: [
+											"caso 5)"
+											(indexOfArg = 0) ifTrue: [ "^ XMM0 "] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg1Reg ] ifFalse: [ ^ ClassReg  ] ]
+										 ] ifFalse: [ 
+											"caso 6)"
+											(indexOfArg = 0) ifTrue: [ "^ XMM0 " ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg1Reg ] ifFalse: [ "^ XMM2 "  ] ]
+										 ].
+								] ifFalse: [ 
+									(cogit isIntegerOrPointerType: ((aCif argTypeAt: 2) type)) ifTrue: [
+											"caso 7) "
+											(indexOfArg = 0) ifTrue: [ "^ XMM0 "] ifFalse: [ (indexOfArg = 1) ifTrue: [ "^ XMM1 " ] ifFalse: [ ^ ClassReg   ] ]
+										 ] ifFalse: [ 
+											"caso 8)"
+											(indexOfArg = 0) ifTrue: [ "^ XMM0 " ] ifFalse: [ (indexOfArg = 1) ifTrue: [ "^ XMM1 " ] ifFalse: [ "^ XMM2 "  ] ]
+										 ].
+								 ]
+					
+						 ]
+					
+					
+					 ]) }
+		otherwise: [ ^ nil ]
+]
+
 { #category : #testing }
 CogX64Compiler >> hasConditionRegister [
 	"Answer if the receiver supports, e.g., JumpOverflow after a regular AddRR"
