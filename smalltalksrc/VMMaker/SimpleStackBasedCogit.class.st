@@ -608,6 +608,66 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentsForExternalFunctionWithCif: aCif
 ]
 
 { #category : #'bytecode generators' }
+SimpleStackBasedCogit >> checkAndUnpackArgumentsForExternalFunctionWithCifAVER: aCif [
+
+	<var: #aCif type: #'ffi_cif *'>
+	| incomingFallbackJump |
+	incomingFallbackJump := nil.
+
+	1 to: aCif numberArguments do: [ :index |
+		incomingFallbackJump := self
+			                        checkAndUnpackArgumentInIndex: index - 1
+			                        forExternalFunctionWithOutgoingJumpFallbackAndWithCif:
+			                        aCif
+			                        usingRegister:
+			                        (self
+				                         getRegisterForArgumentInIndex: index - 1
+				                         fromCif: aCif)
+			                        withIncomingFallbackJump:
+			                        incomingFallbackJump ].
+
+	^ incomingFallbackJump
+
+	"[ aCif numberArguments ]
+		caseOf: {
+				([ 1 ]
+				 -> [ 	
+					 ^ self
+						   checkAndUnpackArgumentInIndex: 0
+						   forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
+						   usingRegister: (self getRegisterForArgumentInIndex: 0 fromCif: aCif)
+						   withIncomingFallbackJump: nil ]).
+				([ 2 ]
+				 -> [ 
+					 ^ self
+						   checkAndUnpackArgumentInIndex: 0
+						   forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
+						   usingRegister: (self getRegisterForArgumentInIndex: 0 fromCif: aCif)
+						   withIncomingFallbackJump: (self
+								    checkAndUnpackArgumentInIndex: 1
+								    forExternalFunctionWithOutgoingJumpFallbackAndWithCif:
+								    aCif
+								    usingRegister: (self getRegisterForArgumentInIndex: 1 fromCif: aCif)
+								    withIncomingFallbackJump: nil) ]).
+				([ 3 ] -> [
+				 ^ self
+					   checkAndUnpackArgumentInIndex: 0
+					   forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
+					   usingRegister: (self getRegisterForArgumentInIndex: 0 fromCif: aCif)
+					   withIncomingFallbackJump: (self
+							    checkAndUnpackArgumentInIndex: 1
+							    forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
+							    usingRegister:  (self getRegisterForArgumentInIndex: 1 fromCif: aCif)
+							    withIncomingFallbackJump: (self
+									     checkAndUnpackArgumentInIndex: 2
+									     forExternalFunctionWithOutgoingJumpFallbackAndWithCif:
+									     aCif
+									     usingRegister: (self getRegisterForArgumentInIndex: 2 fromCif: aCif)
+									     withIncomingFallbackJump: nil)) ]) }
+		otherwise: [ ^ nil ]"
+]
+
+{ #category : #'bytecode generators' }
 SimpleStackBasedCogit >> checkAndUnpackArgumentsForExternalFunctionWithOneArgWithCif: aCif [
 	<var: #aCif type: #'ffi_cif *'>
 	"Verify if the argument(s) we receive for the C function comply with the ones describes in the cif.
@@ -4115,7 +4175,7 @@ SimpleStackBasedCogit >> isExternalFunctionPrototypeSupported: aCif [
 	argsTypesSupported := true.
 	
 	0 to: (aCif numberArguments - 1) do: [:indexArg |
-		(self isIntegerOrPointerType: (aCif argTypeAt: indexArg type)) ifFalse: [ argsTypesSupported := false ]
+		(self isIntegerOrPointerType: (aCif argTypeAt: (indexArg type))) ifFalse: [ argsTypesSupported := false ]
 	].
 
 	^ (numberOfArgumentsSupported and: (returnTypeSupported and: argsTypesSupported))

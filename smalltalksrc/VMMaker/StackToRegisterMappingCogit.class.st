@@ -1479,13 +1479,11 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 		^ self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: cif usingRunner: runner.
 	].
 	
-	"self prepareExternalCallWithCif: cif."   
 	backEnd prepareForExternalCallWithCif: cif.
 	
 	"Verify that the argument(s) we receive for the C function complies with those specified in the cif.
 	This would be the only check we do at run-time. So we generate (cogit) code to do it:"
-	"jumpSomeError := self checkAndUnpackArgumentsForExternalFunctionWithCif: cif."
-	jumpSomeError  := self checkAndUnpackArgumentsForExternalFunctionWithCif: cif.
+	jumpSomeError  := self checkAndUnpackArgumentsForExternalFunctionWithCifAVER: cif.
 	
 	self CallFullRT: externalFunctionAddr.
 	self handleReturnFromExternalFunctionWithCif: cif.
