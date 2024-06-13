@@ -372,7 +372,7 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentInIndex: indexOfArg forExternalFu
 	numberOfBits := 0.
 	signedOrNot := -1.
 
-	self assert: (indexOfArg > 0 and: indexOfArg < aCif nargs).
+	self assert: (indexOfArg >= 0 and: indexOfArg < aCif nargs).
 
 	[ (aCif argTypeAt: indexOfArg) type ]
 		caseOf: {
@@ -567,44 +567,60 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentUsingWithCif: aCif withFallbackJu
 SimpleStackBasedCogit >> checkAndUnpackArgumentsForExternalFunctionWithCif: aCif [
 
 	<var: #aCif type: #'ffi_cif *'>
-	[ aCif numberArguments ]
+	| incomingFallbackJump |
+	incomingFallbackJump := nil.
+
+	0 to: (aCif numberArguments - 1) do: [ :index |
+		incomingFallbackJump := self
+			                        checkAndUnpackArgumentInIndex: index
+			                        forExternalFunctionWithOutgoingJumpFallbackAndWithCif:
+			                        aCif
+			                        usingRegister: (backEnd
+					                         getRegisterForExternalFunctionArgumentInIndex:
+					                         index
+					                         fromCif: aCif)
+			                        withIncomingFallbackJump:
+			                        incomingFallbackJump ].
+
+	^ incomingFallbackJump
+
+	"[ aCif numberArguments ]
 		caseOf: {
 				([ 1 ]
-				 -> [ 	"si es uno solo -> int/pointer viene por Arg0Reg (RDI) . Cogit ya nos resuelve tema ABI con solo usar Arg0Reg.
-						Pero para float ???"
+				 -> [ 	
 					 ^ self
 						   checkAndUnpackArgumentInIndex: 0
 						   forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
-						   usingRegister: Arg0Reg
+						   usingRegister: (self getRegisterForArgumentInIndex: 0 fromCif: aCif)
 						   withIncomingFallbackJump: nil ]).
 				([ 2 ]
 				 -> [ 
 					 ^ self
 						   checkAndUnpackArgumentInIndex: 0
 						   forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
-						   usingRegister: "Arg0Reg" (self getRegisterForArgumentInIndex: 0 fromCif: aCif)
+						   usingRegister: (self getRegisterForArgumentInIndex: 0 fromCif: aCif)
 						   withIncomingFallbackJump: (self
 								    checkAndUnpackArgumentInIndex: 1
 								    forExternalFunctionWithOutgoingJumpFallbackAndWithCif:
 								    aCif
-								    usingRegister: "Arg1Reg" (self getRegisterForArgumentInIndex: 1 fromCif: aCif)
+								    usingRegister: (self getRegisterForArgumentInIndex: 1 fromCif: aCif)
 								    withIncomingFallbackJump: nil) ]).
 				([ 3 ] -> [
 				 ^ self
 					   checkAndUnpackArgumentInIndex: 0
 					   forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
-					   usingRegister: "Arg0Reg" (self getRegisterForArgumentInIndex: 0 fromCif: aCif)
+					   usingRegister: (self getRegisterForArgumentInIndex: 0 fromCif: aCif)
 					   withIncomingFallbackJump: (self
 							    checkAndUnpackArgumentInIndex: 1
 							    forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
-							    usingRegister: "Arg1Reg" (self getRegisterForArgumentInIndex: 1 fromCif: aCif)
+							    usingRegister:  (self getRegisterForArgumentInIndex: 1 fromCif: aCif)
 							    withIncomingFallbackJump: (self
 									     checkAndUnpackArgumentInIndex: 2
 									     forExternalFunctionWithOutgoingJumpFallbackAndWithCif:
 									     aCif
-									     usingRegister: "ReceiverResultReg" (self getRegisterForArgumentInIndex: 2 fromCif: aCif)
+									     usingRegister: (self getRegisterForArgumentInIndex: 2 fromCif: aCif)
 									     withIncomingFallbackJump: nil)) ]) }
-		otherwise: [ ^ nil ]
+		otherwise: [ ^ nil ]"
 ]
 
 { #category : #'bytecode generators' }
@@ -614,15 +630,15 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentsForExternalFunctionWithCifAVER: 
 	| incomingFallbackJump |
 	incomingFallbackJump := nil.
 
-	1 to: aCif numberArguments do: [ :index |
+	0 to: (aCif numberArguments - 1) do: [ :index |
 		incomingFallbackJump := self
-			                        checkAndUnpackArgumentInIndex: index - 1
+			                        checkAndUnpackArgumentInIndex: index
 			                        forExternalFunctionWithOutgoingJumpFallbackAndWithCif:
 			                        aCif
 			                        usingRegister: (backEnd
 					                         getRegisterForExternalFunctionArgumentInIndex:
-					                         index - 1
-					                         FromCif: aCif)
+					                         index
+					                         fromCif: aCif)
 			                        withIncomingFallbackJump:
 			                        incomingFallbackJump ].
 
@@ -4160,7 +4176,7 @@ SimpleStackBasedCogit >> isCallerSavedReg: reg [
 { #category : #'bytecode generators' }
 SimpleStackBasedCogit >> isExternalFunctionPrototypeSupported: aCif [
 	"For now the supported function prototypes are those that comply with all the following:
-	- 0 to 3 arguments
+	- 0 to 4 arguments
 	- the return type and the types of the arguments are pointer or integers. NOT floats/doubles
 	"
 												
@@ -4168,7 +4184,7 @@ SimpleStackBasedCogit >> isExternalFunctionPrototypeSupported: aCif [
 	
 	<var: #aCif type: #'ffi_cif *'>
 	
-	numberOfArgumentsSupported := aCif numberArguments >= 0 and: (aCif numberArguments <= 3).
+	numberOfArgumentsSupported := aCif numberArguments >= 0 and: (aCif numberArguments <= 4).
 	
 	returnTypeSupported := self isIntegerOrPointerType: aCif returnType type.
 	

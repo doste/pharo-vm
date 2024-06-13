@@ -1081,7 +1081,7 @@ CogAbstractInstruction >> getOperandsWithFormat: format [
 ]
 
 { #category : #'calling C function in Smalltalk stack' }
-CogAbstractInstruction >> getRegisterForExternalFunctionArgumentInIndex: indexOfArg FromCif: aCif [
+CogAbstractInstruction >> getRegisterForExternalFunctionArgumentInIndex: indexOfArg fromCif: aCif [
 	
 	"This method is for the backends to return a specific register given the index in the arguments listed in aCif.
 	For example if aCif has two arguments, and indexOfArg is 1 then this method should return the register corresponding to the second argument

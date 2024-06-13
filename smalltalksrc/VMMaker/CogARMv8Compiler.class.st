@@ -4273,7 +4273,7 @@ CogARMv8Compiler >> generalPurposeRegisterMap [
 ]
 
 { #category : #'as yet unclassified' }
-CogARMv8Compiler >> getRegisterForExternalFunctionArgumentInIndex: indexOfArg FromCif: aCif [
+CogARMv8Compiler >> getRegisterForExternalFunctionArgumentInIndex: indexOfArg fromCif: aCif [
 
 	"TODO"
 ]

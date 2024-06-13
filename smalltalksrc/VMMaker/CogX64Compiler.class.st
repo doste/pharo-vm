@@ -4229,20 +4229,6 @@ CogX64Compiler >> generateLowLevelUnlock: vmOwnerLockAddress [
 ]
 
 { #category : #abi }
-CogX64Compiler >> getRegisterForExternalFunctionArgumentInIndex: indexOfArg FromCif: aCif [
-
-	SysV
-		ifTrue: [
-			^ self
-				  getRegisterForExternalFunctionArgumentInIndex: indexOfArg
-				  forSysVFromCif: aCif ]
-		ifFalse: [
-			^ self
-				  getRegisterForExternalFunctionArgumentInIndex: indexOfArg
-				  forWin64FromCif: aCif ]
-]
-
-{ #category : #abi }
 CogX64Compiler >> getRegisterForExternalFunctionArgumentInIndex: indexOfArg forSysVFromCif: aCif [
 
 	<var: #aCif type: #'ffi_cif *'>
@@ -4410,6 +4396,20 @@ CogX64Compiler >> getRegisterForExternalFunctionArgumentInIndex: indexOfArg forW
 					
 					 ]) }
 		otherwise: [ ^ nil ]
+]
+
+{ #category : #abi }
+CogX64Compiler >> getRegisterForExternalFunctionArgumentInIndex: indexOfArg fromCif: aCif [
+
+	SysV
+		ifTrue: [
+			^ self
+				  getRegisterForExternalFunctionArgumentInIndex: indexOfArg
+				  forSysVFromCif: aCif ]
+		ifFalse: [
+			^ self
+				  getRegisterForExternalFunctionArgumentInIndex: indexOfArg
+				  forWin64FromCif: aCif ]
 ]
 
 { #category : #testing }
@@ -4691,118 +4691,94 @@ CogX64Compiler >> padIfPossibleWithStopsFrom: startAddr to: endAddr [
 { #category : #abi }
 CogX64Compiler >> prepareForExternalCallWithCif: aCif [
 	"Argument registers for args 0 to 3 in SysV are RDI RSI RDX RCX, and in Win64 are RCX RDX R8 R9"
-	
-	"<inline: true>     AVERRRRRRRR"
-	
-	| numArgs  numberOfFloatArgs |
-	
+
 	<var: #aCif type: #'ffi_cif *'>
-	
-	SysV ifFalse: "WIN64 ABI allways reserve shadow space on the stack for callee to save up to 4 register parameters"
-		[cogit SubCq: 32 R: RSP].
-	
+	| numArgs numberOfFloatArgs |
+	SysV ifFalse: [ "WIN64 ABI allways reserve shadow space on the stack for callee to save up to 4 register parameters"
+		cogit SubCq: 32 R: RSP ].
+
 	numArgs := aCif numberArguments.
-	numArgs = 0 ifTrue: [^self].
+	numArgs = 0 ifTrue: [ ^ self ].
 	numberOfFloatArgs := 0.
-	
+
 	SysV
-		 ifTrue:[
-			(cogit isIntegerOrPointerType: (aCif argTypeAt: 0) type) ifTrue: [   "a.k.a. RDI"
-				cogit popIntoRegisterAndPreserveIt: Arg0Reg
-			] ifFalse: [ 
-				"floats not supported yet."
-				
-				numberOfFloatArgs := numberOfFloatArgs + 1.
-			].
-			numArgs = 1 ifTrue: [^self].
+		ifTrue: [
+			(cogit isIntegerOrPointerType: (aCif argTypeAt: 0) type)
+				ifTrue: [ "a.k.a. RDI"
+				cogit popIntoRegisterAndPreserveIt: Arg0Reg ]
+				ifFalse: [ "floats not supported yet."
+					numberOfFloatArgs := numberOfFloatArgs + 1 ].
+			numArgs = 1 ifTrue: [ ^ self ].
+
+			(cogit isIntegerOrPointerType: (aCif argTypeAt: 1) type)
+				ifTrue: [ "a.k.a. RSI"
+					numberOfFloatArgs > 0
+						ifTrue: [ "If Arg1 is float and the Arg2 is int/pointer then Arg2 will be in RDI"
+							cogit popIntoRegisterAndPreserveIt: Arg0Reg ]
+						ifFalse: [ "If both Arg1 and Arg2 are both int/pointer then they will be in RDI and RSI respectively"
+							cogit popIntoRegisterAndPreserveIt: Arg1Reg ] ]
+				ifFalse: [ "floats not supported yet."
+					numberOfFloatArgs := numberOfFloatArgs + 1 ].
+			numArgs = 2 ifTrue: [ ^ self ].
+
+			(cogit isIntegerOrPointerType: (aCif argTypeAt: 2) type)
+				ifTrue: [ "a.k.a. RDX"
+					numberOfFloatArgs = 2
+						ifTrue: [ "If Arg1 and Arg2 are both floats and the Arg3 is int/pointer then it will be in RDI"
+							cogit popIntoRegisterAndPreserveIt: Arg0Reg ]
+						ifFalse: [ "If one of Arg1 and Arg2 is a float (but not both) and the Arg3 is int/pointer then Arg3 will be in RSI"
+							numberOfFloatArgs = 1
+								ifTrue: [ cogit popIntoRegisterAndPreserveIt: Arg1Reg ]
+								ifFalse: [ "If all Arg1, Arg2 and Arg3 are int/pointer then Arg3 will be in RDX"
+									cogit popIntoRegisterAndPreserveIt: ReceiverResultReg ] ] ]
+				ifFalse: [ "floats not supported yet."
+					numberOfFloatArgs := numberOfFloatArgs + 1 ].
+			numArgs = 3 ifTrue: [ ^ self ].
+
+			(cogit isIntegerOrPointerType: (aCif argTypeAt: 3) type)
+				ifTrue: [
+					numberOfFloatArgs = 3
+						ifTrue: [ "If Arg1, Arg2 and Arg3 are all floats and the Arg4 is int/pointer then Arg4 will be in RDI"
+							cogit popIntoRegisterAndPreserveIt: Arg0Reg ]
+						ifFalse: [
+							numberOfFloatArgs = 2
+								ifTrue: [ "If only two of Arg1, Arg2 or Arg3 are floats and if Arg4 is int/pointer then Arg4 will be in RSI"
+									cogit popIntoRegisterAndPreserveIt: Arg1Reg ]
+								ifFalse: [
+									numberOfFloatArgs = 1
+										ifTrue: [ "If only one of Arg1, Arg2 or Arg3 is a float and if Arg4 is int/pointer then it will be in RDX"
+											cogit popIntoRegisterAndPreserveIt: ReceiverResultReg ]
+										ifFalse: [
+											cogit popIntoRegisterAndPreserveIt: ClassReg "If all Arg1, Arg2 and Arg3 are int/pointer then Arg4 will be in RCX" ] ] ] ]
+				ifFalse: [ "floats not supported yet." ] ]
 			
-			(cogit isIntegerOrPointerType: (aCif argTypeAt: 1) type) ifTrue: [   "a.k.a. RSI"
-				 numberOfFloatArgs > 0 ifTrue:[													"If Arg1 is both float and the Arg2 is int/pointer then it will be in RDI"
-					cogit popIntoRegisterAndPreserveIt: Arg0Reg 
-				]
-				ifFalse: [  																				"If both Arg1 and Arg2 are int/pointer then they will be in RDI and RSI respectively"
-					cogit popIntoRegisterAndPreserveIt: Arg1Reg
-				].
-			] ifFalse: [ 
-				"floats not supported yet."
-				
-				numberOfFloatArgs := numberOfFloatArgs + 1.
-			].
-			numArgs = 2 ifTrue: [^self].
 			
-			(cogit isIntegerOrPointerType: (aCif argTypeAt: 2) type) ifTrue: [   "a.k.a. RDX"         													 
-				(numberOfFloatArgs = 2) ifTrue: [ 											 "If Arg1 and Arg2 are both floats and the Arg3 is int/pointer then it will be in RDI"
-					cogit popIntoRegisterAndPreserveIt: Arg0Reg 
-				]
-				ifFalse: [  
-																										 "If one of Arg1 and Arg2 is a float (but not both) and the Arg3 is int/pointer then it will be in RSI"
-					(numberOfFloatArgs = 1)  ifTrue: [ 	
-						cogit popIntoRegisterAndPreserveIt: Arg1Reg 
-					] ifFalse: [  																	 "If all Arg1, Arg2 and Arg3 are int/pointer then Arg3 will be in RDX"
-						cogit popIntoRegisterAndPreserveIt: ReceiverResultReg
-				]].
-			] ifFalse: [ 
-				"floats not supported yet."
-				
-				numberOfFloatArgs := numberOfFloatArgs + 1.
-			].
-			numArgs = 3 ifTrue: [^self].
-			
-			(cogit isIntegerOrPointerType: (aCif argTypeAt: 3) type) ifTrue: [   
-				cogit popIntoRegisterAndPreserveIt: ClassReg.
-				
-				(numberOfFloatArgs = 3) ifTrue: [  										"If Arg1, Arg2 and Arg3 are all floats and the Arg3 is int/pointer then it will be in RDI"
-					cogit popIntoRegisterAndPreserveIt: Arg0Reg 
-				]
-				ifFalse: [  
-					(numberOfFloatArgs = 2) ifTrue: [ 									"If only two of Arg1, Arg2 or Arg3 is a float then the if Arg3 is int/pointer then it will be in RSI"
-						cogit popIntoRegisterAndPreserveIt: Arg1Reg 
-					] ifFalse: [  																	
-						(numberOfFloatArgs = 1) ifTrue: [ 								"If only one of Arg1, Arg2 or Arg3 is a float then the if Arg3 is int/pointer then it will be in RDX"
-							cogit popIntoRegisterAndPreserveIt: ReceiverResultReg 
-						] ifFalse: [  												
-							cogit popIntoRegisterAndPreserveIt: ClassReg   "If all Arg1, Arg2 and Arg3 are int/pointer then Arg3 will be in RCX"
-						]
-				]].
-			] ifFalse: [ 
-				"floats not supported yet."
-			].
-]	
-		ifFalse: [ "WIN64"
-			
-			"In WIN64 dealing with the registers used for the arguments is easier because each value corresponds to a specific register regardless of the previous usage of the other registers.
+		ifFalse: [ "WIN64""In WIN64 dealing with the registers used for the arguments is easier because each value corresponds to a specific register regardless of the previous usage of the other registers.
 			The first argument if it's an int/pointer -> RCX . if it's a float -> XMM0
 			The second argument if is an int/pointer  -> RDX . if it's a float -> XMM1 . But this value will be in those registers no matter the register used for the first argument.
-			See https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention" 
-			
-			(cogit isIntegerOrPointerType: (aCif argTypeAt: 0) type) ifTrue: [   "a.k.a. RCX"
-				cogit popIntoRegisterAndPreserveIt: Arg0Reg
-			] ifFalse: [ 
-				"floats not supported yet."
-			
-			].
-			numArgs = 1 ifTrue: [^self].
-			
-			(cogit isIntegerOrPointerType: (aCif argTypeAt: 1) type) ifTrue: [   "a.k.a. RDX"
-				cogit popIntoRegisterAndPreserveIt: Arg1Reg
-			] ifFalse: [ 
-				"floats not supported yet."
-			].
-			numArgs = 2 ifTrue: [^self].
-			
-			(cogit isIntegerOrPointerType: (aCif argTypeAt: 2) type) ifTrue: [   "a.k.a. R8"
-				cogit popIntoRegisterAndPreserveIt: ClassReg 																			
-			] ifFalse: [ 
-				"floats not supported yet."
-			].
-			numArgs = 3 ifTrue: [^self].
-			
-			(cogit isIntegerOrPointerType: (aCif argTypeAt: 3) type) ifTrue: [   "a.k.a. R9"
-				cogit popIntoRegisterAndPreserveIt: ReceiverResultReg 																						
-			] ifFalse: [ 
-				"floats not supported yet."
-			].
-		 ]
+			See https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention"
+			(cogit isIntegerOrPointerType: (aCif argTypeAt: 0) type)
+				ifTrue: [ "a.k.a. RCX"
+				cogit popIntoRegisterAndPreserveIt: Arg0Reg ]
+				ifFalse: [ "floats not supported yet." ].
+			numArgs = 1 ifTrue: [ ^ self ].
+
+			(cogit isIntegerOrPointerType: (aCif argTypeAt: 1) type)
+				ifTrue: [ "a.k.a. RDX"
+				cogit popIntoRegisterAndPreserveIt: Arg1Reg ]
+				ifFalse: [ "floats not supported yet." ].
+			numArgs = 2 ifTrue: [ ^ self ].
+
+			(cogit isIntegerOrPointerType: (aCif argTypeAt: 2) type)
+				ifTrue: [ "a.k.a. R8"
+				cogit popIntoRegisterAndPreserveIt: ClassReg ]
+				ifFalse: [ "floats not supported yet." ].
+			numArgs = 3 ifTrue: [ ^ self ].
+
+			(cogit isIntegerOrPointerType: (aCif argTypeAt: 3) type)
+				ifTrue: [ "a.k.a. R9"
+				cogit popIntoRegisterAndPreserveIt: ReceiverResultReg ]
+				ifFalse: [ "floats not supported yet." ] ]
 ]
 
 { #category : #'calling C function in Smalltalk stack' }
