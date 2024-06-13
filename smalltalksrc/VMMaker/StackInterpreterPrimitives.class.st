@@ -181,10 +181,6 @@ StackInterpreterPrimitives >> doPrimitiveSameThreadCalloutUint64Uint64 [
 	(cif returnType type = FFI_TYPE_UINT64) ifFalse: [
 		self logDebug: 'Return type of the function is not uint64'.
 		^ self primitiveFailFor: PrimErrBadArgument ].
-	
-	(cif numberArguments = 1) ifFalse: [
-		self logDebug: 'Invalid number of arguments'.
-		^ self primitiveFailFor: PrimErrBadArgument ].
 
 	(cif numberArguments = 1) ifFalse: [
 		self logDebug: 'Invalid number of arguments'.

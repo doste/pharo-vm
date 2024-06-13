@@ -1486,7 +1486,7 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	backEnd prepareForExternalCallWithCif: cif.
 	
 	"Verify that the argument(s) we receive for the C function comply with those specified in the cif."
-	jumpSomeError  := self checkAndUnpackArgumentsForExternalFunctionWithCifAVER: cif.
+	jumpSomeError  := self checkAndUnpackArgumentsForExternalFunctionWithCif: cif.
 	
 	self CallFullRT: externalFunctionAddr.
 	
@@ -3402,6 +3402,7 @@ StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 	"We know the external function left us its result in TempReg. So we convert the value inside to a Pharo SmallInteger and then push it."
 
 	<var: #aCif type: #'ffi_cif *'>
+	| returnedPointer anExternalAddressFromPointer |
 	(self isIntegerType: aCif returnType type) ifTrue: [
 		backEnd ISA = #X64
 			ifTrue: [ "Both SysV and Win64 returns through RAX. This register is mapped to TempReg in both ABIs."
@@ -3412,11 +3413,21 @@ StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 	aCif returnType type = FFI_TYPE_VOID ifTrue: [ "Return the receiver to guarantee that we push a return value, to not mess up the stack."
 		self genPushReceiverBytecode ].
 
-	"The external function returned a pointer, so we have to:
+	"If the external function returned a pointer, so we have to:
 	1) convert it to an ExternalAddress
 	2) push it."
-	aCif returnType type = FFI_TYPE_POINTER ifTrue: [ "genPrimitiveStorePointerIntoExternalAddress podria ser?"
-		 ]
+	aCif returnType type = FFI_TYPE_POINTER ifTrue: [ "ESTARA BIEN ESTO???? ( esta genPrimitiveStoreInt64IntoExternalAddress tambien sino.....)"
+		returnedPointer := nil.
+		self MoveR: TempReg Aw: returnedPointer.
+		returnedPointer
+			ifNil: [ "handlear con el runner o cogit Stop?????" ]
+			ifNotNil: [
+				anExternalAddressFromPointer := objectMemory
+					                                newExternalAddressWithValue:
+					                                returnedPointer.
+				self ssPushConstant: anExternalAddressFromPointer ] ].
+		
+	"TODO: float/doubles"
 ]
 
 { #category : #'simulation stack' }

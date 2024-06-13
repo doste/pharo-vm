@@ -565,7 +565,15 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentUsingWithCif: aCif withFallbackJu
 
 { #category : #'bytecode generators' }
 SimpleStackBasedCogit >> checkAndUnpackArgumentsForExternalFunctionWithCif: aCif [
-
+	"The idea here is that we want to generate code to make different checks on the arguments of a external function. At this point those values are already in the corresponding registers.
+	 To know at which register is a specific argument given the CIF we have a helper method implemented in the backend: #getRegisterForExternalFunctionArgumentInIndex:fromCif:
+	 
+	Then the generated code will check on that register(s). For example shifting it (to tag/untag the value) and comparing it with the tag mask, checking if the value is negative, etc.
+	All of those different checks will generate jump instructions, so in each case of failure there will be a jump to some place to handle the error. This method does not handle the error, not even sets the target 
+	for all the jumps from error. The idea of this method is that it will return a 'jump instruction' that then the caller of this method will set its target. The caller of this method then is the one that should handle all the errors.
+	
+	The main loop in this method concatenates all the jump instructions to finally return just one, but that has all the chain of jumps incorporated.
+	"
 	<var: #aCif type: #'ffi_cif *'>
 	| incomingFallbackJump |
 	incomingFallbackJump := nil.
