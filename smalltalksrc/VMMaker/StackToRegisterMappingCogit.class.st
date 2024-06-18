@@ -3404,7 +3404,7 @@ StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 	<var: #aCif type: #'ffi_cif *'>
 	| returnedPointer anExternalAddressFromPointer |
 	(self isIntegerType: aCif returnType type) ifTrue: [
-		backEnd ISA = #X64
+		backEnd class ISA = #X64
 			ifTrue: [ "Both SysV and Win64 returns through RAX. This register is mapped to TempReg in both ABIs."
 				objectRepresentation genConvertIntegerToSmallIntegerInReg: TempReg.
 				self ssPushRegister: TempReg ]
@@ -3417,15 +3417,15 @@ StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 	1) convert it to an ExternalAddress
 	2) push it."
 	aCif returnType type = FFI_TYPE_POINTER ifTrue: [ "ESTARA BIEN ESTO???? ( esta genPrimitiveStoreInt64IntoExternalAddress tambien sino.....)"
-		returnedPointer := nil.
+		"returnedPointer := nil.
 		self MoveR: TempReg Aw: returnedPointer.
 		returnedPointer
-			ifNil: [ "handlear con el runner o cogit Stop?????" ]
-			ifNotNil: [
+			ifNil: [" "handlear con el runner o cogit Stop?????" ]
+			"ifNotNil: [
 				anExternalAddressFromPointer := objectMemory
 					                                newExternalAddressWithValue:
 					                                returnedPointer.
-				self ssPushConstant: anExternalAddressFromPointer ] ].
+				self ssPushConstant: anExternalAddressFromPointer ] ]."
 		
 	"TODO: float/doubles"
 ]
@@ -3560,7 +3560,7 @@ StackToRegisterMappingCogit >> initializeFixupAt: targetPC [
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> isBackendSupportedForJITtedBytecodeFFI [
 	
-	^backEnd ISA = #aarch64 or: (backEnd ISA = #X64)
+	^backEnd class ISA = #aarch64 or: (backEnd class ISA = #X64)
 ]
 
 { #category : #'span functions' }
