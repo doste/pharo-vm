@@ -4184,34 +4184,22 @@ SimpleStackBasedCogit >> isCallerSavedReg: reg [
 { #category : #'bytecode generators' }
 SimpleStackBasedCogit >> isExternalFunctionPrototypeSupported: aCif [
 	"For now the supported function prototypes are those that comply with all the following:
-	- 0 to 4 arguments
+	- 0 to 3 arguments
 	- the return type and the types of the arguments are pointer or integers. NOT floats/doubles
 	"
-												
-	| numberOfArgumentsSupported returnTypeSupported argsTypesSupported |
 	
 	<var: #aCif type: #'ffi_cif *'>
 	
-	numberOfArgumentsSupported := aCif numberArguments >= 0 and: (aCif numberArguments <= 4).
+	(aCif numberArguments >= 0 and: (aCif numberArguments <= 3)) ifFalse: [ ^ false ].
 	
-	returnTypeSupported := self isIntegerOrPointerType: aCif returnType type.
-	
-	argsTypesSupported := true.
-	
+	(self isIntegerOrPointerType: aCif returnType type) ifFalse: [ ^ false ].
+
 	0 to: (aCif numberArguments - 1) do: [:indexArg |
-		(self isIntegerOrPointerType: ((aCif argTypeAt: indexArg) type)) ifFalse: [ argsTypesSupported := false ]
+		(self isIntegerOrPointerType: ((aCif argTypeAt: indexArg) type)) ifFalse: [ ^ false ]
 	].
 
-	^ (numberOfArgumentsSupported and: (returnTypeSupported and: argsTypesSupported))
+	^ true
 	
-	"uint64Uint64 := (aCif numberArguments = 1) and: [ aCif returnType type = FFI_TYPE_UINT64 and: [(aCif argTypeAt: 0) type = FFI_TYPE_UINT64]].
-	
-	void64Uint64Uint64 := (aCif numberArguments = 2) and: [ aCif returnType type = FFI_TYPE_VOID and: [(aCif argTypeAt: 0) type = FFI_TYPE_UINT64 and: [(aCif argTypeAt: 1) type = FFI_TYPE_UINT64 ]]].
-	
-	voidPointer := (aCif numberArguments = 1) and: [ aCif returnType type = FFI_TYPE_VOID and: [(aCif argTypeAt: 0) type = FFI_TYPE_POINTER]].
-	
-	^ (uint64Uint64 or: (void64Uint64Uint64 or: voidPointer))"
-
 	
 
 ]
