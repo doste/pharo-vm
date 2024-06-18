@@ -4185,14 +4185,15 @@ SimpleStackBasedCogit >> isCallerSavedReg: reg [
 SimpleStackBasedCogit >> isExternalFunctionPrototypeSupported: aCif [
 	"For now the supported function prototypes are those that comply with all the following:
 	- 0 to 3 arguments
-	- the return type and the types of the arguments are pointer or integers. NOT floats/doubles
+	- The types of the arguments are: pointer or integers. NOT floats/doubles
+	- The type of the return value is a pointer, an integer or just void.
 	"
 	
 	<var: #aCif type: #'ffi_cif *'>
 	
 	(aCif numberArguments >= 0 and: (aCif numberArguments <= 3)) ifFalse: [ ^ false ].
 	
-	(self isIntegerOrPointerType: aCif returnType type) ifFalse: [ ^ false ].
+	((self isIntegerOrPointerType: aCif returnType type) or: (aCif returnType type = FFI_TYPE_VOID)) ifFalse: [ ^ false ].
 
 	0 to: (aCif numberArguments - 1) do: [:indexArg |
 		(self isIntegerOrPointerType: ((aCif argTypeAt: indexArg) type)) ifFalse: [ ^ false ]
