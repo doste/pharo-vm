@@ -3417,14 +3417,14 @@ StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 	1) convert it to an ExternalAddress
 	2) push it."
 	aCif returnType type = FFI_TYPE_POINTER ifTrue: [ "ESTARA BIEN ESTO???? ( esta genPrimitiveStoreInt64IntoExternalAddress tambien sino.....)"
-		returnedPointer := nil.
-		self MoveR: TempReg Aw: returnedPointer.
-		returnedPointer
-			ifNil: [ "handlear con el runner o cogit Stop?????" ]
-			ifNotNil: [
-				anExternalAddressFromPointer := objectMemory
-					                                newExternalAddressWithValue: returnedPointer.
-				self ssPushConstant: anExternalAddressFromPointer ] ].
+			
+				self ssPushRegister: TempReg.
+				returnedPointer := self ssTop.
+				self ssPop: 1.
+			
+				anExternalAddressFromPointer := objectMemory newExternalAddressWithValue: returnedPointer.
+					
+				self ssPushConstant: anExternalAddressFromPointer ] .
 		
 	"TODO: float/doubles"
 ]
