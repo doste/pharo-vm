@@ -3419,13 +3419,15 @@ StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 	2) push it."
 	aCif returnType type = FFI_TYPE_POINTER ifTrue: [ "ESTARA BIEN ESTO???? ( esta genPrimitiveStoreInt64IntoExternalAddress tambien sino.....)"
 			
-				self ssPushRegister: TempReg.
+				"self ssPushRegister: TempReg.
 				returnedPointer := self ssTop.
 				self ssPop: 1.
 			
 				anExternalAddressFromPointer := objectMemory newExternalAddressWithValue: returnedPointer.
 					
-				self ssPushConstant: anExternalAddressFromPointer ] .
+				self ssPushConstant: anExternalAddressFromPointer
+				
+				TODO ESTO NO FUNCIONA. NO GENERA NADA DE CODIGO!!!" ] .
 		
 	"TODO: float/doubles"
 ]
