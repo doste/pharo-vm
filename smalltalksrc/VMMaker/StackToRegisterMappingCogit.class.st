@@ -3403,12 +3403,11 @@ StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 	"We know the external function left us its result in TempReg. So we convert the value inside to a Pharo SmallInteger and then push it."
 
 	<var: #aCif type: #'ffi_cif *'>
-	| returnedPointer anExternalAddressFromPointer |
 	(self isIntegerType: aCif returnType type) ifTrue: [
 		backEnd class ISA = #X64
 			ifTrue: [ "Both SysV and Win64 returns through RAX. This register is mapped to TempReg in both ABIs."
 				objectRepresentation genConvertIntegerToSmallIntegerInReg: TempReg.
-				self ssPushRegister: TempReg ]
+				self MoveR: TempReg R: ReceiverResultReg ]
 			ifFalse: [ "TODO: handle for ARM" ] ].
 
 	aCif returnType type = FFI_TYPE_VOID ifTrue: [ "Return the receiver to guarantee that we push a return value, to not mess up the stack."
