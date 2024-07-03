@@ -592,43 +592,6 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentsForExternalFunctionWithCif: aCif
 
 	^ incomingFallbackJump
 
-	"[ aCif numberArguments ]
-		caseOf: {
-				([ 1 ]
-				 -> [ 	
-					 ^ self
-						   checkAndUnpackArgumentInIndex: 0
-						   forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
-						   usingRegister: (self getRegisterForArgumentInIndex: 0 fromCif: aCif)
-						   withIncomingFallbackJump: nil ]).
-				([ 2 ]
-				 -> [ 
-					 ^ self
-						   checkAndUnpackArgumentInIndex: 0
-						   forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
-						   usingRegister: (self getRegisterForArgumentInIndex: 0 fromCif: aCif)
-						   withIncomingFallbackJump: (self
-								    checkAndUnpackArgumentInIndex: 1
-								    forExternalFunctionWithOutgoingJumpFallbackAndWithCif:
-								    aCif
-								    usingRegister: (self getRegisterForArgumentInIndex: 1 fromCif: aCif)
-								    withIncomingFallbackJump: nil) ]).
-				([ 3 ] -> [
-				 ^ self
-					   checkAndUnpackArgumentInIndex: 0
-					   forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
-					   usingRegister: (self getRegisterForArgumentInIndex: 0 fromCif: aCif)
-					   withIncomingFallbackJump: (self
-							    checkAndUnpackArgumentInIndex: 1
-							    forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif
-							    usingRegister:  (self getRegisterForArgumentInIndex: 1 fromCif: aCif)
-							    withIncomingFallbackJump: (self
-									     checkAndUnpackArgumentInIndex: 2
-									     forExternalFunctionWithOutgoingJumpFallbackAndWithCif:
-									     aCif
-									     usingRegister: (self getRegisterForArgumentInIndex: 2 fromCif: aCif)
-									     withIncomingFallbackJump: nil)) ]) }
-		otherwise: [ ^ nil ]"
 ]
 
 { #category : #'bytecode generators' }

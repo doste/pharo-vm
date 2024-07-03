@@ -1328,22 +1328,23 @@ StackToRegisterMappingCogit >> extractMaybeBranchDescriptorInto: fourArgBlock [
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: aCif usingRunner: aRunner [
-	"Unpack all arguments in an array that is left in the ReceiverResultReg"
+	"Unpack all arguments in an array that is left in the ReceiverResultReg.
+	At the point this method is called, all the arguments are already put in their corresponding registers, *not* in the stack!"
 
-	| size |
 	<inline: true>
-
+	| size |
 	self voidReceiverResultRegContainsSelf.
 	self ssFlushTo: simStackPtr.
-	size := aCif ifNil: [0] ifNotNil: [aCif numberArguments].				"tara bien?"
-	objectRepresentation genNewArrayOfSize: size initialized: false.
-	size - 1 to: 0 by: -1 do: [ :i |
-		self PopR: TempReg.
+	size := aCif numberArguments.
+	objectRepresentation genNewArrayOfSize: size initialized: false. "This method left the newly created array in ReceiverResultReg"
+
+	0 to: size - 1 do: [ :i |
 		objectRepresentation
-			genStoreSourceReg: TempReg
+			genStoreSourceReg: (backEnd
+					 getRegisterForExternalFunctionArgumentInIndex: i
+					 fromCif: aCif)
 			slotIndex: i
 			intoNewObjectInDestReg: ReceiverResultReg ].
-	self ssPop: size.
 
 	self ssPushConstant: aRunner.
 	self ssPushConstant: aTFExternalFunction.
