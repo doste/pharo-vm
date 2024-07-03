@@ -3404,6 +3404,7 @@ StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 	"We know the external function left us its result in TempReg. So we convert the value inside to a Pharo SmallInteger and then push it."
 
 	<var: #aCif type: #'ffi_cif *'>
+	| returnedPointer anExternalAddressFromPointer |
 	(self isIntegerType: aCif returnType type) ifTrue: [
 		backEnd class ISA = #X64
 			ifTrue: [ "Both SysV and Win64 returns through RAX. This register is mapped to TempReg in both ABIs."
@@ -3419,15 +3420,15 @@ StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 	2) push it."
 	aCif returnType type = FFI_TYPE_POINTER ifTrue: [ "ESTARA BIEN ESTO???? ( esta genPrimitiveStoreInt64IntoExternalAddress tambien sino.....)"
 			
-				"self ssPushRegister: TempReg.
+				self ssPushRegister: TempReg.
 				returnedPointer := self ssTop.
 				self ssPop: 1.
 			
 				anExternalAddressFromPointer := objectMemory newExternalAddressWithValue: returnedPointer.
 					
-				self ssPushConstant: anExternalAddressFromPointer
+				self MoveCw: anExternalAddressFromPointer R: ReceiverResultReg
 				
-				TODO ESTO NO FUNCIONA. NO GENERA NADA DE CODIGO!!!" ] .
+				"TODO ESTO NO FUNCIONA. NO GENERA NADA DE CODIGO!!!" ] .
 		
 	"TODO: float/doubles"
 ]
