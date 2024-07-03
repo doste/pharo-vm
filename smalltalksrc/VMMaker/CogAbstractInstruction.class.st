@@ -1766,6 +1766,11 @@ CogAbstractInstruction >> storeLiteral32: literal32 beforeFollowingAddress: foll
 	self storeLiteral: literal32 beforeFollowingAddress: followingAddress
 ]
 
+{ #category : #translation }
+CogAbstractInstruction >> supportsJITtedBytecodeFFICall [
+	^false
+]
+
 { #category : #printing }
 CogAbstractInstruction >> symbolic [
 	<doNotGenerate> "Smalltalk-side only"

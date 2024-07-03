@@ -6355,6 +6355,11 @@ CogARMv8Compiler >> subsSize: is64Bits sourceRegister: sourceRegister shift: shi
 		bitOr: (destinationRegister bitAnd: 2r11111)))))))
 ]
 
+{ #category : #translation }
+CogARMv8Compiler >> supportsJITtedBytecodeFFICall [
+	^true
+]
+
 { #category : #'private-bit-manipulation' }
 CogARMv8Compiler >> trailingOnesOf: aNumber [
 	"Return how many trailing ones are in the 64bit bitString representation of aNumber.

@@ -5079,6 +5079,11 @@ CogX64Compiler >> storeLiteral32: literal beforeFollowingAddress: followingAddre
 		byteAt: followingAddress - 4 put: (literal            bitAnd: 16rFF)
 ]
 
+{ #category : #translation }
+CogX64Compiler >> supportsJITtedBytecodeFFICall [
+	^true
+]
+
 { #category : #disassembly }
 CogX64Compiler >> twoByteInstructionSizeAt: pc [
 	| op |
