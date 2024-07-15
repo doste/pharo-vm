@@ -499,7 +499,7 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentPointer: aRegister withIncomingFa
 	| mergePointToExit fallthroughJump fallbackJump fallthroughLabel jumpImmediate externalAddressIndex jumpBadClass |
 	"Check that aRegister contains an ExternalAddress"
 	jumpImmediate := objectRepresentation genJumpImmediate: aRegister.
-	"NO HAY OPERACIONES DESTRUCTIVAS ACA"
+
 	externalAddressIndex := objectMemory rawHashBitsOf:
 		                        objectMemory classExternalAddress.
 	objectRepresentation

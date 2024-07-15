@@ -1051,6 +1051,8 @@ CogAbstractInstruction >> getOperandsWithFormat: format [
 	<doNotGenerate>
 
 	| orneryOperands strOperands |
+	
+	
 	strOperands := OrderedCollection new.
 	orneryOperands := operands isCObjectAccessor
 		                  ifTrue: [ operands object ]
@@ -1067,8 +1069,8 @@ CogAbstractInstruction >> getOperandsWithFormat: format [
 					(operand isInteger) 
 						ifTrue: [ (operand > 16 and: [ opcode ~= Label ]) 
 							ifTrue: [ 
-								(operand allMask: 16r80000000) 
-									ifTrue: [ strOperands add: operand, '/', operand signedIntFromLong ].
+								"(operand allMask: 16r80000000) 
+									ifTrue: [ strOperands add: operand, '/', operand signedIntFromLong ]."
 									strOperands add: operand asString, '/', (operand hex)]
 							ifFalse: [ 
 								strOperands add: operand.

@@ -1489,7 +1489,11 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	"Verify that the argument(s) we receive for the C function comply with those specified in the cif."
 	jumpSomeError  := self checkAndUnpackArgumentsForExternalFunctionWithCif: cif.
 	
+	"Switch to the C stack, so the external function uses this stack to execute."
+	self genSmalltalkToCStackSwitch: true.
 	self CallFullRT: externalFunctionAddr.
+	"Switch back to the Smalltalk stack."
+	backEnd genLoadStackPointers.
 	
 	"Push the return value converting it if necessary."
 	self handleReturnFromExternalFunctionWithCif: cif.
@@ -1499,7 +1503,6 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	failure := self Label.
 	jumpSomeError jmpTarget: failure.
 	
-	"self Stop."
 	self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: cif usingRunner: runner.
 	
 	continueToNextBytecode := self Label.
@@ -3401,7 +3404,6 @@ StackToRegisterMappingCogit >> generateTracingTrampolines [
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
-	"We know the external function left us its result in TempReg. So we convert the value inside to a Pharo SmallInteger and then push it."
 
 	<var: #aCif type: #'ffi_cif *'>
 	| returnedPointer anExternalAddressFromPointer |
