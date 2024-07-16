@@ -1461,7 +1461,7 @@ StackToRegisterMappingCogit >> genBlockReturn [
 
 { #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> genBytecodeFFICall [
-	| n aTFExternalFunction runner externalFunctionAddr cif failure jumpContinue continueToNextBytecode jumpSomeError |
+	| n aTFExternalFunction runner externalFunctionAddr cif failure jumpContinue continueToNextBytecode jumpSomeError jumpMaybeFailAlloc |
 	
 	n :=  byte1.
 	aTFExternalFunction := self getLiteral: (n bitAnd: 2r1111).
@@ -1495,13 +1495,16 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	"Switch back to the Smalltalk stack."
 	backEnd genLoadStackPointers.
 	
-	"Push the return value converting it if necessary."
-	self handleReturnFromExternalFunctionWithCif: cif.
+	"Convert the return value and put it in the corresponding register."
+	jumpMaybeFailAlloc := self handleReturnFromExternalFunctionWithCif: cif.
 	
 	jumpContinue := self Jump: 0.
 	
 	failure := self Label.
 	jumpSomeError jmpTarget: failure.
+	((jumpMaybeFailAlloc class ~= SmallInteger) and:[ jumpMaybeFailAlloc isJump]) ifTrue: [  
+		jumpMaybeFailAlloc jmpTarget: failure
+	].
 	
 	self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: cif usingRunner: runner.
 	
@@ -3406,30 +3409,20 @@ StackToRegisterMappingCogit >> generateTracingTrampolines [
 StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 
 	<var: #aCif type: #'ffi_cif *'>
-	| returnedPointer anExternalAddressFromPointer |
 	(self isIntegerType: aCif returnType type) ifTrue: [
 		self MoveR: backEnd cResultRegister R: ReceiverResultReg.
 		^ objectRepresentation genConvertIntegerToSmallIntegerInReg:
 			  ReceiverResultReg ].
 
 	aCif returnType type = FFI_TYPE_VOID ifTrue: [ "Return the receiver to guarantee that we push a return value, to not mess up the stack."
-		self genPushReceiverBytecode ].
+		"self genPushReceiverBytecode				>>>>>>>>> NO HACE FALTA!!! O SI?"
+		^0 "Just to ease the implementation of genBytecodeFFICall"].
 
-	"If the external function returned a pointer, so we have to:
-	1) convert it to an ExternalAddress
-	2) push it."
+	"If the external function returned a pointer, so we have to wrap it in an ExternalAddress"
 	aCif returnType type = FFI_TYPE_POINTER ifTrue: [ "ESTARA BIEN ESTO???? ( esta genPrimitiveStoreInt64IntoExternalAddress tambien sino.....)"
-		self ssPushRegister: TempReg.
-		returnedPointer := self ssTop.
-		self ssPop: 1.
-
-		anExternalAddressFromPointer := objectMemory
-			                                newExternalAddressWithValue:
-			                                returnedPointer.
-
-		self MoveCw: anExternalAddressFromPointer R: ReceiverResultReg
-
-		"TODO ESTO NO FUNCIONA. NO GENERA NADA DE CODIGO!!!" ]
+		
+		^ objectRepresentation genAllocExternalAddressValue: (backEnd cResultRegister) into: ReceiverResultReg scratchReg: Extra0Reg scratchReg: Extra1Reg.
+   ]
 
 	"TODO: float/doubles"
 ]

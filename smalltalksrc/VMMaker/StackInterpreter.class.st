@@ -5139,7 +5139,7 @@ StackInterpreter >> divorceFramesIn: aStackPage [
 StackInterpreter >> doCall: externalFunction withCif: cif [
 	"This method is meant to be called from bytecodeFFICall. The reason why all this logic is extracted in a different method is for the allocations (all the 'alloca's):
 	
-	All the bytecode execution happens inside a function called interpret. This function has a loop where executes each bytecode in a 'swith-case' way. When we enter de bytecodeFFICall case, we do a couple of 'alloca's but if we do them just inside the block corresponding to this case, the memory corresponding to those 'alloca's would get freed when the interpret function finishes, which may be long after we execute the bytecodeFFICall. 
+	All the bytecode execution happens inside a function called interpret. This function has a loop where executes each bytecode in a 'swith-case' way. When we enter to the bytecodeFFICall case, we do a couple of 'alloca's but if we do them just inside the block corresponding to this case, the memory corresponding to those 'alloca's would get freed when the interpret function finishes, which may be long after we execute the bytecodeFFICall. 
 	This is because the memory allocated by an 'alloca' is released at the end of the function, not the block defining it.
 	
 	This means that with every FFI call performed through the bytecode we would allocate the memory we need but never release it, only when the interpreter is done interpreting bytecodes.

@@ -415,6 +415,62 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunctionWithTwoArgs
 ]
 
 { #category : #tests }
+VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionPointerPointer [
+
+	| tfExternalFunction stopAddress addr methodObject actualExternalAddress anExternalAddressObject |
+	"Test the prototype pointer fn(pointer) works"
+	
+	tfExternalFunction := self
+		                      createExternalFunctionForCogitBlock: [
+										cogit MoveR: Arg0Reg R: TempReg.
+										cogit RetN: 0
+			                      ]
+		                      withArgumentTypes:
+		                         { interpreter libFFI pointer }
+		                      withReturnType: interpreter libFFI pointer.
+
+	methodObject := methodBuilder newMethod
+		                literals: {
+				                memory nilObject.   "this would be the runner"
+				                tfExternalFunction };
+		                buildMethod.
+	
+	"genBytecodeFFICall will call into these trampolines for the fallback, so for the test to work we need to simulate them"
+	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
+	cogit ordinarySendTrampolineAt: 2 put: self fakeTrampoline.
+	
+	actualExternalAddress := memory integerObjectOf: 16rffff.
+	anExternalAddressObject := self newExternalAddress: actualExternalAddress.
+
+	addr := self
+		        compile: [
+			        cogit methodOrBlockNumTemps: 1.
+			        cogit methodOrBlockNumArgs: 1.
+					  cogit needsFrame: true. 
+			        cogit initSimStackForFramefulMethod: 0.
+			        cogit methodObj: methodObject.
+			    
+					  cogit ssPushConstant: anExternalAddressObject.
+					  cogit byte0: 230.
+			        cogit byte1: 1.
+			        cogit genBytecodeFFICall.
+			
+					  "The genBytecodeFFICall left us in ReceiverResultReg a new ExternalAddress object.
+					  We need to access to its first slot to extract the actual external address"
+					  cogit MoveMw: 8 "skip the header" r: ReceiverResultReg R: ReceiverResultReg.
+
+			        "This instruction should not be called"
+			        stopAddress := cogit Stop ]
+		        bytecodes: 1.
+		
+	self runFrom: addr until: stopAddress address.
+
+	self
+		assert: machineSimulator receiverRegisterValue
+		equals: actualExternalAddress.
+]
+
+{ #category : #tests }
 VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionVoidPointerExtractsExternalAddress [
 
 	| tfExternalFunction stopAddress addr methodObject actualExternalAddress anExternalAddressObject |
