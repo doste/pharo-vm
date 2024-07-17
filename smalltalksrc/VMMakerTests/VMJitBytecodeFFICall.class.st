@@ -320,6 +320,112 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithComplexExternalFunctionAndPreserv
 ]
 
 { #category : #tests }
+VMJitBytecodeFFICall >> testBytecodeFFICallWithExternalFunctionAccessToTheCorrectArgument [
+
+	| tfExternalFunction stopAddress addr methodObject actualExternalAddress anExternalAddressObject |
+	tfExternalFunction := self
+		                      createExternalFunctionForCogitBlock: [  "add the two int args and return the pointer"
+			                      cogit AddR: Arg0Reg R: ReceiverResultReg.
+										cogit MoveR: Arg1Reg R: TempReg.
+			                      cogit RetN: 0 ]
+		                      withArgumentTypes:
+		                      { interpreter libFFI uint64 . interpreter libFFI pointer . interpreter libFFI uint32  }
+		                      withReturnType: interpreter libFFI pointer.
+	
+	"genBytecodeFFICall will call into these trampolines for the fallback, so for the test to work we need to simulate them"
+	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
+	cogit ordinarySendTrampolineAt: 2 put: self fakeTrampoline.
+	
+	actualExternalAddress := memory integerObjectOf: 16rffff.
+	anExternalAddressObject := self newExternalAddress: actualExternalAddress.
+
+	methodObject := methodBuilder newMethod
+		                literals: {
+				                memory nilObject.
+				                tfExternalFunction };
+		                buildMethod.
+
+	addr := self
+		        compile: [
+			        cogit methodOrBlockNumTemps: 1.
+			        cogit methodOrBlockNumArgs: 1.
+			        cogit initSimStackForFramefulMethod: 0.
+					  cogit needsFrame: true. 
+
+			        cogit methodObj: methodObject.
+			        cogit ssPushConstant: (memory integerObjectOf: 1).
+					  cogit ssPushConstant: anExternalAddressObject.
+					  cogit ssPushConstant: (memory integerObjectOf: 3).
+			        cogit byte0: 230.
+			        cogit byte1: 1.
+			        cogit genBytecodeFFICall.
+			
+					"The genBytecodeFFICall left us in ReceiverResultReg a new ExternalAddress object.
+					  We need to access to its first slot to extract the actual external address"
+					  cogit MoveMw: 8 "skip the header" r: ReceiverResultReg R: ReceiverResultReg.
+
+			        "This instruction should not be called"
+			        stopAddress := cogit Stop ]
+		        bytecodes: 1.
+		
+	self runFrom: addr until: stopAddress address.
+
+	self
+		assert: machineSimulator receiverRegisterValue
+		equals: actualExternalAddress.
+]
+
+{ #category : #tests }
+VMJitBytecodeFFICall >> testBytecodeFFICallWithExternalFunctionThreeArgs [
+
+	| tfExternalFunction stopAddress addr methodObject |
+	tfExternalFunction := self
+		                      createExternalFunctionForCogitBlock: [  "add the three args"
+			                      cogit MoveR: Arg0Reg R: TempReg.
+										cogit AddR: Arg1Reg R: TempReg.
+										cogit AddR: ReceiverResultReg R: TempReg.
+			                      cogit RetN: 0 ]
+		                      withArgumentTypes:
+		                      { interpreter libFFI uint64 . interpreter libFFI sint8 . interpreter libFFI uint32  }
+		                      withReturnType: interpreter libFFI uint64.
+	
+	"genBytecodeFFICall will call into these trampolines for the fallback, so for the test to work we need to simulate them"
+	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
+	cogit ordinarySendTrampolineAt: 2 put: self fakeTrampoline.
+
+	methodObject := methodBuilder newMethod
+		                literals: {
+				                memory nilObject.
+				                tfExternalFunction };
+		                buildMethod.
+
+	addr := self
+		        compile: [
+			        cogit methodOrBlockNumTemps: 1.
+			        cogit methodOrBlockNumArgs: 1.
+			        cogit initSimStackForFramefulMethod: 0.
+					  cogit needsFrame: true. 
+
+			        cogit methodObj: methodObject.
+			        cogit ssPushConstant: (memory integerObjectOf: 1).
+					  cogit ssPushConstant: (memory integerObjectOf: 2).
+					  cogit ssPushConstant: (memory integerObjectOf: 3).
+			        cogit byte0: 230.
+			        cogit byte1: 1.
+			        cogit genBytecodeFFICall.
+
+			        "This instruction should not be called"
+			        stopAddress := cogit Stop ]
+		        bytecodes: 1.
+		
+	self runFrom: addr until: stopAddress address.
+
+	self
+		assert: machineSimulator receiverRegisterValue
+		equals: (memory integerObjectOf: (1+2+3))
+]
+
+{ #category : #tests }
 VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunction [
 
 	| tfExternalFunction stopAddress addr methodObject |
@@ -468,6 +574,56 @@ VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionPointerPointer [
 	self
 		assert: machineSimulator receiverRegisterValue
 		equals: actualExternalAddress.
+]
+
+{ #category : #tests }
+VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionReturnsLargeInteger [
+
+	| tfExternalFunction stopAddress addr methodObject |
+	"Test the prototype pointer fn(pointer) works"
+	
+	tfExternalFunction := self
+		                      createExternalFunctionForCogitBlock: [
+										cogit MoveCw: (memory maxSmallInteger) R: TempReg.
+										cogit AddR: Arg0Reg R: TempReg. 
+										cogit RetN: 0
+			                      ]
+		                      withArgumentTypes:
+		                         { interpreter libFFI uint8 }
+		                      withReturnType: interpreter libFFI sint64.
+
+	methodObject := methodBuilder newMethod
+		                literals: {
+				                memory nilObject.   "this would be the runner"
+				                tfExternalFunction };
+		                buildMethod.
+	
+	"genBytecodeFFICall will call into these trampolines for the fallback, so for the test to work we need to simulate them"
+	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
+	cogit ordinarySendTrampolineAt: 2 put: self fakeTrampoline.
+
+	addr := self
+		        compile: [
+			        cogit methodOrBlockNumTemps: 1.
+			        cogit methodOrBlockNumArgs: 1.
+					  cogit needsFrame: true. 
+			        cogit initSimStackForFramefulMethod: 0.
+			        cogit methodObj: methodObject.
+			    
+					  cogit ssPushConstant: (memory integerObjectOf: 1).
+					  cogit byte0: 230.
+			        cogit byte1: 1.
+			        cogit genBytecodeFFICall.
+			
+			        "This instruction should not be called"
+			        stopAddress := cogit Stop ]
+		        bytecodes: 1.
+
+	self runFrom: addr until: stopAddress address.
+
+	self
+		assert: machineSimulator receiverRegisterValue
+		equals: (memory integerObjectOf: (memory maxSmallInteger + 1))
 ]
 
 { #category : #tests }
