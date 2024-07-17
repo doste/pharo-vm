@@ -4251,15 +4251,15 @@ CogX64Compiler >> getRegisterForExternalFunctionArgumentInIndex: indexOfArg forS
 									(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ ^ Arg1Reg ]
 								] ifFalse: [ 
 									"caso 2) -> primer arg va en RDI y el segundo en RSI. entonces devolvemos acorde a cual nos esta pidiendo"
-									(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ "^ POR DONDE VAYA EL PRIMER FLOAT" ]
+									(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ ^ VReg0 ]
 								 ]
 						 ] ifFalse: [ 
 								(cogit isIntegerOrPointerType: ((aCif argTypeAt: 1) type)) ifTrue: [ 
 									"caso 3)"
-									(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT"] ifFalse: [ ^ Arg0Reg ]
+									(indexOfArg = 0) ifTrue: [ ^ VReg0] ifFalse: [ ^ Arg0Reg ]
 								] ifFalse: [ 
 									"caso 4)"
-									(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT"] ifFalse: [ "^ POR DONDE VAYA EL SEGUNDO FLOAT" ]
+									(indexOfArg = 0) ifTrue: [ ^ VReg0 ] ifFalse: [ ^ VReg1 ]
 								 ]
 						 ]	
 					 ]).
@@ -4278,35 +4278,35 @@ CogX64Compiler >> getRegisterForExternalFunctionArgumentInIndex: indexOfArg forS
 											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg1Reg ] ifFalse: [ ^ ReceiverResultReg  ] ]
 										 ] ifFalse: [ 
 											"caso 2) -> primer arg va en RDI y el segundo en RSI."
-											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg1Reg ] ifFalse: [ "^ POR DONDE VAYA EL PRIMER FLOAT"  ] ]
+											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg1Reg ] ifFalse: [ ^ VReg0 ] ]
 										 ].
 									
 									(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ ^ Arg1Reg ]
 								] ifFalse: [ 
 									(cogit isIntegerOrPointerType: ((aCif argTypeAt: 2) type)) ifTrue: [
 											"caso 3) "
-											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT" ] ifFalse: [ ^ Arg1Reg   ] ]
+											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ VReg0 ] ifFalse: [ ^ Arg1Reg   ] ]
 										 ] ifFalse: [ 
 											"caso 4)"
-											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT" ] ifFalse: [ "^ POR DONDE VAYA EL SEGUNDO FLOAT"  ] ]
+											(indexOfArg = 0) ifTrue: [ ^ Arg0Reg ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ VReg0] ifFalse: [ ^ VReg1  ] ]
 										 ].
 								 ]
 						 ] ifFalse: [ 
 							(cogit isIntegerOrPointerType: ((aCif argTypeAt: 1) type)) ifTrue: [ 	
 									(cogit isIntegerOrPointerType: ((aCif argTypeAt: 2) type)) ifTrue: [
 											"caso 5)"
-											(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT"] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg0Reg ] ifFalse: [ ^ Arg1Reg  ] ]
+											(indexOfArg = 0) ifTrue: [ ^ VReg0 ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg0Reg ] ifFalse: [ ^ Arg1Reg  ] ]
 										 ] ifFalse: [ 
 											"caso 6)"
-											(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT" ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg0Reg ] ifFalse: [ "^ POR DONDE VAYA EL SEGUNDO FLOAT"  ] ]
+											(indexOfArg = 0) ifTrue: [ ^ VReg0] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ Arg0Reg ] ifFalse: [ ^ VReg1  ] ]
 										 ].
 								] ifFalse: [ 
 									(cogit isIntegerOrPointerType: ((aCif argTypeAt: 2) type)) ifTrue: [
 											"caso 7) "
-											(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT"] ifFalse: [ (indexOfArg = 1) ifTrue: [ "^ POR DONDE VAYA EL SEGUNDO FLOAT" ] ifFalse: [ ^ Arg0Reg   ] ]
+											(indexOfArg = 0) ifTrue: [ ^ VReg0 ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ VReg1 ] ifFalse: [ ^ Arg0Reg   ] ]
 										 ] ifFalse: [ 
 											"caso 8)"
-											(indexOfArg = 0) ifTrue: [ "^ POR DONDE VAYA EL PRIMER FLOAT" ] ifFalse: [ (indexOfArg = 1) ifTrue: [ "^ POR DONDE VAYA EL SEGUNDO FLOAT" ] ifFalse: [ "^ POR DONDE VAYA EL TERCER FLOAT"  ] ]
+											(indexOfArg = 0) ifTrue: [^ VReg0 ] ifFalse: [ (indexOfArg = 1) ifTrue: [ ^ VReg1 ] ifFalse: [ ^ VReg2  ] ]
 										 ].
 								 ]
 					
@@ -4321,7 +4321,7 @@ CogX64Compiler >> getRegisterForExternalFunctionArgumentInIndex: indexOfArg forS
 CogX64Compiler >> getRegisterForExternalFunctionArgumentInIndex: indexOfArg forWin64FromCif: aCif [
 
 	<var: #aCif type: #'ffi_cif *'>
-	<var: #numArgs type: #'ffi_cif *'>
+	<var: #numArgs type: #'int'>
 	| numArgs |
 	numArgs := aCif numberArguments.
 	self assert: (indexOfArg >= 0 and: indexOfArg < numArgs).

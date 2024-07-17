@@ -1473,11 +1473,7 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	
 	cif := self getCifFromTFExternalFunction: aTFExternalFunction.	
 	cif ifNil: [ ^ self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: nil usingRunner: runner ].											"TODO: fixear esto. casos donde la func o el cif sean nil"
-	
-	"Move the arguments for the external function from the stack where we received them to the corresponding registers depending on the ABI,
-	that is why we rely on the backEnd to choose the registers."
-	backEnd prepareForExternalCallWithCif: cif.
-									
+										
 	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [
 		"Unsupported bytecode. We need to do a message send 
 			runner invokeFunction: function withArguments: aCollection
@@ -1487,6 +1483,10 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 
 	(backEnd supportsJITtedBytecodeFFICall) ifFalse: [ ^ self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: cif usingRunner: runner ].
 		
+	"Move the arguments for the external function from the stack where we received them to the corresponding registers depending on the ABI,
+	that is why we rely on the backEnd to choose the registers."
+	backEnd prepareForExternalCallWithCif: cif.																																"el unico caso de fallback que usa lo que se hace en este metodo es el de abajo!!!
+																																														 los anteriores fallarian feo (esperan encontrar los valores en registros pero aun no los pusimos)!!!!!!!!!!!!!!!!!!"
 
 	"Verify that the argument(s) we receive for the C function comply with those specified in the cif."
 	jumpMaybeFailCheckUnpack  := self checkAndUnpackArgumentsForExternalFunctionWithCif: cif.
