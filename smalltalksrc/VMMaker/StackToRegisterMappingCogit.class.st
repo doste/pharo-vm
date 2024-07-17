@@ -1327,6 +1327,35 @@ StackToRegisterMappingCogit >> extractMaybeBranchDescriptorInto: fourArgBlock [
 ]
 
 { #category : #'bytecode generators' }
+StackToRegisterMappingCogit >> fallbackToPrimitivePopingTheArgsWithFunction: aTFExternalFunction andCif: aCif usingRunner: aRunner [
+	"Unpack all arguments in an array that is left in the ReceiverResultReg.
+	The arguments of the function are in the stack. We pop them to build the array"
+
+	<inline: true>
+	<var: #size type: #'int'>
+	| size |
+	self voidReceiverResultRegContainsSelf.
+	self ssFlushTo: simStackPtr.
+	size := aCif numberArguments.
+	objectRepresentation genNewArrayOfSize: size initialized: false. "This method left the newly created array in ReceiverResultReg"
+
+	size - 1 to: 0 by: -1 do:
+			[:i| | top |
+			top := self ssTop.
+			self ssPop: 1.
+			top moveToReg: TempReg.
+			objectRepresentation
+				genStoreSourceReg: TempReg
+				slotIndex: i
+				intoNewObjectInDestReg: ReceiverResultReg].
+
+	self ssPushConstant: aRunner.
+	self ssPushConstant: aTFExternalFunction.
+	self ssPushRegister: ReceiverResultReg.
+	^ self genSend: -33 numArgs: 2 "invokeFunction:withArguments:"
+]
+
+{ #category : #'bytecode generators' }
 StackToRegisterMappingCogit >> fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: aCif usingRunner: aRunner [
 	"Unpack all arguments in an array that is left in the ReceiverResultReg.
 	At the point this method is called, all the arguments are already put in their corresponding registers, *not* in the stack!"
@@ -1469,24 +1498,24 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	runner := self getLiteral: ((n >> 4) bitAnd: 2r1111).
 	
 	externalFunctionAddr := coInterpreter getHandler: aTFExternalFunction.
-	externalFunctionAddr ifNil: [ ^ self fallbackToPrimitiveWithFunction: nil andCif: nil usingRunner: runner ]. 
+	externalFunctionAddr ifNil: [ ^ self fallbackToPrimitivePopingTheArgsWithFunction: nil andCif: nil usingRunner: runner ]. 
 	
 	cif := self getCifFromTFExternalFunction: aTFExternalFunction.	
-	cif ifNil: [ ^ self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: nil usingRunner: runner ].											"TODO: fixear esto. casos donde la func o el cif sean nil"
+	cif ifNil: [ ^ self fallbackToPrimitivePopingTheArgsWithFunction: aTFExternalFunction andCif: nil usingRunner: runner ].											"TODO: fixear esto. casos donde la func o el cif sean nil"
 										
 	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [
 		"Unsupported bytecode. We need to do a message send 
 			runner invokeFunction: function withArguments: aCollection
 		This means that we need to unpack all arguments in the stack into an array, push everything to the stack and do a message send"
-		^ self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: cif usingRunner: runner.
+		^ self fallbackToPrimitivePopingTheArgsWithFunction: aTFExternalFunction andCif: cif usingRunner: runner.
+		
 	].
 
-	(backEnd supportsJITtedBytecodeFFICall) ifFalse: [ ^ self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: cif usingRunner: runner ].
+	(backEnd supportsJITtedBytecodeFFICall) ifFalse: [ ^ self fallbackToPrimitivePopingTheArgsWithFunction: aTFExternalFunction andCif: cif usingRunner: runner ].
 		
 	"Move the arguments for the external function from the stack where we received them to the corresponding registers depending on the ABI,
 	that is why we rely on the backEnd to choose the registers."
-	backEnd prepareForExternalCallWithCif: cif.																																"el unico caso de fallback que usa lo que se hace en este metodo es el de abajo!!!
-																																														 los anteriores fallarian feo (esperan encontrar los valores en registros pero aun no los pusimos)!!!!!!!!!!!!!!!!!!"
+	backEnd prepareForExternalCallWithCif: cif.																																"recien despues de este metodo los args estan en registros!"
 
 	"Verify that the argument(s) we receive for the C function comply with those specified in the cif."
 	jumpMaybeFailCheckUnpack  := self checkAndUnpackArgumentsForExternalFunctionWithCif: cif.
