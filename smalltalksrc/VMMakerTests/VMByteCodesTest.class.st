@@ -1,16 +1,18 @@
 Class {
-	#name : #VMByteCodesTest,
-	#superclass : #VMInterpreterTests,
+	#name : 'VMByteCodesTest',
+	#superclass : 'VMInterpreterTests',
 	#instVars : [
 		'contextOop',
 		'context',
 		'callingFrame',
 		'topFrame'
 	],
-	#category : #'VMMakerTests-InterpreterTests'
+	#category : 'VMMakerTests-InterpreterTests',
+	#package : 'VMMakerTests',
+	#tag : 'InterpreterTests'
 }
 
-{ #category : #'helper-assertions' }
+{ #category : 'helper-assertions' }
 VMByteCodesTest >> assert: aBlock pop: anOop intoTemporary: anIndex [
 	| oldStackSize |
 	oldStackSize := interpreter stackPointer.
@@ -21,7 +23,7 @@ VMByteCodesTest >> assert: aBlock pop: anOop intoTemporary: anIndex [
 	self assert: (interpreter temporary: anIndex in: interpreter framePointer) equals: anOop
 ]
 
-{ #category : #'helper-assertions' }
+{ #category : 'helper-assertions' }
 VMByteCodesTest >> assert: aBlock pushed: anOop [
 	| oldStackSize |
 	oldStackSize := interpreter stackPointer.
@@ -33,7 +35,7 @@ VMByteCodesTest >> assert: aBlock pushed: anOop [
 	
 ]
 
-{ #category : #'helper-assertions' }
+{ #category : 'helper-assertions' }
 VMByteCodesTest >> assert: aBlock returned: anOop [
 	| callerSP |
 	callerSP := interpreter frameCallerSP: interpreter framePointer.
@@ -45,7 +47,7 @@ VMByteCodesTest >> assert: aBlock returned: anOop [
 	
 ]
 
-{ #category : #'helper-assertions' }
+{ #category : 'helper-assertions' }
 VMByteCodesTest >> assertPopped: aBlock [
 	| oldStackSize |
 	oldStackSize := interpreter stackPointer.
@@ -56,7 +58,7 @@ VMByteCodesTest >> assertPopped: aBlock [
 	
 ]
 
-{ #category : #'tests-send' }
+{ #category : 'tests-send' }
 VMByteCodesTest >> buildFunctionForTesting [
 	| functionAddress tfExternalFunction functionExternalAddress tfFunctionDefinition libFFIType cifArrayOfArgTypes cifArgTypes cif cifExternalAddress |
 	"functionAddress := self compile: [ cogit MoveR: Arg0Reg R: TempReg .cogit RetN: 0 ]." "mov rdi, rax. ret"
@@ -106,24 +108,24 @@ VMByteCodesTest >> buildFunctionForTesting [
 	^tfExternalFunction
 ]
 
-{ #category : #'helpers-bytecode-table' }
+{ #category : 'helpers-bytecode-table' }
 VMByteCodesTest >> firstPushTemporaryVariableBytecode [
 	"in v3 bytecode table"
 	^ 16
 ]
 
-{ #category : #'helpers-bytecode-table' }
+{ #category : 'helpers-bytecode-table' }
 VMByteCodesTest >> firstStoreAndPopTemporaryVariableBytecode [
 	^ 104
 ]
 
-{ #category : #'helper-interpret' }
+{ #category : 'helper-interpret' }
 VMByteCodesTest >> interpret: aBlock [
 
 	aBlock value
 ]
 
-{ #category : #'tests-simd' }
+{ #category : 'tests-simd' }
 VMByteCodesTest >> interpretNextBytecode [
 
 	| count |
@@ -133,7 +135,7 @@ VMByteCodesTest >> interpretNextBytecode [
 		count = 1 ]
 ]
 
-{ #category : #'tests-pushThisContext' }
+{ #category : 'tests-pushThisContext' }
 VMByteCodesTest >> interpretWithFrame: aBlock [
 
 	callingFrame := stackBuilder addNewFrame method:
@@ -145,7 +147,7 @@ VMByteCodesTest >> interpretWithFrame: aBlock [
 	self interpret: aBlock
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> pushTempTest: index [
 	
 	stackBuilder addNewFrame tempAt: index put: (memory integerObjectOf: 42).
@@ -159,13 +161,13 @@ VMByteCodesTest >> pushTempTest: index [
 
 ]
 
-{ #category : #'helpers-bytecode-table' }
+{ #category : 'helpers-bytecode-table' }
 VMByteCodesTest >> pushTemporaryVariableBytecodeAt: offset [
 	^ self firstPushTemporaryVariableBytecode + offset.
 	
 ]
 
-{ #category : #'tests-pushThisContext' }
+{ #category : 'tests-pushThisContext' }
 VMByteCodesTest >> pushThisContextTopFrame [
 
 	self interpretWithFrame: [ interpreter pushActiveContextBytecode ].
@@ -176,7 +178,7 @@ VMByteCodesTest >> pushThisContextTopFrame [
 		withInterpreter: interpreter
 ]
 
-{ #category : #'tests-simd' }
+{ #category : 'tests-simd' }
 VMByteCodesTest >> setUp [ 
 
 	| classFloat |
@@ -201,7 +203,7 @@ VMByteCodesTest >> setUp [
 	self createLargeIntegerClasses.	
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> storeAndPopTemporaryIntoTempTest: index [
 	
 	stackBuilder addNewFrame
@@ -217,12 +219,12 @@ VMByteCodesTest >> storeAndPopTemporaryIntoTempTest: index [
 		intoTemporary: index
 ]
 
-{ #category : #'helpers-bytecode-table' }
+{ #category : 'helpers-bytecode-table' }
 VMByteCodesTest >> storeAndPopTemporaryVariableBytecodeAt: anInteger [ 
 	^ self firstStoreAndPopTemporaryVariableBytecode + anInteger
 ]
 
-{ #category : #'tests-pushThisContext' }
+{ #category : 'tests-pushThisContext' }
 VMByteCodesTest >> testAccessingSenderOfContextShouldReturnContextOfSender [
 	| oldMaybeSenderContext newMaybeSenderContext |
 	self interpretWithFrame: [ interpreter pushActiveContextBytecode. ].
@@ -232,7 +234,7 @@ VMByteCodesTest >> testAccessingSenderOfContextShouldReturnContextOfSender [
 	self assert: oldMaybeSenderContext equals: newMaybeSenderContext
 ]
 
-{ #category : #'tests-simd' }
+{ #category : 'tests-simd' }
 VMByteCodesTest >> testAddVectorBytecode [
 	| index v0 v1 result firstTerm size |
 	
@@ -259,7 +261,7 @@ VMByteCodesTest >> testAddVectorBytecode [
 	
 ]
 
-{ #category : #'tests-simd' }
+{ #category : 'tests-simd' }
 VMByteCodesTest >> testArraySumUsingVectorBytecode [
 	| cm x y result simulatedMethod z |
 
@@ -301,7 +303,7 @@ VMByteCodesTest >> testArraySumUsingVectorBytecode [
 	
 ]
 
-{ #category : #'tests-send' }
+{ #category : 'tests-send' }
 VMByteCodesTest >> testBytecodeFFICallAddTwoBigIntegers [
 
 	| aMethod receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction selectorOop simulatedInvokeFunctionWithArguments simulatedClassOfRunner simulatedRunner |
@@ -373,7 +375,7 @@ VMByteCodesTest >> testBytecodeFFICallAddTwoBigIntegers [
 
 ]
 
-{ #category : #'tests-send' }
+{ #category : 'tests-send' }
 VMByteCodesTest >> testBytecodeFFICallAddTwoNumbersCorrectly [
 
 	| aMethod aMethodToActivate receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction isFunctionCalled |
@@ -441,7 +443,7 @@ VMByteCodesTest >> testBytecodeFFICallAddTwoNumbersCorrectly [
 
 ]
 
-{ #category : #'tests-send' }
+{ #category : 'tests-send' }
 VMByteCodesTest >> testBytecodeFFICallFailWithBadArguments [
 
 	| aMethod receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction selectorOop simulatedInvokeFunctionWithArguments simulatedClassOfRunner simulatedRunner |
@@ -525,7 +527,7 @@ VMByteCodesTest >> testBytecodeFFICallFailWithBadArguments [
 
 ]
 
-{ #category : #'tests-send' }
+{ #category : 'tests-send' }
 VMByteCodesTest >> testBytecodeFFICallFailWithBadExternalFunction [
 
 	| aMethod receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction selectorOop simulatedInvokeFunctionWithArguments simulatedClassOfRunner simulatedRunner |
@@ -609,7 +611,7 @@ VMByteCodesTest >> testBytecodeFFICallFailWithBadExternalFunction [
 
 ]
 
-{ #category : #'tests-send' }
+{ #category : 'tests-send' }
 VMByteCodesTest >> testBytecodeFFICallFailWithNonSmallIntegerArgument [
 
 	| aMethod receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction selectorOop simulatedInvokeFunctionWithArguments simulatedClassOfRunner simulatedRunner |
@@ -697,7 +699,7 @@ VMByteCodesTest >> testBytecodeFFICallFailWithNonSmallIntegerArgument [
 
 ]
 
-{ #category : #'tests-send' }
+{ #category : 'tests-send' }
 VMByteCodesTest >> testBytecodeFFICallFailWithSelectorForErrorNotSet [
 	| aMethod receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction selectorOop simulatedInvokeFunctionWithArguments simulatedClassOfRunner simulatedRunner |
 	
@@ -777,7 +779,7 @@ VMByteCodesTest >> testBytecodeFFICallFailWithSelectorForErrorNotSet [
 
 ]
 
-{ #category : #'tests-send' }
+{ #category : 'tests-send' }
 VMByteCodesTest >> testBytecodeFFICallWithNonConmutativeOp [
 
 	| aMethod aMethodToActivate receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction isFunctionCalled |
@@ -839,7 +841,7 @@ VMByteCodesTest >> testBytecodeFFICallWithNonConmutativeOp [
 	self assert: (memory integerValueOf:(interpreter stackTop))  equals: 10 - 90.
 ]
 
-{ #category : #'tests-complex' }
+{ #category : 'tests-complex' }
 VMByteCodesTest >> testBytecodePopIntoReceiverWithReadOnlySendsAttemptToAssignMethod [
 
 	| class object objectToPutInSlot attemptToAssignMethod attemptToAssignSelector aMethodDictionary |
@@ -883,7 +885,7 @@ VMByteCodesTest >> testBytecodePopIntoReceiverWithReadOnlySendsAttemptToAssignMe
 	self assert: topFrame method equals: attemptToAssignMethod
 ]
 
-{ #category : #'tests-simd' }
+{ #category : 'tests-simd' }
 VMByteCodesTest >> testCallMappedInlinedPrimitiveBytecode [
 
 	| v0 v1 result method |
@@ -910,7 +912,7 @@ VMByteCodesTest >> testCallMappedInlinedPrimitiveBytecode [
 	self assert: (memory fetchFloat64: 1 ofObject: result) equals: 6.0
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testDuplicateStackTop [
 
 	stackBuilder addNewFrame ; buildStack.
@@ -927,7 +929,7 @@ VMByteCodesTest >> testDuplicateStackTop [
 	
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPopStackTopBytecode [
 
 	stackBuilder addNewFrame ; buildStack.
@@ -943,7 +945,7 @@ VMByteCodesTest >> testPopStackTopBytecode [
 	
 ]
 
-{ #category : #'tests-simd' }
+{ #category : 'tests-simd' }
 VMByteCodesTest >> testPushArrayToRegisterBytecode [
 	| array index result |
 
@@ -968,7 +970,7 @@ VMByteCodesTest >> testPushArrayToRegisterBytecode [
 	
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushConstantFalseBytecode [
 	stackBuilder addNewFrame ; buildStack.
 	self
@@ -976,7 +978,7 @@ VMByteCodesTest >> testPushConstantFalseBytecode [
 		pushed: memory falseObject
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushConstantMinusOneBytecode [
 	stackBuilder addNewFrame ; buildStack.
 	self
@@ -984,7 +986,7 @@ VMByteCodesTest >> testPushConstantMinusOneBytecode [
 		pushed: (memory integerObjectOf: -1)
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushConstantNilBytecode [
 	stackBuilder addNewFrame ; buildStack.
 	self
@@ -992,7 +994,7 @@ VMByteCodesTest >> testPushConstantNilBytecode [
 		pushed: memory nilObject
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushConstantOneBytecode [
 	stackBuilder addNewFrame ; buildStack.
 	self
@@ -1000,7 +1002,7 @@ VMByteCodesTest >> testPushConstantOneBytecode [
 		pushed: (memory integerObjectOf: 1)
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushConstantReceiverBytecode [
 	| intReceiver |
 	intReceiver := memory integerObjectOf: 42.
@@ -1013,7 +1015,7 @@ VMByteCodesTest >> testPushConstantReceiverBytecode [
 		pushed: intReceiver
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushConstantTrueBytecode [
 	stackBuilder addNewFrame ; buildStack.
 	self
@@ -1021,7 +1023,7 @@ VMByteCodesTest >> testPushConstantTrueBytecode [
 		pushed: memory trueObject
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushConstantTwoBytecode [
 	stackBuilder addNewFrame ; buildStack.
 	self
@@ -1029,7 +1031,7 @@ VMByteCodesTest >> testPushConstantTwoBytecode [
 		pushed: (memory integerObjectOf: 2)
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushConstantZeroBytecode [
 	stackBuilder addNewFrame ; buildStack.
 	self
@@ -1037,74 +1039,74 @@ VMByteCodesTest >> testPushConstantZeroBytecode [
 		pushed: (memory integerObjectOf: 0)
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushTemp0 [
 	self pushTempTest: 0
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushTemp1 [
 	self pushTempTest: 1
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushTemp10 [
 	self pushTempTest: 10
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushTemp11 [
 	self pushTempTest: 11
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushTemp2 [
 	self pushTempTest: 2
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushTemp3 [
 	self pushTempTest: 3
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushTemp4 [
 	self pushTempTest: 4
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushTemp5 [
 	self pushTempTest: 5
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushTemp6 [
 	self pushTempTest: 6
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushTemp7 [
 	self pushTempTest: 7
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushTemp8 [
 	self pushTempTest: 8
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testPushTemp9 [
 	self pushTempTest: 9
 ]
 
-{ #category : #'tests-pushThisContext' }
+{ #category : 'tests-pushThisContext' }
 VMByteCodesTest >> testPushThisContextIsContext [
 
 	self pushThisContextTopFrame.
 	self assert: (memory isContext: interpreter stackTop).
 ]
 
-{ #category : #'tests-pushThisContext' }
+{ #category : 'tests-pushThisContext' }
 VMByteCodesTest >> testPushThisContextPushesValidInstructionPointer [
 
 	self pushThisContextTopFrame.
@@ -1114,7 +1116,7 @@ VMByteCodesTest >> testPushThisContextPushesValidInstructionPointer [
 		equals: (interpreter frameCallerFP: interpreter framePointer)
 ]
 
-{ #category : #'tests-pushThisContext' }
+{ #category : 'tests-pushThisContext' }
 VMByteCodesTest >> testPushThisContextPushesValidPointerToTheFramePointer [
 	
 	self pushThisContextTopFrame.
@@ -1125,28 +1127,28 @@ VMByteCodesTest >> testPushThisContextPushesValidPointerToTheFramePointer [
 		equals: interpreter framePointer
 ]
 
-{ #category : #'tests-pushThisContext' }
+{ #category : 'tests-pushThisContext' }
 VMByteCodesTest >> testPushThisContextPushesValidReceiver [
 
 	self pushThisContextTopFrame.
 	self assert: topFrame receiver equals: context receiver
 ]
 
-{ #category : #'tests-pushThisContext' }
+{ #category : 'tests-pushThisContext' }
 VMByteCodesTest >> testPushThisContextSetContextToFrame [
 
 	self pushThisContextTopFrame.
 	self assert: (interpreter frameContext: interpreter framePointer) equals: interpreter stackTop.
 ]
 
-{ #category : #'tests-pushThisContext' }
+{ #category : 'tests-pushThisContext' }
 VMByteCodesTest >> testPushThisContextSetFlagContextToFrame [
 
 	self pushThisContextTopFrame.
 	self assert: (interpreter frameHasContext: interpreter framePointer).
 ]
 
-{ #category : #'tests-pushThisContext' }
+{ #category : 'tests-pushThisContext' }
 VMByteCodesTest >> testPushThisContextTwiceMarriesOnce [
 	| previousTop newTop |
 	self interpretWithFrame: [ 
@@ -1158,7 +1160,7 @@ VMByteCodesTest >> testPushThisContextTwiceMarriesOnce [
 	self assert: newTop equals: previousTop.
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testReturnFalse [
 
 	"We need to return to a method.
@@ -1174,7 +1176,7 @@ VMByteCodesTest >> testReturnFalse [
 		returned: memory falseObject
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testReturnTrue [
 
 	"We need to return to a method.
@@ -1190,7 +1192,7 @@ VMByteCodesTest >> testReturnTrue [
 		returned: memory trueObject
 ]
 
-{ #category : #'tests-pushThisContext' }
+{ #category : 'tests-pushThisContext' }
 VMByteCodesTest >> testReturnsMarriedFrameWidowsContext [
 	| topFrameContext |
 	self interpretWithFrame: [ 
@@ -1204,7 +1206,7 @@ VMByteCodesTest >> testReturnsMarriedFrameWidowsContext [
 	self assert: (interpreter isWidowedContext: topFrameContext)
 ]
 
-{ #category : #'tests-send' }
+{ #category : 'tests-send' }
 VMByteCodesTest >> testSendMessageWithTwoArgumentsMakeAFrame [
 
 	| selectorOop aMethod aMethodToActivate receiver receiverClass aMethodDictionary arg1 arg2 |
@@ -1252,47 +1254,47 @@ VMByteCodesTest >> testSendMessageWithTwoArgumentsMakeAFrame [
 	self assert: interpreter stackTop equals: receiver
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testStoreAndPopTemporary0 [
 	self storeAndPopTemporaryIntoTempTest: 0
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testStoreAndPopTemporary1 [
 	self storeAndPopTemporaryIntoTempTest: 1
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testStoreAndPopTemporary2 [
 	self storeAndPopTemporaryIntoTempTest: 2
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testStoreAndPopTemporary3 [
 	self storeAndPopTemporaryIntoTempTest: 3
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testStoreAndPopTemporary4 [
 	self storeAndPopTemporaryIntoTempTest: 4
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testStoreAndPopTemporary5 [
 	self storeAndPopTemporaryIntoTempTest: 5
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testStoreAndPopTemporary6 [
 	self storeAndPopTemporaryIntoTempTest: 6
 ]
 
-{ #category : #'tests-push-simple' }
+{ #category : 'tests-push-simple' }
 VMByteCodesTest >> testStoreAndPopTemporary7 [
 	self storeAndPopTemporaryIntoTempTest: 7
 ]
 
-{ #category : #'tests-simd' }
+{ #category : 'tests-simd' }
 VMByteCodesTest >> testStoreRegisterIntoArrayBytecode [
 	| register index array result |
 	
@@ -1323,7 +1325,7 @@ VMByteCodesTest >> testStoreRegisterIntoArrayBytecode [
 	self assert: (memory fetchFloat64: 3 ofObject: array) equals: 6.0.
 ]
 
-{ #category : #'tests-simd' }
+{ #category : 'tests-simd' }
 VMByteCodesTest >> testSubVectorBytecode [
 
 	| index vector0 vector1 result |

@@ -1,6 +1,6 @@
 Class {
-	#name : #VMSpurMemoryManagerTest,
-	#superclass : #ParametrizedTestCase,
+	#name : 'VMSpurMemoryManagerTest',
+	#superclass : 'ParametrizedTestCase',
 	#instVars : [
 		'memory',
 		'interpreter',
@@ -22,10 +22,12 @@ Class {
 		'VMClassIndices',
 		'VMObjectIndices'
 	],
-	#category : #'VMMakerTests-MemoryTests'
+	#category : 'VMMakerTests-MemoryTests',
+	#package : 'VMMakerTests',
+	#tag : 'MemoryTests'
 }
 
-{ #category : #'building suites' }
+{ #category : 'building suites' }
 VMSpurMemoryManagerTest class >> imageFormatParameters [ 
 
 	^ { 
@@ -34,13 +36,13 @@ VMSpurMemoryManagerTest class >> imageFormatParameters [
 	}
 ]
 
-{ #category : #'building suites' }
+{ #category : 'building suites' }
 VMSpurMemoryManagerTest class >> testParameters [ 
 
 	^ self wordSizeParameters * self imageFormatParameters 
 ]
 
-{ #category : #'building suites' }
+{ #category : 'building suites' }
 VMSpurMemoryManagerTest class >> wordSizeParameters [ 
 
 	^ ParametrizedTestMatrix new
@@ -48,7 +50,7 @@ VMSpurMemoryManagerTest class >> wordSizeParameters [
 			yourself
 ]
 
-{ #category : #configuring }
+{ #category : 'configuring' }
 VMSpurMemoryManagerTest >> configureEnvironmentBuilder [
 
 	environmentBuilder
@@ -61,7 +63,7 @@ VMSpurMemoryManagerTest >> configureEnvironmentBuilder [
 		useComposedImageFormatAsDefault: useComposedImageFormat
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> createActiveProcess [
 
 	| processorOopAssociation processorOop processorListsArray priorities |
@@ -83,7 +85,7 @@ VMSpurMemoryManagerTest >> createActiveProcess [
 	memory storePointer: ActiveProcessIndex ofObject: processorOop withValue:  (self newArrayWithSlots: 4).
 ]
 
-{ #category : #initialization }
+{ #category : 'initialization' }
 VMSpurMemoryManagerTest >> createArrayClass [
 
 	| ourArrayClass |
@@ -101,7 +103,7 @@ VMSpurMemoryManagerTest >> createArrayClass [
 
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> createEphemeronClass [
 	ourEphemeronClass := self newObjectWithSlots: 3.
 	memory 
@@ -111,7 +113,7 @@ VMSpurMemoryManagerTest >> createEphemeronClass [
 	memory ensureBehaviorHash: ourEphemeronClass.
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> createExternalFunctionFor: aBlock withArgumentTypes: argumentTypes withReturnType: returnType [
 
 	| functionAddress tfExternalFunction functionExternalAddress tfFunctionDefinition cif cifExternalAddress |
@@ -135,7 +137,7 @@ VMSpurMemoryManagerTest >> createExternalFunctionFor: aBlock withArgumentTypes: 
 	^ tfExternalFunction
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> createExternalFunctionFor: aBlock withArgumentTypes: argumentTypes withReturnType: returnType withCif: aCif [
 
 	| functionAddress tfExternalFunction functionExternalAddress tfFunctionDefinition cifExternalAddress |
@@ -155,7 +157,7 @@ VMSpurMemoryManagerTest >> createExternalFunctionFor: aBlock withArgumentTypes: 
 	^ tfExternalFunction
 ]
 
-{ #category : #utils }
+{ #category : 'utils' }
 VMSpurMemoryManagerTest >> createLargeIntegerClasses [
 
 	| classLargeInteger classLargeNegativeInteger |
@@ -176,7 +178,7 @@ VMSpurMemoryManagerTest >> createLargeIntegerClasses [
 		withValue: classLargeNegativeInteger.
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> createMethodOopFromHostMethod: aPharoCompiledMethod [
 
 	| methodOop |
@@ -186,7 +188,7 @@ VMSpurMemoryManagerTest >> createMethodOopFromHostMethod: aPharoCompiledMethod [
 	^ methodOop
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMSpurMemoryManagerTest >> createWeakArrayClass [
 	ourWeakClass := self newObjectWithSlots: 3.
 	memory
@@ -197,19 +199,19 @@ VMSpurMemoryManagerTest >> createWeakArrayClass [
 	
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 VMSpurMemoryManagerTest >> emptyObjectSize [ 
 
 	"It is the header plus a word, padded to 8 bytes alignment"
 	^ self objectHeaderSize + "memory wordSize" 8
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 VMSpurMemoryManagerTest >> initialCodeSize [
 	^ 0
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> initializationOptions [
 
 	^ {
@@ -219,7 +221,7 @@ VMSpurMemoryManagerTest >> initializationOptions [
 		  self memoryClass name }
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> initializeOldSpaceForFullGC [
 
 	| ourArrayClass |
@@ -241,7 +243,7 @@ VMSpurMemoryManagerTest >> initializeOldSpaceForFullGC [
 	memory flushNewSpace.
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> initializeOldSpaceForScavenger [
 
 	| freeListOop firstClassTablePage |
@@ -305,7 +307,7 @@ VMSpurMemoryManagerTest >> initializeOldSpaceForScavenger [
 	self deny: memory needGCFlag
 ]
 
-{ #category : #running }
+{ #category : 'running' }
 VMSpurMemoryManagerTest >> initializeSpecialSelectors [
 
 	| specialSelectorsArrayOop |
@@ -321,7 +323,7 @@ VMSpurMemoryManagerTest >> initializeSpecialSelectors [
 	memory splObj: SpecialSelectors put: specialSelectorsArrayOop
 ]
 
-{ #category : #'tests-simd' }
+{ #category : 'tests-simd' }
 VMSpurMemoryManagerTest >> installFloat64RegisterClass [
 
 	| registerClass |
@@ -340,7 +342,7 @@ VMSpurMemoryManagerTest >> installFloat64RegisterClass [
 
 ]
 
-{ #category : #'tests - primitiveGreaterOrEqual' }
+{ #category : 'tests - primitiveGreaterOrEqual' }
 VMSpurMemoryManagerTest >> installFloatClass [
 
 	| classFloat |
@@ -356,52 +358,52 @@ VMSpurMemoryManagerTest >> installFloatClass [
 	"This simulated classFloat class is necessary because the 32bits VM cannot instanciate boxed floats by itself"
 ]
 
-{ #category : #accessor }
+{ #category : 'accessor' }
 VMSpurMemoryManagerTest >> interpreter [
 	^ interpreter
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> interpreterClass [ 
 	^ StackInterpreterSimulatorLSB
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMSpurMemoryManagerTest >> keepObjectInVMVariable1: anOop [
 	interpreter newMethod: anOop
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMSpurMemoryManagerTest >> keepObjectInVMVariable2: anOop [
 	interpreter profileSemaphore: anOop
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMSpurMemoryManagerTest >> keepObjectInVMVariable3: anOop [
 	interpreter profileMethod: anOop
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMSpurMemoryManagerTest >> keptObjectInVMVariable1 [
 	^ interpreter newMethod
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMSpurMemoryManagerTest >> keptObjectInVMVariable2 [
 	^ interpreter profileSemaphore
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMSpurMemoryManagerTest >> keptObjectInVMVariable3 [
 	^ interpreter profileMethod
 ]
 
-{ #category : #accessor }
+{ #category : 'accessor' }
 VMSpurMemoryManagerTest >> memory [
 	^ memory
 ]
 
-{ #category : #running }
+{ #category : 'running' }
 VMSpurMemoryManagerTest >> memoryClass [
 
 	^ self wordSize = 4
@@ -409,13 +411,13 @@ VMSpurMemoryManagerTest >> memoryClass [
 		ifFalse: [ Spur64BitMemoryManager ]
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> new16BitIndexableOfSize: aSize [
 
 	^ self newBitIndexableOfSize: aSize bytesPerSlot: 2 format: memory firstShortFormat
 ]
 
-{ #category : #'helpers - methods' }
+{ #category : 'helpers - methods' }
 VMSpurMemoryManagerTest >> new32BitIndexableFromArray: array [
 
 	| indexable |
@@ -425,13 +427,13 @@ VMSpurMemoryManagerTest >> new32BitIndexableFromArray: array [
 	^ indexable
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> new32BitIndexableOfSize: aSize [
 
 	^ self newBitIndexableOfSize: aSize bytesPerSlot: 4 format: memory firstLongFormat
 ]
 
-{ #category : #'helpers - methods' }
+{ #category : 'helpers - methods' }
 VMSpurMemoryManagerTest >> new64BitIndexableFromArray: array [
 
 	| indexable |
@@ -441,31 +443,31 @@ VMSpurMemoryManagerTest >> new64BitIndexableFromArray: array [
 	^ indexable
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> new64BitIndexableOfSize: aSize [
 
 	^ self newBitIndexableOfSize: aSize bytesPerSlot: 8 format: memory sixtyFourBitIndexableFormat
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> new8BitIndexableOfSize: aSize [
 
 	^ self newBitIndexableOfSize: aSize bytesPerSlot: 1 format: memory firstByteFormat
 ]
 
-{ #category : #'helpers - objects' }
+{ #category : 'helpers - objects' }
 VMSpurMemoryManagerTest >> newArrayWithSlots: slots [
 	
 	^ self newArrayWithSlots: slots classIndex: memory arrayClassIndexPun
 ]
 
-{ #category : #'helpers - objects' }
+{ #category : 'helpers - objects' }
 VMSpurMemoryManagerTest >> newArrayWithSlots: slots classIndex: anIndex [
 	
 	^ self newObjectWithSlots: slots format: memory arrayFormat classIndex: anIndex
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> newBitIndexableOfSize: aSize bytesPerSlot: bytesPerSlot format: format [
 
 	| padding numberOfWordSizeSlots desiredByteSize theClass classIndex |
@@ -481,7 +483,7 @@ VMSpurMemoryManagerTest >> newBitIndexableOfSize: aSize bytesPerSlot: bytesPerSl
 		  classIndex: classIndex
 ]
 
-{ #category : #asd }
+{ #category : 'asd' }
 VMSpurMemoryManagerTest >> newByteArrayWithContent: aCollection [
 
 	| oop |
@@ -499,7 +501,7 @@ VMSpurMemoryManagerTest >> newByteArrayWithContent: aCollection [
 	^ oop
 ]
 
-{ #category : #'helpers - classes' }
+{ #category : 'helpers - classes' }
 VMSpurMemoryManagerTest >> newClassInOldSpaceWithSlots: numberOfSlots instSpec: format [
 	| newClass formatWithSlots |
 
@@ -517,7 +519,7 @@ VMSpurMemoryManagerTest >> newClassInOldSpaceWithSlots: numberOfSlots instSpec: 
 	^ newClass	
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> newEphemeronObject [
 
 "In pharo Ephemerons have 3 slots"
@@ -528,7 +530,7 @@ VMSpurMemoryManagerTest >> newEphemeronObject [
 		classIndex: (memory ensureBehaviorHash: ourEphemeronClass)
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> newExternalAddress: anInteger [
 
 	| anExternalAddress |
@@ -541,7 +543,7 @@ VMSpurMemoryManagerTest >> newExternalAddress: anInteger [
 	^ anExternalAddress
 ]
 
-{ #category : #'helpers - methods' }
+{ #category : 'helpers - methods' }
 VMSpurMemoryManagerTest >> newMethodWithSmallContext: isSmall WithArguments: arguments [
 	
 	| method methodHeader |
@@ -562,13 +564,13 @@ VMSpurMemoryManagerTest >> newMethodWithSmallContext: isSmall WithArguments: arg
 	^ method
 ]
 
-{ #category : #'helpers - objects' }
+{ #category : 'helpers - objects' }
 VMSpurMemoryManagerTest >> newObjectWithSlots: slots [
 	
 	^ self newObjectWithSlots: slots classIndex: memory arrayClassIndexPun
 ]
 
-{ #category : #'helpers - objects' }
+{ #category : 'helpers - objects' }
 VMSpurMemoryManagerTest >> newObjectWithSlots: slots classIndex: anIndex [
 
 	| format |
@@ -579,7 +581,7 @@ VMSpurMemoryManagerTest >> newObjectWithSlots: slots classIndex: anIndex [
 	^ self newObjectWithSlots: slots format: format classIndex: anIndex
 ]
 
-{ #category : #'helpers - objects' }
+{ #category : 'helpers - objects' }
 VMSpurMemoryManagerTest >> newObjectWithSlots: slots format: aFormat classIndex: anIndex [
 	
 	| oop |
@@ -591,7 +593,7 @@ VMSpurMemoryManagerTest >> newObjectWithSlots: slots format: aFormat classIndex:
 	^ oop
 ]
 
-{ #category : #'instance creation' }
+{ #category : 'instance creation' }
 VMSpurMemoryManagerTest >> newOldByteObjectOfSize: byteSize [
 	
 	| oop numSlots instSpec |
@@ -610,7 +612,7 @@ VMSpurMemoryManagerTest >> newOldByteObjectOfSize: byteSize [
 	^ oop
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> newOldEphemeronObject [
 
 	"In pharo Ephemerons have 3 slots"
@@ -621,7 +623,7 @@ VMSpurMemoryManagerTest >> newOldEphemeronObject [
 		classIndex: (memory ensureBehaviorHash: ourEphemeronClass)
 ]
 
-{ #category : #'helpers - objects' }
+{ #category : 'helpers - objects' }
 VMSpurMemoryManagerTest >> newOldSpaceArrayWithSlots: slots [
 
 	^ self
@@ -629,13 +631,13 @@ VMSpurMemoryManagerTest >> newOldSpaceArrayWithSlots: slots [
 		  classIndex: memory arrayClassIndexPun
 ]
 
-{ #category : #'helpers - objects' }
+{ #category : 'helpers - objects' }
 VMSpurMemoryManagerTest >> newOldSpaceObjectWithSlots: slots [
 	
 	^ self newOldSpaceObjectWithSlots: slots classIndex: memory arrayClassIndexPun
 ]
 
-{ #category : #'helpers - objects' }
+{ #category : 'helpers - objects' }
 VMSpurMemoryManagerTest >> newOldSpaceObjectWithSlots: slots classIndex: anIndex [
 	
 	| format |
@@ -647,7 +649,7 @@ VMSpurMemoryManagerTest >> newOldSpaceObjectWithSlots: slots classIndex: anIndex
 		classIndex: anIndex
 ]
 
-{ #category : #'helpers - objects' }
+{ #category : 'helpers - objects' }
 VMSpurMemoryManagerTest >> newOldSpaceObjectWithSlots: slots format: aFormat classIndex: anIndex [
 	
 	| oop |
@@ -659,13 +661,13 @@ VMSpurMemoryManagerTest >> newOldSpaceObjectWithSlots: slots format: aFormat cla
 	^ oop
 ]
 
-{ #category : #'helpers - objects' }
+{ #category : 'helpers - objects' }
 VMSpurMemoryManagerTest >> newPermanentObjectWithSlots: slots [ 
 
 	^ self newPermanentSpaceObjectWithSlots: slots classIndex: memory arrayClassIndexPun
 ]
 
-{ #category : #'helpers - objects' }
+{ #category : 'helpers - objects' }
 VMSpurMemoryManagerTest >> newPermanentSpaceObjectWithSlots: slots classIndex: anIndex [
 
 	| format |
@@ -679,7 +681,7 @@ VMSpurMemoryManagerTest >> newPermanentSpaceObjectWithSlots: slots classIndex: a
 		  classIndex: anIndex
 ]
 
-{ #category : #'helpers - objects' }
+{ #category : 'helpers - objects' }
 VMSpurMemoryManagerTest >> newPermanentSpaceObjectWithSlots: slots format: aFormat classIndex: anIndex [
 	
 	| oop |
@@ -691,7 +693,7 @@ VMSpurMemoryManagerTest >> newPermanentSpaceObjectWithSlots: slots format: aForm
 	^ oop
 ]
 
-{ #category : #'helpers - frames' }
+{ #category : 'helpers - frames' }
 VMSpurMemoryManagerTest >> newSmallContextReceiver: anOop method: aMethodOop arguments: aCollectionOfArgumentsOop temporaries: aCollectionOfTemporariesOop ip: anIp [
 
 	| newCtx numArgs numTemps |
@@ -737,7 +739,7 @@ VMSpurMemoryManagerTest >> newSmallContextReceiver: anOop method: aMethodOop arg
 	^ newCtx
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> newString: aString [
 	| vmString |
 	
@@ -756,7 +758,7 @@ VMSpurMemoryManagerTest >> newString: aString [
 	^ vmString
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMSpurMemoryManagerTest >> newWeakObjectOfSize: aSize [
 	
 	^ self
@@ -765,7 +767,7 @@ VMSpurMemoryManagerTest >> newWeakObjectOfSize: aSize [
 		classIndex: (memory ensureBehaviorHash: ourWeakClass)
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> newZeroSizedObject [
 	
 	^ memory
@@ -774,7 +776,7 @@ VMSpurMemoryManagerTest >> newZeroSizedObject [
 		classIndex: self zeroSizedObjectClassIndex.
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> nextOrdinaryClassIndex [
 	
 	^ nextIndex
@@ -782,18 +784,18 @@ VMSpurMemoryManagerTest >> nextOrdinaryClassIndex [
 		ifNotNil: [ nextIndex := nextIndex + 1 ]
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 VMSpurMemoryManagerTest >> objectHeaderSize [
 
 	^ memory baseHeaderSize 
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> primitiveTraceLogSize [
 	^ 0
 ]
 
-{ #category : #running }
+{ #category : 'running' }
 VMSpurMemoryManagerTest >> setContextClassIntoClassTable [
 	| aClass |
 	aClass := self
@@ -806,7 +808,7 @@ VMSpurMemoryManagerTest >> setContextClassIntoClassTable [
 		withValue: aClass
 ]
 
-{ #category : #running }
+{ #category : 'running' }
 VMSpurMemoryManagerTest >> setMethodClassIntoClassTable [
 	| aClass |
 	aClass := self
@@ -819,7 +821,7 @@ VMSpurMemoryManagerTest >> setMethodClassIntoClassTable [
 		withValue: aClass
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMSpurMemoryManagerTest >> setSmallIntegerClassIntoClassTable [
 
 	| class |
@@ -843,7 +845,7 @@ VMSpurMemoryManagerTest >> setSmallIntegerClassIntoClassTable [
 	
 ]
 
-{ #category : #running }
+{ #category : 'running' }
 VMSpurMemoryManagerTest >> setUp [
 	super setUp.
 
@@ -870,7 +872,7 @@ VMSpurMemoryManagerTest >> setUp [
 	memory lastHash: 1.
 ]
 
-{ #category : #running }
+{ #category : 'running' }
 VMSpurMemoryManagerTest >> setUpScheduler [
 	
 	"The ScheduleAssocation should be initialized to a valid Processor object"
@@ -898,7 +900,7 @@ VMSpurMemoryManagerTest >> setUpScheduler [
 	memory memoryActiveProcess: activeProcessOop.
 ]
 
-{ #category : #running }
+{ #category : 'running' }
 VMSpurMemoryManagerTest >> setUpUsingImage [
 	"/!\ Only runnable with a wordsize equals to your image's (needs disabling parametizing of wordsize) /!\"
 	
@@ -931,30 +933,30 @@ VMSpurMemoryManagerTest >> setUpUsingImage [
 		
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 VMSpurMemoryManagerTest >> sizeOfObjectWithSlots: slots [
 
 	^ self objectHeaderSize + ((slots min: 1 "at least one for the forwarder pointer") * memory wordSize "bytes")
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 VMSpurMemoryManagerTest >> useComposedImageFormat: aBoolean [ 
 	useComposedImageFormat := aBoolean
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 VMSpurMemoryManagerTest >> wordSize [
 	
 	^ wordSize ifNil: [ 8 ]
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 VMSpurMemoryManagerTest >> wordSize: aWordSize [
 
 	wordSize := aWordSize
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMSpurMemoryManagerTest >> zeroSizedObjectClassIndex [
 
 	^ zeroSizedObjectClassIndex ifNil: [ self nextOrdinaryClassIndex ]

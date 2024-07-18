@@ -1,13 +1,38 @@
 Class {
-	#name : #VMAbstractFFITest,
-	#superclass : #VMAbstractPrimitiveTest,
+	#name : 'VMAbstractFFITest',
+	#superclass : 'VMAbstractPrimitiveTest',
 	#pools : [
 		'LibFFIConstants'
 	],
-	#category : #VMMakerTests
+	#category : 'VMMakerTests',
+	#package : 'VMMakerTests'
 }
 
-{ #category : #helpers }
+{ #category : 'helpers' }
+VMAbstractFFITest >> createExternalFunctionFor: aBlock withArgumentTypes: argumentTypes withReturnType: returnType [
+
+	| functionAddress tfExternalFunction functionExternalAddress tfFunctionDefinition cif cifExternalAddress |
+
+	functionAddress := interpreter libFFI registerFunction: aBlock.
+
+	tfExternalFunction := self newObjectWithSlots: 2. 
+	functionExternalAddress := self newExternalAddress: functionAddress. 
+	tfFunctionDefinition := self newObjectWithSlots: 1.
+	
+	cif := interpreter libFFI newCif.
+	cif argumentTypes: argumentTypes.
+	cif returnType: returnType.
+		
+	cifExternalAddress := self newExternalAddress: (cif address). 
+
+	memory storePointer: 0 ofObject: tfExternalFunction withValue: functionExternalAddress.
+	memory storePointer: 1 ofObject: tfExternalFunction withValue: tfFunctionDefinition.
+	memory storePointer: 0 ofObject: tfFunctionDefinition withValue: cifExternalAddress.	
+
+	^ tfExternalFunction
+]
+
+{ #category : 'helpers' }
 VMAbstractFFITest >> createReturnFloatExternalFunctionFor: aBlock [
 
 	^ self
@@ -16,7 +41,7 @@ VMAbstractFFITest >> createReturnFloatExternalFunctionFor: aBlock [
 		withReturnType: interpreter libFFI float
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMAbstractFFITest >> createReturnFloatExternalFunctionFor: aBlock withArgumentTypes: argumentTypes [
 
 	^ self
@@ -25,20 +50,33 @@ VMAbstractFFITest >> createReturnFloatExternalFunctionFor: aBlock withArgumentTy
 		withReturnType: interpreter libFFI float
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMAbstractFFITest >> initializationOptions [
 
 	^ super initializationOptions , { 
 		#FEATURE_FFI . true }
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 VMAbstractFFITest >> interpreterClass [
 	
 	^ VMTestMockInterpreter
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
+VMAbstractFFITest >> newExternalAddress: anInteger [
+
+	| anExternalAddress |
+	anExternalAddress := self
+		newObjectWithSlots: (memory numSlotsForBytes: self wordSize)
+		format: (memory byteFormatForNumBytes: self wordSize)
+		classIndex: memory classExternalAddressIndex.
+		
+	memory storePointer: 0 ofObject: anExternalAddress withValue: anInteger.
+	^ anExternalAddress
+]
+
+{ #category : 'helpers' }
 VMAbstractFFITest >> readyProcesses [
 	
 	| collection |
@@ -47,7 +85,7 @@ VMAbstractFFITest >> readyProcesses [
 	^ collection
 ]
 
-{ #category : #initialization }
+{ #category : 'initialization' }
 VMAbstractFFITest >> setUp [ 
 
 	super setUp.

@@ -1,13 +1,15 @@
 Class {
-	#name : #VMJittedGeneralPrimitiveTest,
-	#superclass : #VMJittedPrimitivesTest,
+	#name : 'VMJittedGeneralPrimitiveTest',
+	#superclass : 'VMJittedPrimitivesTest',
 	#pools : [
 		'CogRTLOpcodes'
 	],
-	#category : #'VMMakerTests-JitTests'
+	#category : 'VMMakerTests-JitTests',
+	#package : 'VMMakerTests',
+	#tag : 'JitTests'
 }
 
-{ #category : #'building suites' }
+{ #category : 'building suites' }
 VMJittedGeneralPrimitiveTest class >> wordSize64Parameters [
 
 	^ ParametrizedTestMatrix new
@@ -15,7 +17,7 @@ VMJittedGeneralPrimitiveTest class >> wordSize64Parameters [
 		yourself
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 VMJittedGeneralPrimitiveTest >> lastObjectInNewSpace [
 
 	| lastOop |
@@ -23,7 +25,7 @@ VMJittedGeneralPrimitiveTest >> lastObjectInNewSpace [
 	^ lastOop
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testCheckImmediateWhenImmediateFloat [
 
 	"32 bits images does not have SmallFloats"
@@ -48,7 +50,7 @@ VMJittedGeneralPrimitiveTest >> testCheckImmediateWhenImmediateFloat [
 	self assert: machineSimulator receiverRegisterValue equals: 1
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testCheckImmediateWhenImmediateSmallInteger [
 		
 	self compile: [ | jump | 
@@ -68,7 +70,7 @@ VMJittedGeneralPrimitiveTest >> testCheckImmediateWhenImmediateSmallInteger [
 	self assert: machineSimulator receiverRegisterValue equals: 1
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testCheckImmediateWhenNonImmediate [
 		
 	self compile: [ | jump | 
@@ -88,7 +90,7 @@ VMJittedGeneralPrimitiveTest >> testCheckImmediateWhenNonImmediate [
 	self assert: machineSimulator receiverRegisterValue equals: 0
 ]
 
-{ #category : #'tests - equals comparison' }
+{ #category : 'tests - equals comparison' }
 VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerEqualsToBoxedFloat [
 
 	self compile: [ | jump | 
@@ -104,7 +106,7 @@ VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerEqualsToBoxedFloat [
 	self assert: machineSimulator receiverRegisterValue equals: self memory trueObject
 ]
 
-{ #category : #'tests - equals comparison' }
+{ #category : 'tests - equals comparison' }
 VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerEqualsToSmallInteger [
 
 	self compile: [ | jump | 
@@ -120,7 +122,7 @@ VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerEqualsToSmallInteger [
 	self assert: machineSimulator receiverRegisterValue equals: self memory trueObject
 ]
 
-{ #category : #'tests - greater or equal than comparison' }
+{ #category : 'tests - greater or equal than comparison' }
 VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerGreaterOrEqualThanEqualBoxedFloat [
 
 	self compile: [ | jump | 
@@ -136,7 +138,7 @@ VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerGreaterOrEqualThanEqualBo
 	self assert: machineSimulator receiverRegisterValue equals: self memory trueObject
 ]
 
-{ #category : #'tests - greater or equal than comparison' }
+{ #category : 'tests - greater or equal than comparison' }
 VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerGreaterOrEqualThanEqualSmallInteger [
 
 	self compile: [ | jump | 
@@ -152,7 +154,7 @@ VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerGreaterOrEqualThanEqualSm
 	self assert: machineSimulator receiverRegisterValue equals: self memory trueObject
 ]
 
-{ #category : #'tests - greater or equal than comparison' }
+{ #category : 'tests - greater or equal than comparison' }
 VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerGreaterOrEqualThanGreaterBoxedFloat [
 
 	self compile: [ | jump | 
@@ -168,7 +170,7 @@ VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerGreaterOrEqualThanGreater
 	self assert: machineSimulator receiverRegisterValue equals: self memory falseObject
 ]
 
-{ #category : #'tests - greater or equal than comparison' }
+{ #category : 'tests - greater or equal than comparison' }
 VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerGreaterOrEqualThanGreaterSmallInteger [
 
 	self compile: [ | jump | 
@@ -184,7 +186,7 @@ VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerGreaterOrEqualThanGreater
 	self assert: machineSimulator receiverRegisterValue equals: self memory falseObject
 ]
 
-{ #category : #'tests - greater or equal than comparison' }
+{ #category : 'tests - greater or equal than comparison' }
 VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerGreaterOrEqualThanSmallerBoxedFloat [
 
 	self compile: [ | jump | 
@@ -200,7 +202,7 @@ VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerGreaterOrEqualThanSmaller
 	self assert: machineSimulator receiverRegisterValue equals: self memory trueObject
 ]
 
-{ #category : #'tests - greater or equal than comparison' }
+{ #category : 'tests - greater or equal than comparison' }
 VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerGreaterOrEqualThanSmallerSmallInteger [
 
 	self compile: [ | jump | 
@@ -216,7 +218,7 @@ VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerGreaterOrEqualThanSmaller
 	self assert: machineSimulator receiverRegisterValue equals: self memory trueObject
 ]
 
-{ #category : #'tests - greater than comparison' }
+{ #category : 'tests - greater than comparison' }
 VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerGreaterThanBoxedFloat [
 
 	self compile: [ | jump | 
@@ -232,7 +234,7 @@ VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerGreaterThanBoxedFloat [
 	self assert: machineSimulator receiverRegisterValue equals: self memory trueObject
 ]
 
-{ #category : #'tests - greater than comparison' }
+{ #category : 'tests - greater than comparison' }
 VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerGreaterThanSmallInteger [
 
 	self compile: [ | jump | 
@@ -248,7 +250,7 @@ VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerGreaterThanSmallInteger [
 	self assert: machineSimulator receiverRegisterValue equals: self memory trueObject
 ]
 
-{ #category : #'tests - equals comparison' }
+{ #category : 'tests - equals comparison' }
 VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerNotEqualsToBoxedFloat [
 
 	self compile: [ | jump | 
@@ -264,7 +266,7 @@ VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerNotEqualsToBoxedFloat [
 	self assert: machineSimulator receiverRegisterValue equals: self memory falseObject
 ]
 
-{ #category : #'tests - equals comparison' }
+{ #category : 'tests - equals comparison' }
 VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerNotEqualsToSmallInteger [
 
 	self compile: [ | jump | 
@@ -280,7 +282,7 @@ VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerNotEqualsToSmallInteger [
 	self assert: machineSimulator receiverRegisterValue equals: self memory falseObject
 ]
 
-{ #category : #'tests - greater than comparison' }
+{ #category : 'tests - greater than comparison' }
 VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerNotGreaterThanBoxedFloat [
 
 	self compile: [ | jump | 
@@ -296,7 +298,7 @@ VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerNotGreaterThanBoxedFloat 
 	self assert: machineSimulator receiverRegisterValue equals: self memory falseObject
 ]
 
-{ #category : #'tests - greater than comparison' }
+{ #category : 'tests - greater than comparison' }
 VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerNotGreaterThanSmallInteger [
 
 	self compile: [ | jump | 
@@ -312,7 +314,7 @@ VMJittedGeneralPrimitiveTest >> testCompareSmallIntegerNotGreaterThanSmallIntege
 	self assert: machineSimulator receiverRegisterValue equals: self memory falseObject
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testConvertIntegerToSmallInteger [
 
 	self compile: [
@@ -325,7 +327,7 @@ VMJittedGeneralPrimitiveTest >> testConvertIntegerToSmallInteger [
 	self assert: machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 17).
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testConvertSmallIntegerToInteger [
 
 	self compile: [ | jump | 
@@ -338,7 +340,7 @@ VMJittedGeneralPrimitiveTest >> testConvertSmallIntegerToInteger [
 	self assert: machineSimulator receiverRegisterValue equals: 17.
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testGetClassIndexOfObjectObtainsClassIndex [
 
 	self compile: [ | jump | 
@@ -351,7 +353,7 @@ VMJittedGeneralPrimitiveTest >> testGetClassIndexOfObjectObtainsClassIndex [
 	self assert: machineSimulator receiverRegisterValue equals: (memory classIndexOf: memory falseObject)
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testGetClassObjectOfClassIndex [
 
 	self compile: [
@@ -364,7 +366,7 @@ VMJittedGeneralPrimitiveTest >> testGetClassObjectOfClassIndex [
 	self assert: machineSimulator arg0RegisterValue equals: classFloat
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testGetNumberOfSlotsOf16BitIndexable [
 
 	self compile: [
@@ -378,7 +380,7 @@ VMJittedGeneralPrimitiveTest >> testGetNumberOfSlotsOf16BitIndexable [
 	self assert: machineSimulator arg0RegisterValue equals: 8 * 2 "bytes" / self wordSize
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testGetNumberOfSlotsOf16BitIndexableWithPadding [
 
 	self compile: [
@@ -392,7 +394,7 @@ VMJittedGeneralPrimitiveTest >> testGetNumberOfSlotsOf16BitIndexableWithPadding 
 	self assert: machineSimulator arg0RegisterValue equals: 8 * 2 "bytes" / self wordSize
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testGetNumberOfSlotsOf32BitIndexable [
 
 	self compile: [
@@ -406,7 +408,7 @@ VMJittedGeneralPrimitiveTest >> testGetNumberOfSlotsOf32BitIndexable [
 	self assert: machineSimulator arg0RegisterValue equals: 8 * 4 "bytes" / self wordSize
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testGetNumberOfSlotsOf32BitIndexableWithPadding [
 
 	self compile: [
@@ -420,7 +422,7 @@ VMJittedGeneralPrimitiveTest >> testGetNumberOfSlotsOf32BitIndexableWithPadding 
 	self assert: machineSimulator arg0RegisterValue equals: (7 * 4 roundUpTo: self wordSize) "bytes" / self wordSize
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testGetNumberOfSlotsOf64BitIndexable [
 
 	| desiredSlots |
@@ -438,7 +440,7 @@ VMJittedGeneralPrimitiveTest >> testGetNumberOfSlotsOf64BitIndexable [
 	self assert: machineSimulator arg0RegisterValue equals: (desiredSlots * 8 / self wordSize)
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testGetNumberOfSlotsOf8BitIndexable [
 
 	self compile: [
@@ -452,7 +454,7 @@ VMJittedGeneralPrimitiveTest >> testGetNumberOfSlotsOf8BitIndexable [
 	self assert: machineSimulator arg0RegisterValue equals: 8 "bytes" / self wordSize
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testGetNumberOfSlotsOf8BitIndexableWithPadding [
 
 	self compile: [
@@ -466,7 +468,7 @@ VMJittedGeneralPrimitiveTest >> testGetNumberOfSlotsOf8BitIndexableWithPadding [
 	self assert: machineSimulator arg0RegisterValue equals: 8 "bytes" / self wordSize
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testMoveFloatToFloatPointRegister [
 
 	self compile: [ | jump | 
@@ -481,7 +483,7 @@ VMJittedGeneralPrimitiveTest >> testMoveFloatToFloatPointRegister [
 	self assert: machineSimulator doublePrecisionFloatingPointRegister0Value equals: Float fmax.
 ]
 
-{ #category : #'tests - primitiveAdd' }
+{ #category : 'tests - primitiveAdd' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveAddDoesNotCompileIfReceiverTagIsNotSmallInteger [
 	
 	| result |
@@ -494,7 +496,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveAddDoesNotCompileIfReceiverTagIsNot
 	self assert: result equals: UnimplementedPrimitive.
 ]
 
-{ #category : #'tests - primitiveAdd' }
+{ #category : 'tests - primitiveAdd' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveAddFailsWhenArgumentIsNotSmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -511,7 +513,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveAddFailsWhenArgumentIsNotSmallInteg
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveAdd' }
+{ #category : 'tests - primitiveAdd' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveAddFailsWhenSumOverflows [
 	
 	| endInstruction primitiveAddress |
@@ -528,7 +530,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveAddFailsWhenSumOverflows [
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveAdd' }
+{ #category : 'tests - primitiveAdd' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveAddFailsWhenSumOverflowsWhenNegative [
 	
 	| endInstruction primitiveAddress |
@@ -545,7 +547,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveAddFailsWhenSumOverflowsWhenNegativ
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveAdd' }
+{ #category : 'tests - primitiveAdd' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveAddIsCompleteWhenReceiverTagIsSmallInteger [
 	
 	| result |
@@ -556,7 +558,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveAddIsCompleteWhenReceiverTagIsSmall
 	self assert: result equals: CompletePrimitive.
 ]
 
-{ #category : #'tests - primitiveAdd' }
+{ #category : 'tests - primitiveAdd' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveAddReturnsASmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -573,7 +575,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveAddReturnsASmallInteger [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 94).
 ]
 
-{ #category : #'tests - primitiveAdd' }
+{ #category : 'tests - primitiveAdd' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveAddReturnsASmallIntegerWhenNegativeNumbers [
 	
 	| endInstruction primitiveAddress |
@@ -591,7 +593,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveAddReturnsASmallIntegerWhenNegative
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: -265).
 ]
 
-{ #category : #'tests - primitiveAsFloat' }
+{ #category : 'tests - primitiveAsFloat' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveAsFloatDoesNotCompileIfReceiverTagIsNotSmallInteger [
 	
 	| result |
@@ -604,7 +606,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveAsFloatDoesNotCompileIfReceiverTagI
 	self assert: result equals: UnimplementedPrimitive.
 ]
 
-{ #category : #'tests - primitiveAsFloat' }
+{ #category : 'tests - primitiveAsFloat' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveAsFloatIsCompleteWhenReceiverTagIsSmallInteger [
 	
 	| result |
@@ -617,7 +619,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveAsFloatIsCompleteWhenReceiverTagIsS
 	self assert: result equals: 0. "Incomplete Primitive, if the float cannot be allocated, it executes the C code"
 ]
 
-{ #category : #'tests - primitiveAsFloat' }
+{ #category : 'tests - primitiveAsFloat' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveAsFloatReturnsASmallFloat [
 	
 	| endInstruction primitiveAddress |
@@ -637,7 +639,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveAsFloatReturnsASmallFloat [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory floatObjectOf: 42.0)
 ]
 
-{ #category : #'tests - primitiveAsFloat' }
+{ #category : 'tests - primitiveAsFloat' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveAsFloatWith64BitIntegerReturnsASmallFloat [
 	
 	| endInstruction primitiveAddress |
@@ -660,7 +662,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveAsFloatWith64BitIntegerReturnsASmal
 		equals: 8589934592 asFloat
 ]
 
-{ #category : #'tests - primitiveBitAnd/Or' }
+{ #category : 'tests - primitiveBitAnd/Or' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitAndDoesCompileForSmallIntegerReceiver [
 	
 	| result |
@@ -673,7 +675,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitAndDoesCompileForSmallIntegerRec
 	self assert: result equals: CompletePrimitive
 ]
 
-{ #category : #'tests - primitiveBitAnd/Or' }
+{ #category : 'tests - primitiveBitAnd/Or' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitAndDoesNotCompileForNonSmallIntegerReceiver [
 	
 	| result |
@@ -686,7 +688,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitAndDoesNotCompileForNonSmallInte
 	self assert: result equals: UnimplementedPrimitive
 ]
 
-{ #category : #'tests - primitiveBitAnd/Or' }
+{ #category : 'tests - primitiveBitAnd/Or' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitAndShouldFailWithNonSmallIntegerArgument [
 	
 	| primitiveAddress endInstruction |
@@ -702,7 +704,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitAndShouldFailWithNonSmallInteger
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveBitAnd/Or' }
+{ #category : 'tests - primitiveBitAnd/Or' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitAndShouldPreserveSmallIntegerTag [
 	
 	| primitiveAddress endInstruction |
@@ -720,7 +722,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitAndShouldPreserveSmallIntegerTag
 	self assert: machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 1)
 ]
 
-{ #category : #'tests - primitiveBitAnd/Or' }
+{ #category : 'tests - primitiveBitAnd/Or' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitOrDoesCompileForSmallIntegerReceiver [
 	
 	| result |
@@ -733,7 +735,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitOrDoesCompileForSmallIntegerRece
 	self assert: result equals: CompletePrimitive
 ]
 
-{ #category : #'tests - primitiveBitAnd/Or' }
+{ #category : 'tests - primitiveBitAnd/Or' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitOrDoesNotCompileForNonSmallIntegerReceiver [
 	
 	| result |
@@ -746,7 +748,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitOrDoesNotCompileForNonSmallInteg
 	self assert: result equals: UnimplementedPrimitive
 ]
 
-{ #category : #'tests - primitiveBitAnd/Or' }
+{ #category : 'tests - primitiveBitAnd/Or' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitOrShouldFailWithNonSmallIntegerArgument [
 	
 	| primitiveAddress endInstruction |
@@ -762,7 +764,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitOrShouldFailWithNonSmallIntegerA
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveBitAnd/Or' }
+{ #category : 'tests - primitiveBitAnd/Or' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitOrShouldPreserveSmallIntegerTag [
 	
 	| primitiveAddress endInstruction |
@@ -780,7 +782,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitOrShouldPreserveSmallIntegerTag 
 	self assert: machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 3)
 ]
 
-{ #category : #'tests - primitiveBitShift' }
+{ #category : 'tests - primitiveBitShift' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitShiftDoesCompileForSmallIntegerReceiver [
 	
 	| result |
@@ -793,7 +795,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitShiftDoesCompileForSmallIntegerR
 	self assert: result equals: CompletePrimitive
 ]
 
-{ #category : #'tests - primitiveBitShift' }
+{ #category : 'tests - primitiveBitShift' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitShiftDoesNotCompileForNonSmallIntegerReceiver [
 	
 	| result |
@@ -806,7 +808,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitShiftDoesNotCompileForNonSmallIn
 	self assert: result equals: UnimplementedPrimitive
 ]
 
-{ #category : #'tests - primitiveBitShift' }
+{ #category : 'tests - primitiveBitShift' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitShiftShouldFailWithArgumentBiggerThanSmallIntegerBits [
 	
 	| primitiveAddress endInstruction |
@@ -824,7 +826,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitShiftShouldFailWithArgumentBigge
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveBitShift' }
+{ #category : 'tests - primitiveBitShift' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitShiftShouldFailWithNonSmallIntegerArgument [
 	
 	| primitiveAddress endInstruction |
@@ -840,7 +842,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitShiftShouldFailWithNonSmallInteg
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveBitShift' }
+{ #category : 'tests - primitiveBitShift' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitShiftShouldFailWithOverflow [
 	
 	| primitiveAddress endInstruction |
@@ -858,7 +860,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitShiftShouldFailWithOverflow [
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveBitShift' }
+{ #category : 'tests - primitiveBitShift' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitShiftShouldReturnSmallInteger [
 	
 	| primitiveAddress endInstruction |
@@ -880,7 +882,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitShiftShouldReturnSmallInteger [
 		equals: (memory integerObjectOf: memory maxSmallInteger >> 1 << 1)
 ]
 
-{ #category : #'tests - primitiveBitShift' }
+{ #category : 'tests - primitiveBitShift' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitShiftShouldReturnSmallIntegerWithShiftRight [
 	
 	| primitiveAddress endInstruction |
@@ -902,7 +904,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitShiftShouldReturnSmallIntegerWit
 		equals: (memory integerObjectOf: 17)
 ]
 
-{ #category : #'tests - primitiveBitShift' }
+{ #category : 'tests - primitiveBitShift' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitShiftShouldReturnZeroIfShiftIsBiggerThanNumSmallIntegerBits [
 	
 	| primitiveAddress endInstruction |
@@ -924,7 +926,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitShiftShouldReturnZeroIfShiftIsBi
 		equals: (memory integerObjectOf: 0)
 ]
 
-{ #category : #'tests - primitiveBitXor' }
+{ #category : 'tests - primitiveBitXor' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitXorCompileWithNegativeSmallInt [
 	
 	| primitiveAddress endInstruction |
@@ -942,7 +944,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitXorCompileWithNegativeSmallInt [
 	self assert: machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 128)
 ]
 
-{ #category : #'tests - primitiveBitXor' }
+{ #category : 'tests - primitiveBitXor' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitXorDoesCompileForSmallIntegerReceiver [
 	
 	| result |
@@ -955,7 +957,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitXorDoesCompileForSmallIntegerRec
 	self assert: result equals: CompletePrimitive
 ]
 
-{ #category : #'tests - primitiveBitXor' }
+{ #category : 'tests - primitiveBitXor' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitXorDoesNotCompileForNonSmallIntegerReceiver [
 	
 	| result |
@@ -968,7 +970,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitXorDoesNotCompileForNonSmallInte
 	self assert: result equals: UnimplementedPrimitive
 ]
 
-{ #category : #'tests - primitiveBitXor' }
+{ #category : 'tests - primitiveBitXor' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitXorShouldFailWithNonSmallIntegerArgument [
 	
 	| primitiveAddress endInstruction |
@@ -984,7 +986,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitXorShouldFailWithNonSmallInteger
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveBitXor' }
+{ #category : 'tests - primitiveBitXor' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveBitXorShouldPreserveSmallIntegerTag [
 	
 	| primitiveAddress endInstruction |
@@ -1002,7 +1004,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveBitXorShouldPreserveSmallIntegerTag
 	self assert: machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 2)
 ]
 
-{ #category : #'tests - primitiveDiv' }
+{ #category : 'tests - primitiveDiv' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivCompilesOnFloatResult [
 	
 	| endInstruction primitiveAddress |
@@ -1020,7 +1022,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivCompilesOnFloatResult [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 10).
 ]
 
-{ #category : #'tests - primitiveDiv' }
+{ #category : 'tests - primitiveDiv' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivCompilesWithNegativNumbers [
 	
 	| endInstruction primitiveAddress |
@@ -1037,7 +1039,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivCompilesWithNegativNumbers [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: -3).
 ]
 
-{ #category : #'tests - primitiveDiv' }
+{ #category : 'tests - primitiveDiv' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivDoesNotCompileIfReceiverTagIsNotSmallInteger [
 	
 	| result |
@@ -1050,7 +1052,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivDoesNotCompileIfReceiverTagIsNot
 	self assert: result equals: UnimplementedPrimitive.
 ]
 
-{ #category : #'tests - primitiveDiv' }
+{ #category : 'tests - primitiveDiv' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivFailsWhenArgumentIsNotSmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -1067,7 +1069,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivFailsWhenArgumentIsNotSmallInteg
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveDiv' }
+{ #category : 'tests - primitiveDiv' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivFailsWithZeroDivision [
 	
 	| endInstruction primitiveAddress |
@@ -1084,7 +1086,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivFailsWithZeroDivision [
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveDiv' }
+{ #category : 'tests - primitiveDiv' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivIsCompleteWhenReceiverTagIsSmallInteger [
 	
 	| result |
@@ -1095,7 +1097,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivIsCompleteWhenReceiverTagIsSmall
 	self assert: result equals: CompletePrimitive.
 ]
 
-{ #category : #'tests - primitiveDiv' }
+{ #category : 'tests - primitiveDiv' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivReturnsASmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -1112,7 +1114,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivReturnsASmallInteger [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 50).
 ]
 
-{ #category : #'tests - primitiveDiv' }
+{ #category : 'tests - primitiveDiv' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivReturnsASmallIntegerWhenNegativeNumbers [
 	
 	| endInstruction primitiveAddress |
@@ -1130,7 +1132,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivReturnsASmallIntegerWhenNegative
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 50).
 ]
 
-{ #category : #'tests - primitiveDiv' }
+{ #category : 'tests - primitiveDiv' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivReturnsZeroWithZeroReceiver [
 	
 	| endInstruction primitiveAddress |
@@ -1147,7 +1149,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivReturnsZeroWithZeroReceiver [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 0).
 ]
 
-{ #category : #'tests - primitiveDivide' }
+{ #category : 'tests - primitiveDivide' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivideDoesNotCompileIfReceiverTagIsNotSmallInteger [
 	
 	| result |
@@ -1160,7 +1162,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivideDoesNotCompileIfReceiverTagIs
 	self assert: result equals: UnimplementedPrimitive.
 ]
 
-{ #category : #'tests - primitiveDivide' }
+{ #category : 'tests - primitiveDivide' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivideFailsOnNonIntegerResult [
 	
 	| endInstruction primitiveAddress |
@@ -1177,7 +1179,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivideFailsOnNonIntegerResult [
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveDivide' }
+{ #category : 'tests - primitiveDivide' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivideFailsWhenArgumentIsNotSmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -1194,7 +1196,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivideFailsWhenArgumentIsNotSmallIn
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveDivide' }
+{ #category : 'tests - primitiveDivide' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivideFailsWithZeroDivision [
 	
 	| endInstruction primitiveAddress |
@@ -1211,7 +1213,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivideFailsWithZeroDivision [
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveDivide' }
+{ #category : 'tests - primitiveDivide' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivideIsCompleteWhenReceiverTagIsSmallInteger [
 	
 	| result |
@@ -1222,7 +1224,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivideIsCompleteWhenReceiverTagIsSm
 	self assert: result equals: CompletePrimitive.
 ]
 
-{ #category : #'tests - primitiveDivide' }
+{ #category : 'tests - primitiveDivide' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivideReturnsASmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -1239,7 +1241,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivideReturnsASmallInteger [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 50).
 ]
 
-{ #category : #'tests - primitiveDivide' }
+{ #category : 'tests - primitiveDivide' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivideReturnsASmallIntegerWhenNegativeNumbers [
 	
 	| endInstruction primitiveAddress |
@@ -1257,7 +1259,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivideReturnsASmallIntegerWhenNegat
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 50).
 ]
 
-{ #category : #'tests - primitiveDivide' }
+{ #category : 'tests - primitiveDivide' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveDivideReturnsZeroWithZeroReceiver [
 	
 	| endInstruction primitiveAddress |
@@ -1274,7 +1276,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveDivideReturnsZeroWithZeroReceiver [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 0).
 ]
 
-{ #category : #'tests - primitiveEqual' }
+{ #category : 'tests - primitiveEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveEqualDoesNotCompileIfReceiverTagIsNotSmallInteger [
 	
 	| result |
@@ -1287,7 +1289,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveEqualDoesNotCompileIfReceiverTagIsN
 	self assert: result equals: UnimplementedPrimitive.
 ]
 
-{ #category : #'tests - primitiveEqual' }
+{ #category : 'tests - primitiveEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveEqualFailsWhenArgumentIsNotSmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -1304,7 +1306,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveEqualFailsWhenArgumentIsNotSmallInt
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveEqual' }
+{ #category : 'tests - primitiveEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveEqualIsCompleteWhenReceiverTagIsSmallInteger [
 	
 	| result |
@@ -1315,7 +1317,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveEqualIsCompleteWhenReceiverTagIsSma
 	self assert: result equals: CompletePrimitive.
 ]
 
-{ #category : #'tests - primitiveEqual' }
+{ #category : 'tests - primitiveEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveEqualReturnsABoolean [
 	
 	| endInstruction primitiveAddress |
@@ -1332,7 +1334,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveEqualReturnsABoolean [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory trueObject).
 ]
 
-{ #category : #'tests - primitiveEqual' }
+{ #category : 'tests - primitiveEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveEqualReturnsABooleanWhenNegativeNumbers [
 
 		| endInstruction primitiveAddress |
@@ -1350,7 +1352,54 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveEqualReturnsABooleanWhenNegativeNum
 	self assert: self machineSimulator receiverRegisterValue equals: (memory falseObject).
 ]
 
-{ #category : #'tests - primitiveGreaterOrEqual' }
+{ #category : 'tests - primitiveFormat' }
+VMJittedGeneralPrimitiveTest >> testPrimitiveFormatArray [
+	
+	| primitiveAddress |
+		
+	primitiveAddress := self compile: [ 
+		cogit objectRepresentation genPrimitiveFormat ].
+
+	self prepareStackForSendReceiver: (memory newArrayWith: {42 . 123 . 31}).
+
+	"Assert it reaches the caller address and we have the format in the receiver register"
+	self runFrom: primitiveAddress until: callerAddress.
+	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: memory arrayFormat).
+]
+
+{ #category : 'tests - primitiveFormat' }
+VMJittedGeneralPrimitiveTest >> testPrimitiveFormatFailsWhenReceiverIsImmediate [
+	
+	| endInstruction primitiveAddress |
+		
+	primitiveAddress := self compile: [ 
+		cogit objectRepresentation genPrimitiveFormat.
+		"If the primitive fails it continues, so we need to have an instruction to detect the end"
+		endInstruction := cogit Stop ].
+
+	self prepareStackForSendReceiver: (memory integerObjectOf: 42).
+
+	"Assert it reaches the Stop and that it does not destroy the value inside the ReceiverResultReg "
+	self runFrom: primitiveAddress until: endInstruction address.
+	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 42).
+]
+
+{ #category : 'tests - primitiveFormat' }
+VMJittedGeneralPrimitiveTest >> testPrimitiveFormatTrueObject [
+	
+	| primitiveAddress |
+		
+	primitiveAddress := self compile: [ 
+		cogit objectRepresentation genPrimitiveFormat ].
+
+	self prepareStackForSendReceiver: (memory trueObject).
+
+	"Assert it reaches the caller address and we have the format in the receiver register"
+	self runFrom: primitiveAddress until: callerAddress.
+	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 0). "According to SpurMemomyManager >> formatOfHeader:, the format of the True object is 0."
+]
+
+{ #category : 'tests - primitiveGreaterOrEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterOrEqualDoesNotCompileIfReceiverTagIsNotSmallInteger [
 	
 	| result |
@@ -1363,7 +1412,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterOrEqualDoesNotCompileIfRecei
 	self assert: result equals: UnimplementedPrimitive.
 ]
 
-{ #category : #'tests - primitiveGreaterOrEqual' }
+{ #category : 'tests - primitiveGreaterOrEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterOrEqualFailsWhenArgumentIsNotSmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -1380,7 +1429,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterOrEqualFailsWhenArgumentIsNo
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveGreaterOrEqual' }
+{ #category : 'tests - primitiveGreaterOrEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterOrEqualIsCompleteWhenReceiverTagIsSmallInteger [
 	
 	| result |
@@ -1391,7 +1440,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterOrEqualIsCompleteWhenReceive
 	self assert: result equals: CompletePrimitive.
 ]
 
-{ #category : #'tests - primitiveGreaterOrEqual' }
+{ #category : 'tests - primitiveGreaterOrEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterOrEqualReturnsABoolean [
 	
 	| endInstruction primitiveAddress |
@@ -1408,7 +1457,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterOrEqualReturnsABoolean [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory trueObject).
 ]
 
-{ #category : #'tests - primitiveGreaterOrEqual' }
+{ #category : 'tests - primitiveGreaterOrEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterOrEqualReturnsABooleanWhenNegativeNumbers [
 
 		| endInstruction primitiveAddress |
@@ -1426,7 +1475,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterOrEqualReturnsABooleanWhenNe
 	self assert: self machineSimulator receiverRegisterValue equals: (memory trueObject).
 ]
 
-{ #category : #'tests - primitiveGreaterThan' }
+{ #category : 'tests - primitiveGreaterThan' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterThanDoesNotCompileIfReceiverTagIsNotSmallInteger [
 	
 	| result |
@@ -1439,7 +1488,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterThanDoesNotCompileIfReceiver
 	self assert: result equals: UnimplementedPrimitive.
 ]
 
-{ #category : #'tests - primitiveGreaterThan' }
+{ #category : 'tests - primitiveGreaterThan' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterThanFailsWhenArgumentIsNotSmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -1456,7 +1505,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterThanFailsWhenArgumentIsNotSm
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveGreaterThan' }
+{ #category : 'tests - primitiveGreaterThan' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterThanIsCompleteWhenReceiverTagIsSmallInteger [
 	
 	| result |
@@ -1467,7 +1516,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterThanIsCompleteWhenReceiverTa
 	self assert: result equals: CompletePrimitive.
 ]
 
-{ #category : #'tests - primitiveGreaterThan' }
+{ #category : 'tests - primitiveGreaterThan' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterThanReturnsABoolean [
 	
 	| endInstruction primitiveAddress |
@@ -1484,7 +1533,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterThanReturnsABoolean [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory falseObject).
 ]
 
-{ #category : #'tests - primitiveGreaterThan' }
+{ #category : 'tests - primitiveGreaterThan' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterThanReturnsABooleanWhenNegativeNumbers [
 	
 	| endInstruction primitiveAddress |
@@ -1502,7 +1551,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveGreaterThanReturnsABooleanWhenNegat
 	self assert: self machineSimulator receiverRegisterValue equals: (memory trueObject).
 ]
 
-{ #category : #'tests - primitiveHashMultiply' }
+{ #category : 'tests - primitiveHashMultiply' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveHashMultiplySmallIntegerReturnsHashMultiply [
 	
 	| result primitiveAddress |
@@ -1519,7 +1568,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveHashMultiplySmallIntegerReturnsHash
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 50 hashMultiply).
 ]
 
-{ #category : #'tests - primitiveLessOrEqual' }
+{ #category : 'tests - primitiveLessOrEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveLessOrEqualDoesNotCompileIfReceiverTagIsNotSmallInteger [
 	
 	| result |
@@ -1532,7 +1581,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveLessOrEqualDoesNotCompileIfReceiver
 	self assert: result equals: UnimplementedPrimitive.
 ]
 
-{ #category : #'tests - primitiveLessOrEqual' }
+{ #category : 'tests - primitiveLessOrEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveLessOrEqualFailsWhenArgumentIsNotSmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -1549,7 +1598,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveLessOrEqualFailsWhenArgumentIsNotSm
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveLessOrEqual' }
+{ #category : 'tests - primitiveLessOrEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveLessOrEqualIsCompleteWhenReceiverTagIsSmallInteger [
 	
 	| result |
@@ -1560,7 +1609,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveLessOrEqualIsCompleteWhenReceiverTa
 	self assert: result equals: CompletePrimitive.
 ]
 
-{ #category : #'tests - primitiveLessOrEqual' }
+{ #category : 'tests - primitiveLessOrEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveLessOrEqualReturnsABoolean [
 	
 	| endInstruction primitiveAddress |
@@ -1577,7 +1626,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveLessOrEqualReturnsABoolean [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory trueObject).
 ]
 
-{ #category : #'tests - primitiveLessOrEqual' }
+{ #category : 'tests - primitiveLessOrEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveLessOrEqualReturnsABooleanWhenNegativeNumbers [
 
 		| endInstruction primitiveAddress |
@@ -1595,7 +1644,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveLessOrEqualReturnsABooleanWhenNegat
 	self assert: self machineSimulator receiverRegisterValue equals: (memory falseObject).
 ]
 
-{ #category : #'tests - primitiveLessThan' }
+{ #category : 'tests - primitiveLessThan' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveLessThanDoesNotCompileIfReceiverTagIsNotSmallInteger [
 	
 	| result |
@@ -1608,7 +1657,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveLessThanDoesNotCompileIfReceiverTag
 	self assert: result equals: UnimplementedPrimitive.
 ]
 
-{ #category : #'tests - primitiveLessThan' }
+{ #category : 'tests - primitiveLessThan' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveLessThanFailsWhenArgumentIsNotSmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -1625,7 +1674,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveLessThanFailsWhenArgumentIsNotSmall
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveLessThan' }
+{ #category : 'tests - primitiveLessThan' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveLessThanIsCompleteWhenReceiverTagIsSmallInteger [
 	
 	| result |
@@ -1636,7 +1685,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveLessThanIsCompleteWhenReceiverTagIs
 	self assert: result equals: CompletePrimitive.
 ]
 
-{ #category : #'tests - primitiveLessThan' }
+{ #category : 'tests - primitiveLessThan' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveLessThanReturnsABoolean [
 	
 	| endInstruction primitiveAddress |
@@ -1653,7 +1702,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveLessThanReturnsABoolean [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory trueObject).
 ]
 
-{ #category : #'tests - primitiveLessThan' }
+{ #category : 'tests - primitiveLessThan' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveLessThanReturnsABooleanWhenNegativeNumbers [
 
 		| endInstruction primitiveAddress |
@@ -1671,7 +1720,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveLessThanReturnsABooleanWhenNegative
 	self assert: self machineSimulator receiverRegisterValue equals: (memory falseObject).
 ]
 
-{ #category : #'tests - primitiveMultiply' }
+{ #category : 'tests - primitiveMultiply' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyDoesNotCompileIfReceiverTagIsNotSmallInteger [
 	
 	| result |
@@ -1684,7 +1733,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyDoesNotCompileIfReceiverTag
 	self assert: result equals: UnimplementedPrimitive.
 ]
 
-{ #category : #'tests - primitiveMultiply' }
+{ #category : 'tests - primitiveMultiply' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyFailsWhenArgumentIsNotSmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -1701,7 +1750,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyFailsWhenArgumentIsNotSmall
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveMultiply' }
+{ #category : 'tests - primitiveMultiply' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyFailsWhenComputationOverflows [
 	
 	| endInstruction primitiveAddress |
@@ -1718,7 +1767,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyFailsWhenComputationOverflo
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveMultiply' }
+{ #category : 'tests - primitiveMultiply' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyFailsWhenNegativeOverflow [
 	
 	| endInstruction primitiveAddress |
@@ -1737,7 +1786,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyFailsWhenNegativeOverflow [
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveMultiply' }
+{ #category : 'tests - primitiveMultiply' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyFailsWhenPositiveOverflow [
 	
 	| endInstruction primitiveAddress |
@@ -1756,7 +1805,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyFailsWhenPositiveOverflow [
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveMultiply' }
+{ #category : 'tests - primitiveMultiply' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyFailsWhenSumOverflowsWhenNegative [
 	
 	| endInstruction primitiveAddress |
@@ -1773,7 +1822,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyFailsWhenSumOverflowsWhenNe
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveMultiply' }
+{ #category : 'tests - primitiveMultiply' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyIsCompleteWhenReceiverTagIsSmallInteger [
 	
 	| result |
@@ -1784,7 +1833,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyIsCompleteWhenReceiverTagIs
 	self assert: result equals: CompletePrimitive.
 ]
 
-{ #category : #'tests - primitiveMultiply' }
+{ #category : 'tests - primitiveMultiply' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyReturnsANegativeSmallInteger [
 
 	| endInstruction primitiveAddress |
@@ -1807,7 +1856,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyReturnsANegativeSmallIntege
 		equals: (memory integerObjectOf: -84)
 ]
 
-{ #category : #'tests - primitiveMultiply' }
+{ #category : 'tests - primitiveMultiply' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyReturnsASmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -1824,7 +1873,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyReturnsASmallInteger [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 84).
 ]
 
-{ #category : #'tests - primitiveMultiply' }
+{ #category : 'tests - primitiveMultiply' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyReturnsASmallIntegerWhenNegativeNumbers [
 	
 	| endInstruction primitiveAddress |
@@ -1842,7 +1891,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyReturnsASmallIntegerWhenNeg
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 17424).
 ]
 
-{ #category : #'tests - primitiveMultiply' }
+{ #category : 'tests - primitiveMultiply' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyReturnsZeroWithZeroOperand [
 	
 	| endInstruction primitiveAddress |
@@ -1860,7 +1909,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveMultiplyReturnsZeroWithZeroOperand 
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 0).
 ]
 
-{ #category : #'tests - primitiveNew' }
+{ #category : 'tests - primitiveNew' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveNewInitializesObjectCorrectly [
 
 	| endInstruction primitiveAddress class newOop instanceVariableCount |
@@ -1886,7 +1935,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveNewInitializesObjectCorrectly [
 			equals: memory nilObject ]
 ]
 
-{ #category : #'tests - primitiveNew' }
+{ #category : 'tests - primitiveNew' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveNewWithArgInitializesObjectCorrectly [
 
 	| endInstruction primitiveAddress class newOop arraySize |
@@ -1916,7 +1965,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveNewWithArgInitializesObjectCorrectl
 			equals: memory nilObject ]
 ]
 
-{ #category : #'tests - primitiveNew' }
+{ #category : 'tests - primitiveNew' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveNewWithArgInitializesObjectCorrectlyWhenNotAligned [
 
 	| endInstruction primitiveAddress class newOop arraySize |
@@ -1947,7 +1996,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveNewWithArgInitializesObjectCorrectl
 			equals: memory nilObject ]
 ]
 
-{ #category : #'tests - primitiveNotEqual' }
+{ #category : 'tests - primitiveNotEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveNotEqualDoesNotCompileIfReceiverTagIsNotSmallInteger [
 	
 	| result |
@@ -1960,7 +2009,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveNotEqualDoesNotCompileIfReceiverTag
 	self assert: result equals: UnimplementedPrimitive.
 ]
 
-{ #category : #'tests - primitiveNotEqual' }
+{ #category : 'tests - primitiveNotEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveNotEqualFailsWhenArgumentIsNotSmallInteger [
 
 	| endInstruction primitiveAddress |
@@ -1978,7 +2027,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveNotEqualFailsWhenArgumentIsNotSmall
 	self runFrom: primitiveAddress until: endInstruction address
 ]
 
-{ #category : #'tests - primitiveNotEqual' }
+{ #category : 'tests - primitiveNotEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveNotEqualIsCompleteWhenReceiverTagIsSmallInteger [
 	
 	| result |
@@ -1989,7 +2038,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveNotEqualIsCompleteWhenReceiverTagIs
 	self assert: result equals: CompletePrimitive.
 ]
 
-{ #category : #'tests - primitiveNotEqual' }
+{ #category : 'tests - primitiveNotEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveNotEqualReturnsABoolean [
 	
 	| endInstruction primitiveAddress |
@@ -2006,7 +2055,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveNotEqualReturnsABoolean [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory falseObject).
 ]
 
-{ #category : #'tests - primitiveNotEqual' }
+{ #category : 'tests - primitiveNotEqual' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveNotEqualReturnsABooleanWhenNegativeNumbers [
 
 		| endInstruction primitiveAddress |
@@ -2024,7 +2073,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveNotEqualReturnsABooleanWhenNegative
 	self assert: self machineSimulator receiverRegisterValue equals: (memory trueObject).
 ]
 
-{ #category : #'tests - primitiveQuo' }
+{ #category : 'tests - primitiveQuo' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveQuoCompilesOnNonIntegerResult [
 	
 	| endInstruction primitiveAddress |
@@ -2042,7 +2091,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveQuoCompilesOnNonIntegerResult [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 10).
 ]
 
-{ #category : #'tests - primitiveQuo' }
+{ #category : 'tests - primitiveQuo' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveQuoCompilesWithNegativNumbers [
 	
 	| endInstruction primitiveAddress |
@@ -2059,7 +2108,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveQuoCompilesWithNegativNumbers [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: -2).
 ]
 
-{ #category : #'tests - primitiveQuo' }
+{ #category : 'tests - primitiveQuo' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveQuoDoesNotCompileIfReceiverTagIsNotSmallInteger [
 	
 	| result |
@@ -2072,7 +2121,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveQuoDoesNotCompileIfReceiverTagIsNot
 	self assert: result equals: UnimplementedPrimitive.
 ]
 
-{ #category : #'tests - primitiveQuo' }
+{ #category : 'tests - primitiveQuo' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveQuoFailsWhenArgumentIsNotSmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -2089,7 +2138,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveQuoFailsWhenArgumentIsNotSmallInteg
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveQuo' }
+{ #category : 'tests - primitiveQuo' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveQuoFailsWithZeroDivision [
 	
 	| endInstruction primitiveAddress |
@@ -2106,7 +2155,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveQuoFailsWithZeroDivision [
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveQuo' }
+{ #category : 'tests - primitiveQuo' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveQuoIsCompleteWhenReceiverTagIsSmallInteger [
 	
 	| result |
@@ -2117,7 +2166,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveQuoIsCompleteWhenReceiverTagIsSmall
 	self assert: result equals: CompletePrimitive.
 ]
 
-{ #category : #'tests - primitiveQuo' }
+{ #category : 'tests - primitiveQuo' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveQuoReturnsASmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -2134,7 +2183,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveQuoReturnsASmallInteger [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 50).
 ]
 
-{ #category : #'tests - primitiveQuo' }
+{ #category : 'tests - primitiveQuo' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveQuoReturnsASmallIntegerWhenNegativeNumbers [
 	
 	| endInstruction primitiveAddress |
@@ -2152,7 +2201,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveQuoReturnsASmallIntegerWhenNegative
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 50).
 ]
 
-{ #category : #'tests - primitiveQuo' }
+{ #category : 'tests - primitiveQuo' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveQuoReturnsZeroWithZeroReceiver [
 	
 	| endInstruction primitiveAddress |
@@ -2169,7 +2218,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveQuoReturnsZeroWithZeroReceiver [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 0).
 ]
 
-{ #category : #'tests - primitiveStringCompare' }
+{ #category : 'tests - primitiveStringCompare' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveStringCompareBigString [
 	
 
@@ -2188,7 +2237,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveStringCompareBigString [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 0).
 ]
 
-{ #category : #'tests - primitiveStringCompare' }
+{ #category : 'tests - primitiveStringCompare' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveStringCompareWithHigherSymbol [
 	
 
@@ -2207,7 +2256,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveStringCompareWithHigherSymbol [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 1).
 ]
 
-{ #category : #'tests - primitiveStringCompare' }
+{ #category : 'tests - primitiveStringCompare' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveStringCompareWithIsCaseSensitive [
 	
 
@@ -2226,7 +2275,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveStringCompareWithIsCaseSensitive [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 32).
 ]
 
-{ #category : #'tests - primitiveStringCompare' }
+{ #category : 'tests - primitiveStringCompare' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveStringCompareWithLowerSymbol [
 	
 
@@ -2245,7 +2294,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveStringCompareWithLowerSymbol [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: -1).
 ]
 
-{ #category : #'tests - primitiveStringCompare' }
+{ #category : 'tests - primitiveStringCompare' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveStringCompareWithSameSymbol [
 	
 
@@ -2263,7 +2312,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveStringCompareWithSameSymbol [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 0).
 ]
 
-{ #category : #'tests - primitiveSubtract' }
+{ #category : 'tests - primitiveSubtract' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveSubtractDoesNotCompileIfReceiverTagIsNotSmallInteger [
 	
 	| result |
@@ -2276,7 +2325,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveSubtractDoesNotCompileIfReceiverTag
 	self assert: result equals: UnimplementedPrimitive.
 ]
 
-{ #category : #'tests - primitiveSubtract' }
+{ #category : 'tests - primitiveSubtract' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveSubtractFailsWhenArgumentIsNotSmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -2293,7 +2342,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveSubtractFailsWhenArgumentIsNotSmall
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveSubtract' }
+{ #category : 'tests - primitiveSubtract' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveSubtractFailsWhenSumOverflows [
 	
 	| endInstruction primitiveAddress |
@@ -2310,7 +2359,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveSubtractFailsWhenSumOverflows [
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveSubtract' }
+{ #category : 'tests - primitiveSubtract' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveSubtractFailsWhenSumOverflowsWhenNegative [
 	
 	| endInstruction primitiveAddress |
@@ -2327,7 +2376,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveSubtractFailsWhenSumOverflowsWhenNe
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveSubtract' }
+{ #category : 'tests - primitiveSubtract' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveSubtractIsCompleteWhenReceiverTagIsSmallInteger [
 	
 	| result |
@@ -2338,7 +2387,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveSubtractIsCompleteWhenReceiverTagIs
 	self assert: result equals: CompletePrimitive.
 ]
 
-{ #category : #'tests - primitiveSubtract' }
+{ #category : 'tests - primitiveSubtract' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveSubtractReturnsASmallInteger [
 	
 	| endInstruction primitiveAddress |
@@ -2355,7 +2404,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveSubtractReturnsASmallInteger [
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: -10).
 ]
 
-{ #category : #'tests - primitiveSubtract' }
+{ #category : 'tests - primitiveSubtract' }
 VMJittedGeneralPrimitiveTest >> testPrimitiveSubtractReturnsASmallIntegerWhenNegativeNumbers [
 	
 	| endInstruction primitiveAddress |
@@ -2373,7 +2422,7 @@ VMJittedGeneralPrimitiveTest >> testPrimitiveSubtractReturnsASmallIntegerWhenNeg
 	self assert: self machineSimulator receiverRegisterValue equals: (memory integerObjectOf: 10).
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testSmallIntegerLessShouldNotCompileForNonSmallIntegers [
 		
 	| result |
@@ -2385,7 +2434,7 @@ VMJittedGeneralPrimitiveTest >> testSmallIntegerLessShouldNotCompileForNonSmallI
 	self assert: result equals: UnimplementedPrimitive.
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testSmallIntegerLessThanNonSmallIntegerArgumentDoesNotReturn [
 	
 	"If the argument is not an small integer, flow jumps and return does not (yet) happen"
@@ -2411,7 +2460,7 @@ VMJittedGeneralPrimitiveTest >> testSmallIntegerLessThanNonSmallIntegerArgumentD
 	self assert: machineSimulator arg0RegisterValue equals: self memory falseObject.
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testSmallIntegerLessThanReturnsFalse [
 	
 	self compile: [ 
@@ -2433,7 +2482,7 @@ VMJittedGeneralPrimitiveTest >> testSmallIntegerLessThanReturnsFalse [
 	self assert: machineSimulator receiverRegisterValue equals: memory falseObject.
 ]
 
-{ #category : #'tests - support' }
+{ #category : 'tests - support' }
 VMJittedGeneralPrimitiveTest >> testSmallIntegerLessThanReturnsTrue [
 	
 	self compile: [ 
