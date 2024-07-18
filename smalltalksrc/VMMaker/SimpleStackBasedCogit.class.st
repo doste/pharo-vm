@@ -343,6 +343,7 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentInIndex: indexOfArg forExternalFu
 { #category : 'bytecode generators' }
 SimpleStackBasedCogit >> checkAndUnpackArgumentInIndex: indexOfArg forExternalFunctionWithOutgoingJumpFallbackAndWithCif: aCif usingRegister: aRegister withIncomingFallbackJump: aFallbackJumpToMerge [
 
+	<var: #aCif type: 'ffi_cif*'>
 	| numberOfBits signedOrNot |
 	numberOfBits := 0.
 	signedOrNot := -1.
@@ -383,15 +384,14 @@ SimpleStackBasedCogit >> checkAndUnpackArgumentInIndex: indexOfArg forExternalFu
 				 numberOfBits := 64.
 				 signedOrNot := 0 ]) }
 		otherwise: [ ^ nil ].
-		
-	(numberOfBits = 0 and: (signedOrNot = -1)) ifTrue: [ ^ nil ].
+
+	(numberOfBits = 0 and: signedOrNot = -1) ifTrue: [ ^ nil ].
 
 	^ self
 		  checkAndUntagArgumentIn: aRegister
 		  forIntegerOfSize: numberOfBits
 		  signed: signedOrNot
 		  withIncomingFallbackJump: aFallbackJumpToMerge
-	
 ]
 
 { #category : 'bytecode generators' }
