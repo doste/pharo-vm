@@ -1,9 +1,6 @@
 Class {
 	#name : #VMPrimitiveTest,
 	#superclass : #VMInterpreterTests,
-	#instVars : [
-		'imageName'
-	],
 	#pools : [
 		'VMBasicConstants',
 		'VMBytecodeConstants',
@@ -71,9 +68,7 @@ VMPrimitiveTest >> setUp [
 
 	page := interpreter makeBaseFrameFor: ctx.
 	interpreter setStackPointersFromPage: page.
-	interpreter setStackPageAndLimit: page.
-
-	imageName := VMPrimitiveTest name
+	interpreter setStackPageAndLimit: page
 ]
 
 { #category : #'tests - primitiveIdentical' }
@@ -98,13 +93,6 @@ VMPrimitiveTest >> setUpForwardedObjects [
 	self assert: (memory isForwarded: object2) equals: true.
 	
 	^ object1. 
-]
-
-{ #category : #running }
-VMPrimitiveTest >> tearDown [
-
-	imageName ifNotNil: [ imageName asFileReference ensureDeleteAll ].
-	super tearDown
 ]
 
 { #category : #'tests - primitiveAdd' }
@@ -1252,6 +1240,271 @@ VMPrimitiveTest >> testPrimitiveClassReturnsAClass [
 	self assert: interpreter stackTop equals: (memory fetchClassOf: (memory trueObject)). 
 	
 	
+]
+
+{ #category : #'tests - primitiveCompareBytes' }
+VMPrimitiveTest >> testPrimitiveCompareBytesArgCountLessThanOne [
+
+	| array1 size |
+	size := 1.
+	array1 := self new8BitIndexableOfSize: size.
+
+	1 to: size do: [ :i |
+	memory storeByte: i - 1 ofObject: array1 withValue: 0 ].
+
+	interpreter push: array1.
+
+	interpreter argumentCount: 0.
+	interpreter primitiveCompareBytes.
+
+	self assert: interpreter failed
+]
+
+{ #category : #'tests - primitiveCompareBytes' }
+VMPrimitiveTest >> testPrimitiveCompareBytesEmpty [
+
+	| array1 array2 |
+	array1 := self new8BitIndexableOfSize: 0.
+	array2 := self new8BitIndexableOfSize: 0.
+
+	interpreter push: array1.
+	interpreter push: array2.
+
+	interpreter argumentCount: 1.
+	interpreter primitiveCompareBytes.
+
+	self assert: interpreter stackTop equals: memory trueObject
+]
+
+{ #category : #'tests - primitiveCompareBytes' }
+VMPrimitiveTest >> testPrimitiveCompareBytesIdentity [
+
+	| array1 size |
+	size := 1.
+	array1 := self new8BitIndexableOfSize: size.
+
+	1 to: size do: [ :i |
+	memory storeByte: i - 1 ofObject: array1 withValue: 0 ].
+
+	interpreter push: array1.
+	interpreter push: array1.
+
+	interpreter argumentCount: 1.
+
+	interpreter primitiveCompareBytes.
+
+	self assert: interpreter stackTop equals: memory trueObject
+]
+
+{ #category : #'tests - primitiveCompareBytes' }
+VMPrimitiveTest >> testPrimitiveCompareBytesWithDifferentSize1 [
+
+	| array1 array2 size |
+	size := 1.
+	array1 := self new8BitIndexableOfSize: size.
+	array2 := self new8BitIndexableOfSize: size + 1.
+
+	1 to: size do: [ :i |
+		memory storeByte: i - 1 ofObject: array1 withValue: 0.
+		memory storeByte: i - 1 ofObject: array2 withValue: 0 ].
+	memory storeByte: size - 1 ofObject: array2 withValue: 0.
+
+	"Arg > Receiver"
+	interpreter push: array1.
+	interpreter push: array2.
+
+	interpreter argumentCount: 1.
+	interpreter primitiveCompareBytes.
+
+	self assert: interpreter stackTop equals: memory falseObject
+]
+
+{ #category : #'tests - primitiveCompareBytes' }
+VMPrimitiveTest >> testPrimitiveCompareBytesWithDifferentSize2 [
+
+	| array1 array2 size |
+	size := 1.
+	array1 := self new8BitIndexableOfSize: size.
+	array2 := self new8BitIndexableOfSize: size + 1.
+
+	1 to: size do: [ :i |
+		memory storeByte: i - 1 ofObject: array1 withValue: 0.
+		memory storeByte: i - 1 ofObject: array2 withValue: 0 ].
+	memory storeByte: size - 1 ofObject: array2 withValue: 0.
+
+	"Receiver > Arg"
+	interpreter push: array2.
+	interpreter push: array1.
+
+	interpreter argumentCount: 1.
+	interpreter primitiveCompareBytes.
+
+	self assert: interpreter stackTop equals: memory falseObject
+]
+
+{ #category : #'tests - primitiveCompareBytes' }
+VMPrimitiveTest >> testPrimitiveCompareBytesWithDifferentValues [
+
+	| array1 array2 size |
+	size := 2.
+	array1 := self new8BitIndexableOfSize: size.
+	array2 := self new8BitIndexableOfSize: size.
+
+	1 to: size do: [ :i |
+		memory storeByte: i - 1 ofObject: array1 withValue: 0.
+		memory storeByte: i - 1 ofObject: array2 withValue: 1 ].
+
+	interpreter push: array1.
+	interpreter push: array2.
+
+	interpreter argumentCount: 1.
+	interpreter primitiveCompareBytes.
+
+	self assert: interpreter stackTop equals: memory falseObject
+]
+
+{ #category : #'tests - primitiveCompareBytes' }
+VMPrimitiveTest >> testPrimitiveCompareBytesWithLastDifferentValue [
+
+	| array1 array2 size |
+	size := 2.
+	array1 := self new8BitIndexableOfSize: size.
+	array2 := self new8BitIndexableOfSize: size.
+
+	1 to: size do: [ :i |
+		memory storeByte: i - 1 ofObject: array1 withValue: 0.
+		memory storeByte: i - 1 ofObject: array2 withValue: 0 ].
+	memory storeByte: size - 1 ofObject: array2 withValue: 1.
+
+	interpreter push: array1.
+	interpreter push: array2.
+
+	interpreter argumentCount: 1.
+	interpreter primitiveCompareBytes.
+
+	self assert: interpreter stackTop equals: memory falseObject
+]
+
+{ #category : #'tests - primitiveCompareBytes' }
+VMPrimitiveTest >> testPrimitiveCompareBytesWithNonByteArgument [
+
+	| array1 size nilClass |
+	size := 2.
+	array1 := self new8BitIndexableOfSize: size.
+	nilClass := self newClassInOldSpaceWithSlots: 0 instSpec: memory zeroSlotsNonIndexablePointerFormat.
+	memory setClassIndexOf: memory nilObject to: (memory ensureBehaviorHash: nilClass).
+
+	1 to: size do: [ :i |
+	memory storeByte: i - 1 ofObject: array1 withValue: 0 ].
+
+	interpreter push: array1.
+	interpreter push: memory nilObject.
+
+	interpreter argumentCount: 1.
+	interpreter primitiveCompareBytes.
+
+	self assert: interpreter failed 
+]
+
+{ #category : #'tests - primitiveCompareBytes' }
+VMPrimitiveTest >> testPrimitiveCompareBytesWithNonByteReceiver [
+
+	| array1 size nilClass |
+	size := 2.
+	array1 := self new8BitIndexableOfSize: size.
+	nilClass := self newClassInOldSpaceWithSlots: 0 instSpec: memory zeroSlotsNonIndexablePointerFormat.
+	memory setClassIndexOf: memory nilObject to: (memory ensureBehaviorHash: nilClass).
+
+
+	1 to: size do: [ :i |
+	memory storeByte: i - 1 ofObject: array1 withValue: 0 ].
+
+	interpreter push: memory nilObject.
+	interpreter push: array1.
+
+	interpreter argumentCount: 1.
+	interpreter primitiveCompareBytes.
+
+	self assert: interpreter failed 
+]
+
+{ #category : #'tests - primitiveCompareBytes' }
+VMPrimitiveTest >> testPrimitiveCompareBytesWithNonByteReceiverShouldLeaveTheSameStack [
+
+	| array1 size nilClass |
+	size := 2.
+	array1 := self new8BitIndexableOfSize: size.
+	nilClass := self newClassInOldSpaceWithSlots: 0 instSpec: memory zeroSlotsNonIndexablePointerFormat.
+	memory setClassIndexOf: memory nilObject to: (memory ensureBehaviorHash: nilClass).
+
+
+	1 to: size do: [ :i |
+	memory storeByte: i - 1 ofObject: array1 withValue: 0 ].
+
+	interpreter push: memory nilObject.
+	interpreter push: array1.
+
+	interpreter argumentCount: 1.
+	interpreter primitiveCompareBytes.
+
+	self assert: (interpreter stackValue: 0) equals: array1.
+	self assert: (interpreter stackValue: 1) equals: memory nilObject
+]
+
+{ #category : #'tests - primitiveCompareBytes' }
+VMPrimitiveTest >> testPrimitiveCompareBytesWithSize [
+
+	| array1 array2 size |
+	size := 1.
+	array1 := self new8BitIndexableOfSize: size.
+	array2 := self new8BitIndexableOfSize: size.
+
+	1 to: size do: [ :i |
+		memory storeByte: i - 1 ofObject: array1 withValue: 0.
+		memory storeByte: i - 1 ofObject: array2 withValue: 0 ].
+
+	interpreter push: array1.
+	interpreter push: array2.
+
+	interpreter argumentCount: 1.
+	interpreter primitiveCompareBytes.
+
+	self assert: interpreter stackTop equals: memory trueObject
+]
+
+{ #category : #'tests - primitiveCompareBytes' }
+VMPrimitiveTest >> testPrimitiveCompareBytesWithWordArgument [
+
+	| array1 array2 size |
+	size := 1.
+	"Both will be 8 bytes long"
+	array1 := self new8BitIndexableOfSize: size * 8.
+	array2 := self new64BitIndexableOfSize: size.
+
+	interpreter push: array1.
+	interpreter push: array2.
+
+	interpreter argumentCount: 1.
+	interpreter primitiveCompareBytes.
+
+	"Should fail because they don't have the same type"
+	self assert: interpreter failed
+]
+
+{ #category : #'tests - primitiveCompareBytes' }
+VMPrimitiveTest >> testPrimitiveCompareWordsEmpty [
+
+	| array1 array2 |
+	array1 := self new64BitIndexableOfSize: 0.
+	array2 := self new64BitIndexableOfSize: 0.
+
+	interpreter push: array1.
+	interpreter push: array2.
+
+	interpreter argumentCount: 1.
+	interpreter primitiveCompareBytes.
+
+	self assert: interpreter stackTop equals: memory trueObject
 ]
 
 { #category : #'tests - primitiveDiv' }
@@ -2690,6 +2943,74 @@ VMPrimitiveTest >> testPrimitiveNewIsNotPinned [
 	interpreter primitiveNew.
 
 	self deny: (memory isPinned: interpreter stackTop)
+]
+
+{ #category : #'tests - primitiveNewOldSpace' }
+VMPrimitiveTest >> testPrimitiveNewOldCreatesTheObjectInOldSpace [
+	| class |
+	class := self newClassInOldSpaceWithSlots: 0 instSpec: memory nonIndexablePointerFormat.
+
+	interpreter push: class.
+	interpreter primitiveNewOldSpace.
+
+	self deny: interpreter failed.
+	self deny: (memory isYoung: interpreter stackTop).
+	self assert: (memory isOld: interpreter stackTop)
+]
+
+{ #category : #'tests - primitiveNewOldSpace' }
+VMPrimitiveTest >> testPrimitiveNewOldSpaceObjectInFullNewSpaceIsSchedulingGC [
+	| class |
+	class := self newClassInOldSpaceWithSlots: 3 instSpec: memory nonIndexablePointerFormat.
+
+	self fillNewSpace.
+
+	self deny: memory needGCFlag.
+	
+	interpreter push: class.
+	interpreter primitiveNewOldSpace.
+
+	self deny: interpreter failed.
+	self assert: memory needGCFlag 
+]
+
+{ #category : #'tests - primitiveNewOldSpace' }
+VMPrimitiveTest >> testPrimitiveNewOldSpaceObjectIsNotSchedulingGC [
+	| class |
+	class := self newClassInOldSpaceWithSlots: 0 instSpec: memory nonIndexablePointerFormat.
+
+	interpreter push: class.
+	interpreter primitiveNewOldSpace.
+
+	self deny: interpreter failed.
+	self deny: memory needGCFlag 
+]
+
+{ #category : #'tests - primitiveNewOldSpace' }
+VMPrimitiveTest >> testPrimitiveNewOldSpaceWithArgsCreatesTheObjectInOldSpace [
+	| class |
+	class := self newClassInOldSpaceWithSlots: 0 instSpec: memory arrayFormat.
+
+	interpreter push: class.
+	interpreter push: (memory integerObjectOf: 7).
+	interpreter primitiveNewWithArgOldSpace.
+
+	self deny: interpreter failed.
+	self deny: (memory isYoung: interpreter stackTop).
+	self assert: (memory isOld: interpreter stackTop)
+]
+
+{ #category : #'tests - primitiveNewOldSpace' }
+VMPrimitiveTest >> testPrimitiveNewOldSpaceWithArgsObjectIsNotSchedulingGC [
+	| class |
+	class := self newClassInOldSpaceWithSlots: 0 instSpec: memory arrayFormat.
+
+	interpreter push: class.
+	interpreter push: (memory integerObjectOf: 7).
+	interpreter primitiveNewWithArgOldSpace.
+
+	self deny: interpreter failed.
+	self deny: memory needGCFlag 
 ]
 
 { #category : #'tests - primitiveNewPinned' }
@@ -4536,88 +4857,6 @@ VMPrimitiveTest >> testPrimitiveSmallFloatSubtractPopsOperands [
 	
 	self deny: interpreter failed.
 	self assert: (interpreter stackTop) equals: (memory integerObjectOf: 42).
-]
-
-{ #category : #'tests - snapshot' }
-VMPrimitiveTest >> testPrimitiveSnapshotContextsShouldBeTenured [
-
-	| method frame contextOop contextIdentityHash suspendedContext |
-	interpreter pluginList: #(  ).
-	self setUpScheduler.
-	self initializeOldSpaceForFullGC.
-	self setContextClassIntoClassTable.
-	method := methodBuilder newMethod buildMethod.
-	frame := stackBuilder addNewFrame
-		         method: method;
-		         yourself.
-	stackBuilder buildStack.
-
-	contextOop := interpreter
-		              ensureFrameIsMarried: frame framePointer
-		              SP: frame stackPointer.
-	contextIdentityHash := memory hashBitsOf: contextOop.
-
-	interpreter instructionPointer: method + 17.
-	interpreter imageName: imageName.
-	interpreter setImageHeaderFlagsFrom: 0.
-
-	interpreter primitiveSnapshot.
-
-	suspendedContext := memory
-		                    fetchPointer: SuspendedContextIndex
-		                    ofObject: memory memoryActiveProcess.
-	self
-		assert: (memory hashBitsOf: suspendedContext)
-		equals: contextIdentityHash
-]
-
-{ #category : #'tests - snapshot' }
-VMPrimitiveTest >> testPrimitiveSnapshotCreateImage [
-
-	| method |
-	interpreter pluginList: #(  ).
-	self setUpScheduler.
-	self initializeOldSpaceForFullGC.
-	self setContextClassIntoClassTable.
-	method := methodBuilder newMethod buildMethod.
-
-	stackBuilder addNewFrame method: method.
-	stackBuilder buildStack.
-
-	interpreter instructionPointer: method + (1 + 8 + 8).
-
-	interpreter imageName: imageName.
-	interpreter setImageHeaderFlagsFrom: 0.
-	interpreter primitiveSnapshot.
-
-	interpreter imageReader validateImage: imageName 
-]
-
-{ #category : #'tests - snapshot' }
-VMPrimitiveTest >> testPrimitiveSnapshotNewKeptObjectShouldBeTenured [
-
-	| method object objectHash |
-	interpreter pluginList: #(  ).
-	self setUpScheduler.
-	self initializeOldSpaceForFullGC.
-	self setContextClassIntoClassTable.
-
-	method := methodBuilder newMethod buildMethod.
-	stackBuilder addNewFrame method: method.
-	stackBuilder buildStack.
-	interpreter instructionPointer: method + 17.
-	interpreter imageName: imageName.
-	interpreter setImageHeaderFlagsFrom: 0.
-
-	object := self newObjectWithSlots: 0.
-	self keepObjectInVMVariable1: object.
-	objectHash := memory hashBitsOf: object.
-
-	interpreter primitiveSnapshot.
-
-	self
-		assert: (memory hashBitsOf: self keptObjectInVMVariable1)
-		equals: objectHash
 ]
 
 { #category : #'tests - primitiveFloat64' }

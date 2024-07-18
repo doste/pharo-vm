@@ -1992,7 +1992,7 @@ SimpleStackBasedCogit >> compilePrimitive [
 	((primitiveRoutine := coInterpreter
 		                      functionPointerForCompiledMethod: methodObj
 		                      primitiveIndex: primitiveIndex) = 0 or: [ 
-		 primitiveRoutine = #primitiveFail ]) ifTrue: [ 
+		 primitiveRoutine = (self cCoerceSimple: #primitiveFail to: #'void *') ]) ifTrue: [ 
 		^ self genFastPrimFail ]. "no primitive"
 	minValidCallAddress := minValidCallAddress min:
 		                       primitiveRoutine asUnsignedInteger.

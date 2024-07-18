@@ -36,11 +36,9 @@ Class {
 }
 
 { #category : #'building suites' }
-VMSimpleStackBasedCogitAbstractTest class >> imageFormatParameters [ 
+VMSimpleStackBasedCogitAbstractTest class >> imageFormatParameters [
 
-	^ { 
-		{ #imageReaderClass -> ComposedImageReader. #imageWriterClass -> ComposedImageWriter }.
-	}
+	^ { { (#useComposedImageFormat -> true) } }
 ]
 
 { #category : #'building suites' }

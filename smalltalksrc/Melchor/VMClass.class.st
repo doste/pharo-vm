@@ -288,6 +288,14 @@ VMClass class >> objectRepresentationClass [
 ]
 
 { #category : #translation }
+VMClass class >> renameSelectorIfStaticallyResolved: aString [
+
+	^ (self staticallyResolvedSelectors includes: aString)
+		  ifTrue: [ self staticallyResolvePolymorphicSelector: aString ]
+		  ifFalse: [ ^ aString ]
+]
+
+{ #category : #translation }
 VMClass class >> shouldGenerateTypedefFor: aStructClass [
 	"Hack to work-around multiple definitions.  Sometimes a type has been defined in an include."
 	^aStructClass shouldBeGenerated
@@ -329,6 +337,12 @@ VMClass class >> specialValueForConstant: constantName default: defaultValue [
 { #category : #translation }
 VMClass class >> staticallyResolvePolymorphicSelector: aSelectorSymbol [
 	^((self name select: [:ea| ea isUppercase]), '_', aSelectorSymbol) asSymbol
+]
+
+{ #category : #translation }
+VMClass class >> staticallyResolvedSelectors [
+
+	^ #()
 ]
 
 { #category : #translation }
@@ -806,6 +820,15 @@ VMClass >> malloc: size [
 		setObject: region;
 		address: address;
 		yourself
+]
+
+{ #category : #'C library simulation' }
+VMClass >> memcmp: array1 _: array2 _: length [
+
+	<doNotGenerate>
+	0 to: length - 1 do: [ :i |
+	(array1 at: i) = (array2 at: i) ifFalse: [ ^ 999 "Not 0" ] ].
+	^ 0
 ]
 
 { #category : #'C library simulation' }

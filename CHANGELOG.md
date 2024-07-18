@@ -1,5 +1,38 @@
 # Change log
 
+## v10.2.1
+* Adding the missing tty.c file in the packaging. by @tesonep in https://github.com/pharo-project/pharo-vm/pull/771
+* Do not allow comparing objects of different types by @guillep in https://github.com/pharo-project/pharo-vm/pull/772
+
+**Full Changelog**: https://github.com/pharo-project/pharo-vm/compare/v10.2.0...v10.2.1
+
+## v10.2.0
+* Add library with function to spawn a process connected to a pseudo-terminal by @Rinzwind in https://github.com/pharo-project/pharo-vm/pull/742
+* Fix VM build in MacOS sonoma by @guillep in https://github.com/pharo-project/pharo-vm/pull/758
+* Primitive to compare bytes by @doste in https://github.com/pharo-project/pharo-vm/pull/759
+* Translate documentation picture to Englitsh by @Inao0 in https://github.com/pharo-project/pharo-vm/pull/764
+
+**Full Changelog**: https://github.com/pharo-project/pharo-vm/compare/v10.1.1...v10.2.0
+
+## v10.1.1
+* Change custom command in ‘vmmaker.cmake’ to take into account that the ‘CMAKE_CURRENT_BINARY_DIR_TO_OUT’ can contain other characters besides spaces that require escaping by @Rinzwind in https://github.com/pharo-project/pharo-vm/pull/741
+* Backporting PR for allocating in the old space by @jordanmontt in https://github.com/pharo-project/pharo-vm/pull/709
+* Fixing memory map in OSX by @tesonep in https://github.com/pharo-project/pharo-vm/pull/751
+* Adding generation of signature files by @tesonep in https://github.com/pharo-project/pharo-vm/pull/749
+
+**Full Changelog**: https://github.com/pharo-project/pharo-vm/compare/v10.1.0...v10.1.1
+
+## v10.1.0
+* Fixing undefined behaviors that Clang 15 removes by @tesonep in https://github.com/pharo-project/pharo-vm/pull/731
+* Fix ‘doReport’ to take into account that ‘fopen’ can return NULL by @Rinzwind in https://github.com/pharo-project/pharo-vm/pull/739
+* Change custom command in ‘vmmaker.cmake’ to take into account that the ‘CMAKE_CURRENT_BINARY_DIR_TO_OUT’ can contain spaces by @Rinzwind in https://github.com/pharo-project/pharo-vm/pull/738
+* Integrating new format by @tesonep in https://github.com/pharo-project/pharo-vm/pull/734
+
+ New Contributors
+* @Rinzwind made their first contribution in https://github.com/pharo-project/pharo-vm/pull/739
+
+**Full Changelog**: https://github.com/pharo-project/pharo-vm/compare/v10.0.9...v10.1.0
+
 ## v10.0.9
 
 * Improves in PermSpace by @tesonep in https://github.com/pharo-project/pharo-vm/pull/684

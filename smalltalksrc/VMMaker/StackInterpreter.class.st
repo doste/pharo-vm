@@ -336,7 +336,6 @@ Class {
 		'reenterInterpreter',
 		'nextWakeupUsecs',
 		'nextPollUsecs',
-		'interruptPending',
 		'savedWindowSize',
 		'imageHeaderFlags',
 		'fullScreenFlag',
@@ -359,7 +358,6 @@ Class {
 		'classNameIndex',
 		'thisClassIndex',
 		'metaclassNumSlots',
-		'interruptCheckChain',
 		'suppressHeartbeatFlag',
 		'breakSelector',
 		'breakSelectorLength',
@@ -376,7 +374,6 @@ Class {
 		'tempOop2',
 		'metaAccessorDepth',
 		'theUnknownShort',
-		'the2ndUnknownShort',
 		'imageFloatsBigEndian',
 		'maxExtSemTabSizeSet',
 		'lastMethodCacheProbeWrite',
@@ -402,8 +399,7 @@ Class {
 		'libFFI',
 		'codeGeneratorToComputeAccessorDepth',
 		'showSurfaceFn',
-		'imageReader',
-		'imageWriter',
+		'imageReaderWriter',
 		'pendingFinalizationSignals',
 		'imageVersionNumber'
 	],
@@ -435,7 +431,6 @@ Class {
 		'DirEntryFound',
 		'DirNoMoreEntries',
 		'DumpStackOnLowSpace',
-		'EnclosingMixinIndex',
 		'EnclosingObjectIndex',
 		'FailImbalancedPrimitives',
 		'LongStoreBytecode',
@@ -446,7 +441,6 @@ Class {
 		'MethodHeaderArgCountShift',
 		'MethodHeaderFlagBitPosition',
 		'MethodHeaderTempCountShift',
-		'MixinIndex',
 		'PrimitiveTable',
 		'ReturnToInterpreter',
 		'StackPageReachedButUntraced',
@@ -496,10 +490,7 @@ StackInterpreter class >> ancilliaryClasses [
 		SpurImageHeaderStruct.
 		ComposedMetadataStruct.
 		"I am putting the abstract superclasses... because I cannot make it work else"
-		AbstractImageAccess.
-		AbstractComposedImageAccess.
-		self imageReaderClass.
-		self imageWriterClass}
+		VMImageReaderWriter} , VMImageReaderWriter ancilliaryClasses
 ]
 
 { #category : #constants }
@@ -508,7 +499,7 @@ StackInterpreter class >> bytecodeTable [
 	^ BytecodeTable
 ]
 
-{ #category : #translation }
+{ #category : #'C translation' }
 StackInterpreter class >> declareCVarsIn: aCCodeGenerator [
 	| vmClass |
 	self class == thisContext methodClass ifFalse: [^self]. "Don't duplicate decls in subclasses"
@@ -617,29 +608,7 @@ If ffi is put as a separate header, slang will sort the header and put it outsid
 	aCCodeGenerator removeVariable: #'libFFI'.
 	LibFFIConstants classVariables do: [ :e | aCCodeGenerator removeConstant: e name ].
 	
-	aCCodeGenerator 
-		"this variable is not used in the exported code, so it has to be removed.
-		If it is changed, it should be marked with type implicit"
-		removeVariable: 'imageReader'; 
-		var: #imageWriter type: #implicit.
-"		removeVariable: 'imageWriter'.
-"
-]
-
-{ #category : #accessing }
-StackInterpreter class >> imageReaderClass [
-
-	^Smalltalk at: (InitializationOptions
-					at: #ImageReader
-					ifAbsent: [ #SpurImageReader ])
-]
-
-{ #category : #accessing }
-StackInterpreter class >> imageWriterClass [
-
-	^Smalltalk at: (InitializationOptions
-					at: #ImageWriter
-					ifAbsent: [ #SpurImageWriter ])
+	aCCodeGenerator removeVariable: #imageReaderWriter.
 ]
 
 { #category : #translation }
@@ -1204,7 +1173,9 @@ StackInterpreter class >> initializePrimitiveTable [
 		(149 primitiveGetAttribute)
 
 		"Were File Primitives (150-169) - NO LONGER INDEXED"
-		(150 157 primitiveFail)
+		(150 155 primitiveFail)
+		(156 primitiveCompareBytes)
+		(157 primitiveFail)
 		(158 primitiveStringCompareWith)
 		(159 primitiveHashMultiply)
 		(160 primitiveAdoptInstance)
@@ -1346,7 +1317,11 @@ StackInterpreter class >> initializePrimitiveTable [
 		(574 primitiveFloat64ArrayAdd)
 
 		"Unassigned Primitives"
-		(575 597 primitiveFail)
+		(575 595 primitiveFail)
+
+		"Allocate in old space primitive"
+		(596 primitiveNewOldSpace)
+		(597 primitiveNewWithArgOldSpace)
 
 		"Pinned object creation primitives"
 		(598 primitiveNewPinned)
@@ -1481,7 +1456,8 @@ StackInterpreter class >> isInterpreterClass [
 
 { #category : #translation }
 StackInterpreter class >> isNonArgumentImplicitReceiverVariableName: aString [
-	^(#('self' 'stackPages' 'interpreter' 'coInterpreter' 'objectMemory') includes: aString)
+
+	^(#('self' 'stackPages' 'coInterpreter' 'objectMemory' 'imageReaderWriter') includes: aString)
 	  or: [self objectMemoryClass isNonArgumentImplicitReceiverVariableName: aString]
 ]
 
@@ -1492,9 +1468,6 @@ StackInterpreter class >> isObjectAccessor: selector [
 	^(InterpreterProxy whichCategoryIncludesSelector: selector) = #'object access'
 	 or: [(SpurMemoryManager whichCategoryIncludesSelector: selector) = #'object access']
 
-	"This for checking.  The above two protocols are somewhat disjoint."
-	"(InterpreterProxy allMethodsInCategory: #'object access') copyWithoutAll: (SpurMemoryManager allMethodsInCategory: #'object access')"
-	"(SpurMemoryManager allMethodsInCategory: #'object access') copyWithoutAll: (InterpreterProxy allMethodsInCategory: #'object access')"
 ]
 
 { #category : #'spur compilation support' }
@@ -2084,7 +2057,7 @@ StackInterpreter >> allocateMemoryForImage: f withHeader: header [
 	<var: #header type: #SpurImageHeaderStruct>
 	self allocateMemoryForImageHeader: header.
 
-	imageReader loadImageFromFile: f withHeader: header
+	imageReaderWriter loadImageFromFile: f withHeader: header
 ]
 
 { #category : #'image save/restore' }
@@ -3964,14 +3937,6 @@ StackInterpreter >> checkForEventsMayContextSwitch: mayContextSwitch [
 		 nextPollUsecs := now + 20000
 		 "Note that strictly speaking we might need to update 'now' at this point since
 		 ioProcessEvents could take a very long time on some platforms" ].
-
-	interruptPending ifTrue:
-		[interruptPending := false.
-		 "reset interrupt flag"
-		 sema := objectMemory splObj: TheInterruptSemaphore.
-		 (sema ~= objectMemory nilObject
-		  and: [self synchronousSignal: sema]) ifTrue:
-			[switched := true]].
 
 	nextWakeupUsecs ~= 0 ifTrue:
 		[now >= nextWakeupUsecs ifTrue:
@@ -7612,9 +7577,9 @@ StackInterpreter >> imageFormatVersion [
 ]
 
 { #category : #accessing }
-StackInterpreter >> imageReader [
+StackInterpreter >> imageReaderWriter [
 	<doNotGenerate>
-	^ imageReader
+	^ imageReaderWriter
 ]
 
 { #category : #'plugin primitive support' }
@@ -11196,6 +11161,62 @@ StackInterpreter >> primitiveAccessorDepthForExternalPrimitiveMethod: methodObj 
 			ofObject: (self literal: 0 ofMethod: methodObj))
 ]
 
+{ #category : #'indexing primitives' }
+StackInterpreter >> primitiveCompareBytes [
+	"Primitive. Compare two word or byte indexed objects for equality.
+	This version uses memcmp for comparison.
+	It is specialized for equality and thus it performs an unordered comparison, not caring about element order.
+	This can be used for:
+	 - ByteArray
+	 - ByteString
+	 - FloatArray
+	 ..."
+
+	<export: true>
+	| arg1 arg2 len1 len2 result boolean |
+	argumentCount < 1 ifTrue: [ ^ self primitiveFail ].
+
+	arg1 := self stackValue: 1.
+	arg2 := self stackValue: 0.
+
+	"Quick identity test to avoid checking object contents when they are the same one\"
+	arg1 = arg2 ifTrue: [
+		^ self pop: 2 thenPush: objectMemory trueObject ].
+
+	"This primitive only works for objects of the same type e.g., both byte indexable.
+	This prevents comparison of byte arrays with word arrays"
+	(objectMemory instSpecOfClass: (objectMemory fetchClassOf: arg1)) ~= (objectMemory instSpecOfClass: (objectMemory fetchClassOf: arg2))
+		ifTrue: [
+			self primitiveFail.
+			^ self ].
+
+	"This primitive only works for bytes and words objects.
+	The check below does not even let pass forwarders.
+	Since we know by the check before that both arguments are of the same type, we only need to check one of them here"
+	(objectMemory isWordsOrBytes: arg1) ifFalse: [ ^ self primitiveFail ].
+
+	"Two arrays of different lenght can never be equal"
+	len1 := objectMemory byteSizeOf: arg1.
+	len2 := objectMemory byteSizeOf: arg2.
+	len1 = len2 ifFalse: [
+		^ self pop: 2 thenPush: objectMemory falseObject ].
+
+	"Use memcmp to compare the array contents.
+	Our benchmarks showed that 
+	 - it is 3x faster than doing it directly in Pharo when the compared bytes are few
+	 - it is hundreds of times faster when comparing thousands of bytes.
+	The alternative word-by-word comparison implemented purely in slang is also better than the baseline but it is 10x slower than memcmp for large comparisons"
+	result := self
+		          memcmp: (objectMemory firstIndexableField: arg1)
+		          _: (objectMemory firstIndexableField: arg2)
+		          _: len1.
+
+	boolean := result = 0
+		           ifTrue: [ objectMemory trueObject ]
+		           ifFalse: [ objectMemory falseObject ].
+	self pop: 2 thenPush: boolean
+]
+
 { #category : #'process primitives' }
 StackInterpreter >> primitiveEnterCriticalSection [
 	"Attempt to enter a CriticalSection/Mutex.  If not owned, set the owner to the current
@@ -14656,14 +14677,24 @@ StackInterpreter >> slowPrimitiveResponse [
 ]
 
 { #category : #'image save/restore' }
-StackInterpreter >> snapshot: embedded [ 
+StackInterpreter >> snapshot [ 
 	"update state of active context"
-	| activeContext activeProc rcvr stackIndex |
+	| activeContext activeProc rcvr stackIndex newFormatToUse stackModified |
 
-	"For now the stack munging below doesn't deal with more than one argument.
-	 It can, and should."
-	argumentCount ~= 0 ifTrue:
-		[^self primitiveFailFor: PrimErrBadNumArgs].
+	argumentCount > 1 ifTrue:
+		[self primitiveFailFor: PrimErrBadNumArgs.
+		 ^ self justActivateNewMethod: false].
+	
+	argumentCount = 1 ifTrue: [ 
+		"Fetching the format to use, should be 3 -> ComposedFormatForced or 4 -> SpurFormatForced See VMImageReadedWriter"
+		newFormatToUse := self stackIntegerValue: 0.
+		(newFormatToUse between: 3 and: 4)
+			ifTrue: [ imageReaderWriter setFormatToUse: newFormatToUse ]
+			ifFalse: [ 
+				self primitiveFailFor: PrimErrBadArgument.
+				^ self justActivateNewMethod: false ]].
+
+	stackModified := false.
 
 	"Need to convert all frames into contexts since the snapshot file only holds objects."
 	self push: instructionPointer.
@@ -14685,18 +14716,29 @@ StackInterpreter >> snapshot: embedded [
 	activeContext := tempOop.
 	tempOop := 0.
 
-
 	self successful ifTrue:
 		["Without contexts or stacks simulate
+			arg := self popStack. ""If we have to...""
 			rcvr := self popStack. ''pop rcvr''
 			self push: trueObj.
 		  to arrange that the snapshot resumes with true.  N.B. stackIndex is one-relative."
 		stackIndex := self quickFetchInteger: StackPointerIndex ofObject: activeContext.
+
+		argumentCount = 1 ifTrue: [ 
+			"Pop Argument"
+			stackIndex := stackIndex - 1.
+			self storeInteger: StackPointerIndex ofObject: activeContext  withValue: stackIndex.
+		].
+		
 		rcvr := objectMemory fetchPointer: stackIndex + CtxtTempFrameStart - 1 ofObject: activeContext.
+
 		objectMemory
 			storePointerUnchecked: stackIndex + CtxtTempFrameStart - 1
 			ofObject: activeContext
 			withValue: objectMemory trueObject.
+
+		stackModified := true.
+
 		"now attempt to write the snapshot file"		
 		self writeImageFileIO.
 		"Without contexts or stacks simulate
@@ -14708,10 +14750,14 @@ StackInterpreter >> snapshot: embedded [
 
 	objectMemory postSnapshot.
 	self marryContextInNewStackPageAndInitializeInterpreterRegisters: activeContext.
+
 	self successful
 		ifTrue: [self push: objectMemory falseObject]
 		ifFalse:
-			[self push: rcvr.
+			[
+			stackModified ifTrue: [ 
+				self push: rcvr.
+				argumentCount = 1 ifTrue: [ self pushInteger: newFormatToUse  ]].
 			 self justActivateNewMethod: true] "no point checking for machine code; there isn't any at this point"
 ]
 
@@ -14979,6 +15025,7 @@ StackInterpreter >> stackPointerIndexForFrame: theFP [
 	<var: #theFP type: #'char *'>
 	<var: #thePage type: #'StackPage *'>
 	<var: #theSP type: #'char *'>
+	<returnTypeC: #sqInt>
 	thePage := stackPages stackPageFor: theFP.
 	theSP := self findSPOf: theFP on: thePage.
 	^self stackPointerIndexForFrame: theFP WithSP: theSP
@@ -16371,7 +16418,7 @@ StackInterpreter >> writeImageFileIO [
 	
 	"The image name is defined as a extern char[] variable"
 	self simulationOnly: [ imageName := self imageName ].
-	imageWriter writeImageFile: imageName fromHeader: self newHeader
+	imageReaderWriter writeImageFile: imageName fromHeader: self newHeader
 
 ]
 

@@ -2006,7 +2006,7 @@ SpurMemoryManager >> allocateNewSpaceSlots: numSlots format: formatField classIn
 		ifTrue: "for header parsing we put a saturated slot count in the prepended overflow size word"
 			[self flag: #endianness.
 			 self long32At: freeStart put: numSlots.
-			 self long32At: freeStart + 4 put: self numSlotsMask << self numSlotsHalfShift.
+			 self long32At: freeStart + 4 put: (self cCoerceSimple: (self numSlotsMask << self numSlotsHalfShift) to: #int).
 			 self long64At: newObj put: (self headerForSlots: self numSlotsMask format: formatField classIndex: classIndex)]
 		ifFalse:
 			[self long64At: newObj put: (self headerForSlots: numSlots format: formatField classIndex: classIndex)].
@@ -2341,6 +2341,16 @@ SpurMemoryManager >> allocateSlots: numSlots format: formatField classIndex: cla
 { #category : #allocation }
 SpurMemoryManager >> allocateSlots: numSlots format: formatField classIndex: classIndex isPinned: isPinned [
 
+	^ self allocateSlots: numSlots
+		  format: formatField
+		  classIndex: classIndex
+		  isPinned: isPinned
+		  isOldSpace: false
+]
+
+{ #category : #allocation }
+SpurMemoryManager >> allocateSlots: numSlots format: formatField classIndex: classIndex isPinned: isPinned isOldSpace: isOldSpace [
+
 	"Allocate an object with numSlots space.  If there is room beneath scavengeThreshold
 	 allocate in newSpace, otherwise alocate in oldSpace.  If there is not room in newSpace
 	 and a scavenge is not already scheduled, schedule a scavenge."
@@ -2359,7 +2369,7 @@ SpurMemoryManager >> allocateSlots: numSlots format: formatField classIndex: cla
 
 	hasToScheduleScavenge := freeStart + numBytes > scavengeThreshold.
 
-	(hasToScheduleScavenge or: [ isPinned ]) ifTrue: [ 
+	(hasToScheduleScavenge or: [ isPinned or: [ isOldSpace ] ]) ifTrue: [ 
 		hasToScheduleScavenge ifTrue: [ 
 			needGCFlag ifFalse: [ self scheduleScavenge ] ].
 
@@ -6347,12 +6357,12 @@ SpurMemoryManager >> inLineRunLeakCheckerFor: gcModes excludeUnmarkedObjs: exclu
 	<inline: true>
 	(gcModes anyMask: checkForLeaks) ifTrue: [ 
 		self clearLeakMapAndMapAccessibleObjects.
-		self asserta: (self
+		self assert: (self
 				 checkHeapIntegrity: excludeUnmarkedObjs
 				 classIndicesShouldBeValid: classIndicesShouldBeValid).
-		self asserta: coInterpreter checkInterpreterIntegrity = 0.
-		self asserta: coInterpreter checkStackIntegrity.
-		self asserta: (coInterpreter checkCodeIntegrity: gcModes) ]
+		self assert: coInterpreter checkInterpreterIntegrity = 0.
+		self assert: coInterpreter checkStackIntegrity.
+		self assert: (coInterpreter checkCodeIntegrity: gcModes) ]
 ]
 
 { #category : #'debug printing' }
@@ -6954,11 +6964,24 @@ SpurMemoryManager >> instantiateClass: classObj indexableSize: nElements [
 SpurMemoryManager >> instantiateClass: classObj indexableSize: nElements isPinned: isPinned [
 	<api>
 
+	^ self instantiateClass: classObj indexableSize: nElements isPinned: isPinned isOldSpace: false
+]
+
+{ #category : #instantiation }
+SpurMemoryManager >> instantiateClass: classObj indexableSize: nElements isPinned: isPinned isOldSpace: isOldSpace [
+	<api>
+
 	^ self subclassResponsibility
 ]
 
 { #category : #instantiation }
 SpurMemoryManager >> instantiateClass: classObj isPinned: isPinned [
+
+	^ self instantiateClass: classObj isPinned: isPinned isOldSpace: false
+]
+
+{ #category : #instantiation }
+SpurMemoryManager >> instantiateClass: classObj isPinned: isPinned isOldSpace: isOldSpace [
 	| instSpec classFormat numSlots classIndex newObj |
 	classFormat := self formatOfClass: classObj.
 	instSpec := self instSpecOfClassFormat: classFormat.
@@ -6967,9 +6990,9 @@ SpurMemoryManager >> instantiateClass: classObj isPinned: isPinned [
 	classIndex := self ensureBehaviorHash: classObj.
 	classIndex < 0 ifTrue:
 		[coInterpreter primitiveFailFor: classIndex negated.
-		 ^nil].
+		^nil].
 	numSlots := self fixedFieldsOfClassFormat: classFormat.
-	newObj := self allocateSlots: numSlots format: instSpec classIndex: classIndex isPinned: isPinned.
+	newObj := self allocateSlots: numSlots format: instSpec classIndex: classIndex isPinned: isPinned isOldSpace: isOldSpace.
 	newObj ifNotNil:
 		[self fillObj: newObj numSlots: numSlots with: nilObj].
 	^newObj
@@ -11497,7 +11520,7 @@ SpurMemoryManager >> runLeakCheckerForFreeSpace: gcModes [
 	<inline: false>
 	(gcModes anyMask: GCModeFreeSpace) ifTrue: [
 		 self clearLeakMapAndMapAccessibleFreeSpace.
-		 self asserta: self checkHeapFreeSpaceIntegrity]
+		 self assert: self checkHeapFreeSpaceIntegrity]
 ]
 
 { #category : #'debug support' }
