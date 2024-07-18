@@ -1357,7 +1357,7 @@ StackToRegisterMappingCogit >> fallbackToPrimitivePopingTheArgsWithFunction: aTF
 	^ self genSend: -33 numArgs: 2 "invokeFunction:withArguments:"
 ]
 
-{ #category : #'bytecode generators' }
+{ #category : 'bytecode generators' }
 StackToRegisterMappingCogit >> fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: aCif usingRunner: aRunner [
 	"Unpack all arguments in an array that is left in the ReceiverResultReg.
 	At the point this method is called, all the arguments are already put in their corresponding registers, *not* in the stack!"
@@ -1384,7 +1384,7 @@ StackToRegisterMappingCogit >> fallbackToPrimitiveWithFunction: aTFExternalFunct
 	^ self genSend: -33 numArgs: 2 "invokeFunction:withArguments:"
 ]
 
-{ #category : #'compile abstract instructions' }
+{ #category : 'compile abstract instructions' }
 StackToRegisterMappingCogit >> fixupAtIndex: index [
 	"The fixups Array maps to bytecode pcs such that initialPC maps to index 0.
 	 fixupAt: does the conversion.  Override to add breakpointing for fixups of bytecode PCs."
@@ -1549,7 +1549,7 @@ StackToRegisterMappingCogit >> genBytecodeFFICall [
 	^0
 ]
 
-{ #category : #'bytecode generators' }
+{ #category : 'bytecode generators' }
 StackToRegisterMappingCogit >> genCallMappedInlinedPrimitive [
 	"SistaV1:	236		11101100	iiiiiiii		callMappedInlinedPrimitive"
 	^ self genMappedInlinePrimitive: byte1
@@ -4046,12 +4046,12 @@ StackToRegisterMappingCogit >> prepareExternalCallWithCif: aCif [
 	
 ]
 
-{ #category : #'mapped inline primitive generators - vectorial' }
+{ #category : 'mapped inline primitive generators - vectorial' }
 StackToRegisterMappingCogit >> preserveRegister: aReg [
 	"BORRAR!!!!"
 ]
 
-{ #category : #testing }
+{ #category : 'testing' }
 StackToRegisterMappingCogit >> prevInstIsPCAnnotated [
 	| prevIndex prevInst |
 	<var: #prevInst type: #'AbstractInstruction *'>

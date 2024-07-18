@@ -209,7 +209,7 @@ StackInterpreterPrimitives >> doPrimitiveSameThreadCalloutUint64Uint64 [
 	self pop: 3 thenPush: (objectMemory positive64BitIntegerFor: retVal)
 ]
 
-{ #category : #ffi }
+{ #category : 'ffi' }
 StackInterpreterPrimitives >> doPrimitiveWorkerCallout [
 	"Actual primitive implementation of primitiveWorkerCallout.
 	Because of Slang restrictions, making FFI optional requires cutting the primitive in two different methods. Otherwise slang will unconditionally do all local declarations which may refer to invalid types if FFI is not enabled.
@@ -427,14 +427,6 @@ StackInterpreterPrimitives >> getHandler: anOop [
 		
 	^ self readAddress: (objectMemory fetchPointer: 0 ofObject: anOop)
 
-]
-
-{ #category : 'ffi - helpers' }
-StackInterpreterPrimitives >> getHandlerAsCif: anOop [
-
-	^ self
-		cCode: [ self cCoerce: (self getHandler: anOop) to: 'ffi_cif *' ]
-		inSmalltalk: [ libFFI cifAtAddress: (self getHandler: anOop)]
 ]
 
 { #category : 'ffi - helpers' }

@@ -7171,12 +7171,11 @@ StackInterpreter >> getHandler: anOop [
 
 { #category : 'ffi - helpers' }
 StackInterpreter >> getHandlerAsCif: anOop [
-	
-	"averrrrrga"<api>
-	
+
+	<api>
 	^ self
-		cCode: [ self cCoerce: (self getHandler: anOop) to: 'ffi_cif *' ]
-		inSmalltalk: [ libFFI cifAtAddress: (self getHandler: anOop)]
+		  cCode: [ self cCoerce: (self getHandler: anOop) to: 'ffi_cif *' ]
+		  inSmalltalk: [ libFFI cifAtAddress: (self getHandler: anOop) ]
 ]
 
 { #category : 'image save/restore' }
