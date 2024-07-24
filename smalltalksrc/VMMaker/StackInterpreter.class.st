@@ -10146,9 +10146,9 @@ StackInterpreter >> marshallArgumentFromElement: elemOop into: argHolder ofType:
 			([ FFI_TYPE_STRUCT ]
 				-> [ self marshallStructFromElement: elemOop into: argHolder withSize: argTypeSize ]).
 			([ FFI_TYPE_FLOAT ]
-				-> [ self marshallFloatFrom: (objectMemory floatValueOf: elemOop) into: argHolder ]).
+				-> [ self marshallFloatFrom: elemOop into: argHolder ]).
 			([ FFI_TYPE_DOUBLE ]
-				-> [ self marshallDoubleFrom: (objectMemory floatValueOf: elemOop) into: argHolder ]).
+				-> [ self marshallDoubleFrom: elemOop into: argHolder ]).
 			([ FFI_TYPE_SINT8 ]
 				-> [ self marshallSInt8From: elemOop into: argHolder ]).
 			([ FFI_TYPE_UINT8 ]

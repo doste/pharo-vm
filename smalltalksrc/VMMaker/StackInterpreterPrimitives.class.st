@@ -609,7 +609,7 @@ StackInterpreterPrimitives >> marshallFloatFrom: elemOop into: holder [
 	| floatHolder |
 	floatHolder := self cCoerce: holder to: #'float *'.
 	
-	floatHolder at: 0 put: elemOop.
+	floatHolder at: 0 put: (self fetchFloatFromOop: elemOop)
 	
 ]
 
