@@ -2769,22 +2769,30 @@ StackInterpreter >> bytecodeFFICall [
 	<var: #returnHolder type: #'void *'>
 	<var: #externalFunction type: #'void *'>
 	| n fdef cif externalFunction runner |
-	
 	n := self fetchByte.
 
 	fdef := self literal: (n bitAnd: 2r1111).
-	runner := self literal: ((n >> 4) bitAnd: 2r1111).			
-	
+	runner := self literal: (n >> 4 bitAnd: 2r1111).
+
 	self fetchNextBytecode.
-	
+
 	externalFunction := self getHandler: fdef.
-	(self failed or: [externalFunction isNil]) ifTrue: [ ^self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil].
+	(self failed or: [ externalFunction isNil ]) ifTrue: [
+		^ self
+			  error: 'WAAAAAT' ].
+
+
 	cif := self getHandlerAsCif:
 		       (objectMemory fetchPointer: 1 ofObject: fdef).
-	(self failed or: [cif isNil]) ifTrue: [ ^self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil].
-	
-	(self doCall: externalFunction withCif: cif)
-		ifFalse: [ ^self handleFFIErrorWithFunctionDefinition: fdef runner: runner andCif: nil]
+	(self failed or: [ cif isNil ]) ifTrue: [
+		^ self
+			  error: 'WAAAAAT' ].
+
+	(self doCall: externalFunction withCif: cif) ifFalse: [
+		^ self
+			  handleFFIErrorWithFunctionDefinition: fdef
+			  runner: runner
+			  andCif: cif ]
 ]
 
 { #category : 'common selector sends' }
