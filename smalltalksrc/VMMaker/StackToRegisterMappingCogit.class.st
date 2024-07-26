@@ -3447,23 +3447,73 @@ StackToRegisterMappingCogit >> generateTracingTrampolines [
 ]
 
 { #category : 'bytecode generators' }
+StackToRegisterMappingCogit >> handleIntegerReturnValueFromExternalFunctionWithCif: aCif [
+
+	<var: #aCif type: #'ffi_cif *'>
+	| returnType |
+	returnType := aCif returnType type.
+	[ returnType ]
+		caseOf: {
+				([ FFI_TYPE_SINT8 ] -> [
+				 self MoveR: backEnd cResultRegister R: ReceiverResultReg.
+				 ^ objectRepresentation genConvertIntegerToSmallIntegerInReg:
+					   ReceiverResultReg ]).
+
+				([ FFI_TYPE_SINT16 ] -> [
+				 self MoveR: backEnd cResultRegister R: ReceiverResultReg.
+				 ^ objectRepresentation genConvertIntegerToSmallIntegerInReg:
+					   ReceiverResultReg ]).
+
+				([ FFI_TYPE_SINT32 ] -> [
+				 ^ objectRepresentation
+					   genIntegerTo32BitSignedIntegerValue: backEnd cResultRegister
+					   into: ReceiverResultReg
+					   scratchReg: Extra0Reg
+					   scratchReg: Extra1Reg ]).
+
+				([ FFI_TYPE_SINT64 ] -> [
+				 ^ objectRepresentation
+					   genIntegerTo64BitSignedIntegerValue: backEnd cResultRegister
+					   into: ReceiverResultReg
+					   scratchReg: Extra0Reg
+					   scratchReg: Extra1Reg ]).
+
+				([ FFI_TYPE_UINT8 ] -> [
+				 self MoveR: backEnd cResultRegister R: ReceiverResultReg.
+				 ^ objectRepresentation genConvertIntegerToSmallIntegerInReg:
+					   ReceiverResultReg ]).
+				
+				([ FFI_TYPE_UINT16 ] -> [
+				 self MoveR: backEnd cResultRegister R: ReceiverResultReg.
+				 ^ objectRepresentation genConvertIntegerToSmallIntegerInReg:
+					   ReceiverResultReg ]).
+				
+				([ FFI_TYPE_UINT32 ] -> [
+				 ^ objectRepresentation
+					   genIntegerTo32BitPositiveIntegerValue: backEnd cResultRegister
+					   into: ReceiverResultReg
+					   scratchReg: Extra0Reg
+					   scratchReg: Extra1Reg ]).
+				([ FFI_TYPE_UINT64 ] -> [
+				 ^ objectRepresentation
+					   genIntegerTo64BitPositiveIntegerValue: backEnd cResultRegister
+					   into: ReceiverResultReg
+					   scratchReg: Extra0Reg
+					   scratchReg: Extra1Reg ]) }
+		otherwise: [ ^ 0 ]
+]
+
+{ #category : 'bytecode generators' }
 StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
 
 	<var: #aCif type: #'ffi_cif *'>
 	(self isIntegerType: aCif returnType type) ifTrue: [ 
-		"self MoveR: backEnd cResultRegister R: ReceiverResultReg.
-		^ objectRepresentation genConvertIntegerToSmallIntegerInReg:
-			  ReceiverResultReg"
-		^ objectRepresentation
-			  genIntegerTo64BitSignedIntegerValue: backEnd cResultRegister
-			  into: ReceiverResultReg
-			  scratchReg: Extra0Reg
-			  scratchReg: Extra1Reg ].
+		^ self handleIntegerReturnValueFromExternalFunctionWithCif: aCif].
 
 	aCif returnType type = FFI_TYPE_VOID ifTrue: [
 		^ 0 "Just to ease the implementation of genBytecodeFFICall" ].
 
-	"If the external function returned a pointer, so we have to wrap it in an ExternalAddress"
+	"If the external function returned a pointer, we have to wrap it in an ExternalAddress"
 	aCif returnType type = FFI_TYPE_POINTER ifTrue: [
 		^ objectRepresentation
 			  genAllocExternalAddressValue: backEnd cResultRegister

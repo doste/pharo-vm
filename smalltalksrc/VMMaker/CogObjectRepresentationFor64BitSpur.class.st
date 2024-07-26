@@ -693,6 +693,59 @@ CogObjectRepresentationFor64BitSpur >> genGetSmallFloatValueOf: oopReg scratch: 
 ]
 
 { #category : 'primitive generators' }
+CogObjectRepresentationFor64BitSpur >> genIntegerTo32BitPositiveIntegerValue: valueReg into: resultReg scratchReg: scratch1 scratchReg: scratch2 [
+	<var: #jumpFail type: #'AbstractInstruction *'>
+	<var: #jumpNotSmallInteger type: #'AbstractInstruction *'>
+	<var: #jumpMerge type: #'AbstractInstruction *'>
+	
+	| jumpNotSmallInteger jumpMerge  |
+	cogit MoveR: valueReg R: scratch1.
+	"-------"
+	cogit LogicalShiftRightCq: self numSmallIntegerBits - 1 R: scratch1. "If in range this is now 0"
+	(cogit lastOpcode setsConditionCodesFor: JumpZero) ifFalse:
+		[cogit CmpCq: 0 R: scratch1]. "N.B. FLAGS := ClassReg - 0"
+	jumpNotSmallInteger := cogit JumpNonZero: 0.
+	"------- TODO ESTO NOSE QUE ONDA......."
+	
+	
+	" Inspiracion: StackInterpreter >> positive32BitIntegerFor: 
+	^objectMemory integerObjectOf: (integerValue asUnsignedInteger bitAnd: 16rFFFFFFFF)]"
+	
+	cogit MoveR: valueReg R: resultReg.
+	cogit AndCq: 16rFFFFFFFF R: resultReg.
+	self genConvertIntegerToSmallIntegerInReg: resultReg.
+	jumpMerge := cogit Jump: 0.
+			
+	jumpMerge jmpTarget: cogit Label.
+	
+	^ jumpNotSmallInteger.
+]
+
+{ #category : 'primitive generators' }
+CogObjectRepresentationFor64BitSpur >> genIntegerTo32BitSignedIntegerValue: valueReg into: resultReg scratchReg: scratch1 scratchReg: scratch2 [
+	<returnTypeC: #'AbstractInstruction *'>
+	<var: #jumpFail type: #'AbstractInstruction *'>
+	<var: #jumpNotSmallInteger type: #'AbstractInstruction *'>
+	<var: #jumpMerge type: #'AbstractInstruction *'>
+	
+	"TARA BIEN ESTO? TAN DIRECTO?? mmmmmm"
+	
+	| jumpNotSmallInteger jumpMerge  |
+	cogit MoveR: valueReg R: scratch1.
+	cogit ArithmeticShiftRightCq: self numSmallIntegerBits R: scratch1. "If in range this is now 0 or -1"
+	cogit AddCq: 1 R: scratch1.
+	cogit CmpCq: 1 R: scratch1.
+	jumpNotSmallInteger := cogit JumpAbove: 0.
+	
+	cogit MoveR: valueReg R: resultReg.
+	self genConvertIntegerToSmallIntegerInReg: resultReg.
+	jumpMerge := cogit Jump: 0.
+			
+	jumpMerge jmpTarget: cogit Label.
+	^ jumpNotSmallInteger
+]
+
+{ #category : 'primitive generators' }
 CogObjectRepresentationFor64BitSpur >> genIntegerTo64BitPositiveIntegerValue: valueReg into: resultReg scratchReg: scratch1 scratchReg: scratch2 [
 	<var: #jumpFail type: #'AbstractInstruction *'>
 	<var: #jumpNotSmallInteger type: #'AbstractInstruction *'>
