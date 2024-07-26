@@ -10168,6 +10168,177 @@ StackInterpreter >> marshallArgumentFromElement: elemOop into: argHolder ofType:
 		otherwise: [ self primitiveFailFor: PrimErrBadArgument ]
 ]
 
+{ #category : 'ffi - helpers' }
+StackInterpreter >> marshallDoubleFrom: elemOop into: holder [ 
+
+	| doubleHolder |
+	doubleHolder := self cCoerce: holder to: #'double *'.
+	
+	doubleHolder at: 0 put: (self fetchFloatFromOop: elemOop)
+
+]
+
+{ #category : 'ffi - helpers' }
+StackInterpreter >> marshallFloatFrom: elemOop into: holder [ 
+	
+	| floatHolder |
+	floatHolder := self cCoerce: holder to: #'float *'.
+	
+	floatHolder at: 0 put: (self fetchFloatFromOop: elemOop)
+	
+]
+
+{ #category : 'ffi - helpers' }
+StackInterpreter >> marshallPointerFromElement: elemOop into: holder [ 
+	
+	| pointerHolder |
+	pointerHolder := self cCoerce: holder to: #'void **'.
+	pointerHolder at: 0 put: (self readAddress: elemOop).
+	
+]
+
+{ #category : 'ffi - helpers' }
+StackInterpreter >> marshallSInt16From: elemOop into: holder [
+
+	| intHolder value |
+
+	value := objectMemory integerValueOf: elemOop.
+	value > INT16_MAX ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+	value < INT16_MIN ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+
+	intHolder := self cCoerce: holder to: #'int16_t *'.
+	intHolder at: 0 put: value.
+		
+]
+
+{ #category : 'ffi - helpers' }
+StackInterpreter >> marshallSInt32From: elemOop into: holder [
+
+	| intHolder value |
+
+	value := self signed32BitValueOf: elemOop.
+
+	self failed ifTrue: [ ^self primitiveFailFor: PrimErrBadArgument ].
+
+	intHolder := self cCoerce: holder to: #'int32_t *'.
+	intHolder at: 0 put: value.
+		
+]
+
+{ #category : 'ffi - helpers' }
+StackInterpreter >> marshallSInt64From: elemOop into: holder [
+
+	| intHolder value |
+	
+	value := self signed64BitValueOf: elemOop.
+	
+	self failed ifTrue: [ ^ self ].
+		
+	intHolder := self cCoerce: holder to: #'int64_t *'.
+	intHolder at: 0 put: value.
+		
+]
+
+{ #category : 'ffi - helpers' }
+StackInterpreter >> marshallSInt8From: elemOop into: holder [
+
+	| intHolder value |
+
+	value := objectMemory integerValueOf: elemOop.
+	value > INT8_MAX ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+	value < INT8_MIN ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+
+	intHolder := self cCoerce: holder to: #'int8_t *'.
+	intHolder at: 0 put: elemOop
+		
+]
+
+{ #category : 'ffi - helpers' }
+StackInterpreter >> marshallStructFromElement: elemOop into: holder withSize: typeSize [ 
+
+
+	| address srcPtr  |
+
+	
+	(objectMemory fetchClassOf: elemOop) = objectMemory classExternalAddress
+		ifTrue: [
+				address := self readAddress: elemOop.
+				address = 0 ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ]]
+		ifFalse: [  
+			(objectMemory fetchClassOf: elemOop) = objectMemory classByteArray 
+				ifFalse: [ ^ self primitiveFailFor: PrimErrBadArgument  ].
+				address := objectMemory firstIndexableField: elemOop ].
+	
+	srcPtr := objectMemory cCoerce: address to: 'void *'.
+	
+	self 
+		cCode:  [ objectMemory memcpy: holder _:  srcPtr _: typeSize ]
+		inSmalltalk: [ 
+			holder object 
+				replaceFrom: 1 to: typeSize 
+				with: (objectMemory cCoerce: srcPtr to: 'char *') startingAt: 0]
+]
+
+{ #category : 'ffi - helpers' }
+StackInterpreter >> marshallUInt16From: elemOop into: holder [
+
+	| intHolder value |
+	
+	value := objectMemory integerValueOf: elemOop.
+	value < 0 ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+	value > UINT16_MAX ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+		
+	intHolder := self cCoerce: holder to: #'uint16_t *'.
+	intHolder at: 0 put: value.
+		
+]
+
+{ #category : 'ffi - helpers' }
+StackInterpreter >> marshallUInt32From: elemOop into: holder [
+
+	| intHolder value |
+	
+	value := self positive32BitValueOf: elemOop.
+	
+	self failed ifTrue: [ ^self primitiveFailFor: PrimErrBadArgument ].
+			
+	intHolder := self cCoerce: holder to: #'uint32_t *'.
+	intHolder at: 0 put: value.
+		
+]
+
+{ #category : 'ffi - helpers' }
+StackInterpreter >> marshallUInt64From: elemOop into: holder [
+
+	| intHolder value |
+
+	value := self positive64BitValueOf: elemOop.	
+
+	self failed
+		ifTrue: [ ^ self ].
+	intHolder := self cCoerce: holder to: #'uint64_t *'.
+	intHolder at: 0 put: value.
+		
+]
+
+{ #category : 'ffi - helpers' }
+StackInterpreter >> marshallUInt8From: elemOop into: holder [
+
+	| intHolder value oop |
+	
+	oop := elemOop.
+	value := (objectMemory isCharacterObject: oop) 
+		ifTrue: [ objectMemory characterValueOf: oop ]	
+		ifFalse: [ objectMemory integerValueOf: oop ].
+	
+	value < 0 ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+	value > UINT8_MAX ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
+		
+	intHolder := self cCoerce: holder to: #'uint8_t *'.
+	intHolder at: 0 put: value.
+		
+]
+
 { #category : 'primitive support' }
 StackInterpreter >> maybeFailForLastObjectOverwrite [
 	<inline: true>
@@ -13280,6 +13451,18 @@ StackInterpreter >> quinaryInlinePrimitive: primIndex [
 			    objectMemory storePointerUnchecked: destIndex + i ofObject: dest withValue: oop].
 		^ self].
 	self unknownInlinePrimitive
+]
+
+{ #category : 'ffi - helpers' }
+StackInterpreter >> readAddress: anOop [ 
+
+	<api>
+	<returnTypeC: #'void *'>
+
+	(objectMemory is: anOop KindOfClass: objectMemory classExternalAddress)
+		ifFalse: [ self primitiveFail. ^ nil ].
+
+	^ objectMemory fetchPointer: 0 ofObject: anOop.
 ]
 
 { #category : 'primitive support' }

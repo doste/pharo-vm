@@ -693,12 +693,23 @@ CogObjectRepresentationFor64BitSpur >> genGetSmallFloatValueOf: oopReg scratch: 
 ]
 
 { #category : 'primitive generators' }
+CogObjectRepresentationFor64BitSpur >> genIntegerTo16BitSignedIntegerValue: valueReg into: resultReg [ 
+
+	cogit MoveR: valueReg R: resultReg.
+	self genConvertIntegerToSmallIntegerInReg: resultReg.
+	
+	cogit SignExtend16R: resultReg R: resultReg.
+	
+	^ 0
+]
+
+{ #category : 'primitive generators' }
 CogObjectRepresentationFor64BitSpur >> genIntegerTo32BitPositiveIntegerValue: valueReg into: resultReg scratchReg: scratch1 scratchReg: scratch2 [
 	<var: #jumpFail type: #'AbstractInstruction *'>
 	<var: #jumpNotSmallInteger type: #'AbstractInstruction *'>
 	<var: #jumpMerge type: #'AbstractInstruction *'>
 	
-	| jumpNotSmallInteger jumpMerge  |
+	| jumpNotSmallInteger |
 	cogit MoveR: valueReg R: scratch1.
 	"-------"
 	cogit LogicalShiftRightCq: self numSmallIntegerBits - 1 R: scratch1. "If in range this is now 0"
@@ -714,10 +725,8 @@ CogObjectRepresentationFor64BitSpur >> genIntegerTo32BitPositiveIntegerValue: va
 	cogit MoveR: valueReg R: resultReg.
 	cogit AndCq: 16rFFFFFFFF R: resultReg.
 	self genConvertIntegerToSmallIntegerInReg: resultReg.
-	jumpMerge := cogit Jump: 0.
-			
-	jumpMerge jmpTarget: cogit Label.
 	
+
 	^ jumpNotSmallInteger.
 ]
 
@@ -730,7 +739,7 @@ CogObjectRepresentationFor64BitSpur >> genIntegerTo32BitSignedIntegerValue: valu
 	
 	"TARA BIEN ESTO? TAN DIRECTO?? mmmmmm"
 	
-	| jumpNotSmallInteger jumpMerge  |
+	| jumpNotSmallInteger  |
 	cogit MoveR: valueReg R: scratch1.
 	cogit ArithmeticShiftRightCq: self numSmallIntegerBits R: scratch1. "If in range this is now 0 or -1"
 	cogit AddCq: 1 R: scratch1.
@@ -739,9 +748,9 @@ CogObjectRepresentationFor64BitSpur >> genIntegerTo32BitSignedIntegerValue: valu
 	
 	cogit MoveR: valueReg R: resultReg.
 	self genConvertIntegerToSmallIntegerInReg: resultReg.
-	jumpMerge := cogit Jump: 0.
-			
-	jumpMerge jmpTarget: cogit Label.
+	
+	cogit SignExtend32R: resultReg R: resultReg.
+	
 	^ jumpNotSmallInteger
 ]
 
@@ -792,6 +801,17 @@ CogObjectRepresentationFor64BitSpur >> genIntegerTo64BitSignedIntegerValue: valu
 
 	jumpMerge jmpTarget: cogit Label.
 	^ jumpFail
+]
+
+{ #category : 'primitive generators' }
+CogObjectRepresentationFor64BitSpur >> genIntegerTo8BitSignedIntegerValue: valueReg into: resultReg [ 
+
+	cogit MoveR: valueReg R: resultReg.
+	self genConvertIntegerToSmallIntegerInReg: resultReg.
+	
+	cogit SignExtend8R: resultReg R: resultReg.
+	
+	^ 0
 ]
 
 { #category : 'compile abstract instructions' }
@@ -945,6 +965,13 @@ CogObjectRepresentationFor64BitSpur >> genJumpSmallInteger: aRegister [
 { #category : 'compile abstract instructions' }
 CogObjectRepresentationFor64BitSpur >> genJumpSmallIntegerInScratchReg: aRegister [
 	^self genJumpSmallInteger: aRegister
+]
+
+{ #category : 'primitive generators' }
+CogObjectRepresentationFor64BitSpur >> genPositiveIntegerValue: valueReg into: resultReg [
+	
+	cogit MoveR: valueReg R: resultReg.
+	^ self genConvertIntegerToSmallIntegerInReg: resultReg
 ]
 
 { #category : 'primitive generators' }

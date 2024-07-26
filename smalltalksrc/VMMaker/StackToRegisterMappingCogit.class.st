@@ -3455,14 +3455,12 @@ StackToRegisterMappingCogit >> handleIntegerReturnValueFromExternalFunctionWithC
 	[ returnType ]
 		caseOf: {
 				([ FFI_TYPE_SINT8 ] -> [
-				 self MoveR: backEnd cResultRegister R: ReceiverResultReg.
-				 ^ objectRepresentation genConvertIntegerToSmallIntegerInReg:
-					   ReceiverResultReg ]).
+				 ^ objectRepresentation genIntegerTo8BitSignedIntegerValue:  backEnd cResultRegister 
+				into: ReceiverResultReg  ]).
 
 				([ FFI_TYPE_SINT16 ] -> [
-				 self MoveR: backEnd cResultRegister R: ReceiverResultReg.
-				 ^ objectRepresentation genConvertIntegerToSmallIntegerInReg:
-					   ReceiverResultReg ]).
+				  ^ objectRepresentation genIntegerTo16BitSignedIntegerValue:  backEnd cResultRegister 
+				into: ReceiverResultReg  ]).
 
 				([ FFI_TYPE_SINT32 ] -> [
 				 ^ objectRepresentation
@@ -3479,14 +3477,13 @@ StackToRegisterMappingCogit >> handleIntegerReturnValueFromExternalFunctionWithC
 					   scratchReg: Extra1Reg ]).
 
 				([ FFI_TYPE_UINT8 ] -> [
-				 self MoveR: backEnd cResultRegister R: ReceiverResultReg.
-				 ^ objectRepresentation genConvertIntegerToSmallIntegerInReg:
-					   ReceiverResultReg ]).
+				^ objectRepresentation genPositiveIntegerValue: backEnd cResultRegister
+					 into: ReceiverResultReg
+				 ]).
 				
 				([ FFI_TYPE_UINT16 ] -> [
-				 self MoveR: backEnd cResultRegister R: ReceiverResultReg.
-				 ^ objectRepresentation genConvertIntegerToSmallIntegerInReg:
-					   ReceiverResultReg ]).
+				 ^ objectRepresentation genPositiveIntegerValue: backEnd cResultRegister
+					 into: ReceiverResultReg ]).
 				
 				([ FFI_TYPE_UINT32 ] -> [
 				 ^ objectRepresentation
