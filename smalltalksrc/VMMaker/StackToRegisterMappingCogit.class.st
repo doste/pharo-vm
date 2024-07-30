@@ -1329,6 +1329,28 @@ StackToRegisterMappingCogit >> extractMaybeBranchDescriptorInto: fourArgBlock [
 ]
 
 { #category : 'bytecode generators' }
+StackToRegisterMappingCogit >> fallbackInvalidFFICall [
+	"We expect all the stack to be spilled to call, the runtime function access all values in the stack"
+
+	<inline: true>
+	self assert: self ssTop spilled.
+
+
+	self genSmalltalkToCStackSwitch: true.
+	self
+		compileCallFor: #ceFallbackInvalidFFICall
+		numArgs: 0
+		arg: nil
+		arg: nil
+		arg: nil
+		arg: nil
+		resultReg: NoReg
+		regsToSave:
+			((self liveRegisters bitAnd: CallerSavedRegisterMask) bitClear:
+				 (self registerMaskFor: ReceiverResultReg and: TempReg))
+]
+
+{ #category : 'bytecode generators' }
 StackToRegisterMappingCogit >> fallbackToPrimitivePopingTheArgsWithFunction: aTFExternalFunction andCif: aCif usingRunner: aRunner [
 	"Unpack all arguments in an array that is left in the ReceiverResultReg.
 	The arguments of the function are in the stack. We pop them to build the array"
@@ -1358,30 +1380,27 @@ StackToRegisterMappingCogit >> fallbackToPrimitivePopingTheArgsWithFunction: aTF
 ]
 
 { #category : 'bytecode generators' }
-StackToRegisterMappingCogit >> fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: aCif usingRunner: aRunner [
-	"Unpack all arguments in an array that is left in the ReceiverResultReg.
-	At the point this method is called, all the arguments are already put in their corresponding registers, *not* in the stack!"
+StackToRegisterMappingCogit >> fallbackToPrimitiveWithFunction: aTFExternalFunction usingRunner: aRunner [
 
 	<inline: true>
-	<var: #size type: #'int'>
-	| size |
-	self voidReceiverResultRegContainsSelf.
-	self ssFlushTo: simStackPtr.
-	size := aCif numberArguments.
-	objectRepresentation genNewArrayOfSize: size initialized: false. "This method left the newly created array in ReceiverResultReg"
 
-	0 to: size - 1 do: [ :i |
-		objectRepresentation
-			genStoreSourceReg: (backEnd
-					 getRegisterForExternalFunctionArgumentInIndex: i
-					 fromCif: aCif)
-			slotIndex: i
-			intoNewObjectInDestReg: ReceiverResultReg ].
+	"We expect all the stack to be spilled to call, the runtime function access all values in the stack"
+	self assert: self ssTop spilled.
 
-	self ssPushConstant: aRunner.
-	self ssPushConstant: aTFExternalFunction.
-	self ssPushRegister: ReceiverResultReg.
-	^ self genSend: -33 numArgs: 2 "invokeFunction:withArguments:"
+	self MoveCq: aRunner R: TempReg.
+	self MoveCq: aTFExternalFunction R: ReceiverResultReg.
+	self genSmalltalkToCStackSwitch: true.
+	self
+		compileCallFor: #ceFallbackFFICallUsingRunner:andExternalFunction:
+		numArgs: 2
+		arg: TempReg
+		arg: ReceiverResultReg
+		arg: nil
+		arg: nil
+		resultReg: NoReg
+		regsToSave:
+			((self liveRegisters bitAnd: CallerSavedRegisterMask) bitClear:
+				 (self registerMaskFor: ReceiverResultReg and: TempReg))
 ]
 
 { #category : 'compile abstract instructions' }
@@ -1493,60 +1512,76 @@ StackToRegisterMappingCogit >> genBlockReturn [
 
 { #category : 'bytecode generators' }
 StackToRegisterMappingCogit >> genBytecodeFFICall [
-	| n aTFExternalFunction runner externalFunctionAddr cif failure jumpContinue continueToNextBytecode jumpMaybeFailCheckUnpack jumpMaybeFailAlloc |
-	
-	n :=  byte1.
-	aTFExternalFunction := self getLiteral: (n bitAnd: 2r1111).
-	runner := self getLiteral: ((n >> 4) bitAnd: 2r1111).
-	
-	externalFunctionAddr := coInterpreter getHandler: aTFExternalFunction.
-	externalFunctionAddr ifNil: [ ^ self fallbackToPrimitivePopingTheArgsWithFunction: nil andCif: nil usingRunner: runner ]. 
-	
-	cif := self getCifFromTFExternalFunction: aTFExternalFunction.	
-	cif ifNil: [ ^ self fallbackToPrimitivePopingTheArgsWithFunction: aTFExternalFunction andCif: nil usingRunner: runner ].											"TODO: fixear esto. casos donde la func o el cif sean nil"
-										
-	(self isExternalFunctionPrototypeSupported: cif) ifFalse: [
-		"Unsupported bytecode. We need to do a message send 
-			runner invokeFunction: function withArguments: aCollection
-		This means that we need to unpack all arguments in the stack into an array, push everything to the stack and do a message send"
-		^ self fallbackToPrimitivePopingTheArgsWithFunction: aTFExternalFunction andCif: cif usingRunner: runner.
-		
-	].
 
-	(backEnd supportsJITtedBytecodeFFICall) ifFalse: [ ^ self fallbackToPrimitivePopingTheArgsWithFunction: aTFExternalFunction andCif: cif usingRunner: runner ].
-		
+	| n aTFExternalFunction runner externalFunctionAddr cif failure jumpContinue continueToNextBytecode jumpMaybeFailCheckUnpack jumpMaybeFailAlloc notSpilledSlots |
+
+	n := byte1.
+	aTFExternalFunction := self getLiteral: (n bitAnd: 2r1111).
+	runner := self getLiteral: (n >> 4 bitAnd: 2r1111).
+
+	externalFunctionAddr := coInterpreter getHandler: aTFExternalFunction.
+	externalFunctionAddr ifNil: [ ^ self fallbackInvalidFFICall ].
+	cif := self getCifFromTFExternalFunction: aTFExternalFunction.
+	cif ifNil: [ ^ self fallbackInvalidFFICall ].
+
+	(backEnd supportsJITtedBytecodeFFICall not or: [
+		 (self isExternalFunctionPrototypeSupported: cif) not ]) ifTrue: [ "Unoptimized signature. Fallback to a message send instead"
+		^ self
+			  fallbackToPrimitiveWithFunction: aTFExternalFunction
+			  usingRunner: runner ].
+
 	"Move the arguments for the external function from the stack where we received them to the corresponding registers depending on the ABI,
 	that is why we rely on the backEnd to choose the registers."
-	backEnd prepareForExternalCallWithCif: cif.																																"recien despues de este metodo los args estan en registros!"
+	backEnd prepareForExternalCallWithCif: cif.
+
+	self voidReceiverResultRegContainsSelf.
+	self ssFlushTo: simStackPtr.
 
 	"Verify that the argument(s) we receive for the C function comply with those specified in the cif."
-	jumpMaybeFailCheckUnpack  := self checkAndUnpackArgumentsForExternalFunctionWithCif: cif.
-	
+	jumpMaybeFailCheckUnpack := self
+		                            checkAndUnpackArgumentsForExternalFunctionWithCif:
+		                            cif.
+
 	"Switch to the C stack, so the external function uses this stack to execute."
 	self genSmalltalkToCStackSwitch: true.
 	self CallFullRT: externalFunctionAddr.
 	"Switch back to the Smalltalk stack."
 	backEnd genLoadStackPointers.
-	
+
 	"Convert the return value and put it in the corresponding register."
-	jumpMaybeFailAlloc := self handleReturnFromExternalFunctionWithCif: cif.
-	
+	jumpMaybeFailAlloc := self handleReturnFromExternalFunctionWithCif:
+		                      cif.
+
 	jumpContinue := self Jump: 0.
-	
+
 	failure := self Label.
-	jumpMaybeFailCheckUnpack ifNotNil: [  "If the function doesn't have any arguments then jumpMaybeFailCheckUnpack will be nil"
-		jumpMaybeFailCheckUnpack jmpTarget: failure.
-	].
-	((jumpMaybeFailAlloc ~= 0) and:[ jumpMaybeFailAlloc isJump]) ifTrue: [  
-		jumpMaybeFailAlloc jmpTarget: failure
-	].
-	
-	self fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: cif usingRunner: runner.
-	
+
+	"If the function doesn't have any arguments then jumpMaybeFailCheckUnpack will be nil"
+	jumpMaybeFailCheckUnpack ifNotNil: [
+		jumpMaybeFailCheckUnpack jmpTarget: failure ].
+	jumpMaybeFailAlloc ifNotNil: [ jumpMaybeFailAlloc jmpTarget: failure ].
+
+	self
+		fallbackToPrimitiveWithFunction: aTFExternalFunction
+		usingRunner: runner.
+
 	continueToNextBytecode := self Label.
 	jumpContinue jmpTarget: continueToNextBytecode.
-	
-	^0
+
+	"The function called will activate the interpreter and not return directly.
+	However, the trampoline will activate a message send, that will eventually return.
+	Control will return here when the called method returns, following the normal pharo calling convention"
+	notSpilledSlots := simStackPtr - (simSpillBase - 1).
+	notSpilledSlots >= cif numberArguments ifFalse: [
+		self
+			AddCq:
+			cif numberArguments - notSpilledSlots * objectMemory wordSize
+			R: SPReg ].
+
+	self ssPop: cif numberArguments.
+	self ssPushRegister: ReceiverResultReg.
+
+	^ 0
 ]
 
 { #category : 'bytecode generators' }
@@ -3446,79 +3481,6 @@ StackToRegisterMappingCogit >> generateTracingTrampolines [
 		 ceTraceStoreTrampoline := self simulatedTrampolineFor: #ceShortCutTraceStore:]
 ]
 
-{ #category : 'bytecode generators' }
-StackToRegisterMappingCogit >> handleIntegerReturnValueFromExternalFunctionWithCif: aCif [
-
-	<var: #aCif type: #'ffi_cif *'>
-	| returnType |
-	returnType := aCif returnType type.
-	[ returnType ]
-		caseOf: {
-				([ FFI_TYPE_SINT8 ] -> [
-				 ^ objectRepresentation genIntegerTo8BitSignedIntegerValue:  backEnd cResultRegister 
-				into: ReceiverResultReg  ]).
-
-				([ FFI_TYPE_SINT16 ] -> [
-				  ^ objectRepresentation genIntegerTo16BitSignedIntegerValue:  backEnd cResultRegister 
-				into: ReceiverResultReg  ]).
-
-				([ FFI_TYPE_SINT32 ] -> [
-				 ^ objectRepresentation
-					   genIntegerTo32BitSignedIntegerValue: backEnd cResultRegister
-					   into: ReceiverResultReg
-					   scratchReg: Extra0Reg
-					   scratchReg: Extra1Reg ]).
-
-				([ FFI_TYPE_SINT64 ] -> [
-				 ^ objectRepresentation
-					   genIntegerTo64BitSignedIntegerValue: backEnd cResultRegister
-					   into: ReceiverResultReg
-					   scratchReg: Extra0Reg
-					   scratchReg: Extra1Reg ]).
-
-				([ FFI_TYPE_UINT8 ] -> [
-				^ objectRepresentation genPositiveIntegerValue: backEnd cResultRegister
-					 into: ReceiverResultReg
-				 ]).
-				
-				([ FFI_TYPE_UINT16 ] -> [
-				 ^ objectRepresentation genPositiveIntegerValue: backEnd cResultRegister
-					 into: ReceiverResultReg ]).
-				
-				([ FFI_TYPE_UINT32 ] -> [
-				 ^ objectRepresentation
-					   genIntegerTo32BitPositiveIntegerValue: backEnd cResultRegister
-					   into: ReceiverResultReg
-					   scratchReg: Extra0Reg
-					   scratchReg: Extra1Reg ]).
-				([ FFI_TYPE_UINT64 ] -> [
-				 ^ objectRepresentation
-					   genIntegerTo64BitPositiveIntegerValue: backEnd cResultRegister
-					   into: ReceiverResultReg
-					   scratchReg: Extra0Reg
-					   scratchReg: Extra1Reg ]) }
-		otherwise: [ ^ 0 ]
-]
-
-{ #category : 'bytecode generators' }
-StackToRegisterMappingCogit >> handleReturnFromExternalFunctionWithCif: aCif [
-
-	<var: #aCif type: #'ffi_cif *'>
-	(self isIntegerType: aCif returnType type) ifTrue: [ 
-		^ self handleIntegerReturnValueFromExternalFunctionWithCif: aCif].
-
-	aCif returnType type = FFI_TYPE_VOID ifTrue: [
-		^ 0 "Just to ease the implementation of genBytecodeFFICall" ].
-
-	"If the external function returned a pointer, we have to wrap it in an ExternalAddress"
-	aCif returnType type = FFI_TYPE_POINTER ifTrue: [
-		^ objectRepresentation
-			  genAllocExternalAddressValue: backEnd cResultRegister
-			  into: ReceiverResultReg
-			  scratchReg: Extra0Reg
-			  scratchReg: Extra1Reg ]
-]
-
 { #category : 'simulation stack' }
 StackToRegisterMappingCogit >> initSimStackForFramefulMethod: startpc [
 	<var: #desc type: #'CogSimStackEntry *'>
@@ -3923,6 +3885,15 @@ StackToRegisterMappingCogit >> methodFoundInvalidPostScan [
 	^super methodFoundInvalidPostScan
 ]
 
+{ #category : 'bytecode generators' }
+StackToRegisterMappingCogit >> moveEntry: n intoRegister: aRegister [
+
+	| top |
+	top := self ssValue: n.
+	self ssAllocateCallReg: aRegister.
+	top moveToReg: aRegister
+]
+
 { #category : 'compile abstract instructions' }
 StackToRegisterMappingCogit >> needsFrameIfExtBGT2: stackDelta [
 	^extB < 0 or: [extB > 2]
@@ -4000,16 +3971,6 @@ StackToRegisterMappingCogit >> picMissTrampolines [
 	<doNotGenerate>
 	^ picMissTrampolines 	
 
-]
-
-{ #category : 'bytecode generators' }
-StackToRegisterMappingCogit >> popIntoRegisterAndPreserveIt: aRegister [ 				"IMPLEMENTAR ESTE EN EL SIMPLESTACK TAMBIEN!!!!!!!!!!!!!!!!"
-
-	| top |
-	top := self ssTop.
-	self ssPop: 1.
-	self ssAllocateCallReg: aRegister.
-	top moveToReg: aRegister
 ]
 
 { #category : 'method introspection' }
