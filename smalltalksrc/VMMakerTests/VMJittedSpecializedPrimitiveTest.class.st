@@ -1,13 +1,15 @@
 Class {
-	#name : #VMJittedSpecializedPrimitiveTest,
-	#superclass : #VMJittedPrimitivesTest,
+	#name : 'VMJittedSpecializedPrimitiveTest',
+	#superclass : 'VMJittedPrimitivesTest',
 	#pools : [
 		'CogRTLOpcodes'
 	],
-	#category : #'VMMakerTests-JitTests'
+	#category : 'VMMakerTests-JitTests',
+	#package : 'VMMakerTests',
+	#tag : 'JitTests'
 }
 
-{ #category : #'building suites' }
+{ #category : 'building suites' }
 VMJittedSpecializedPrimitiveTest class >> wordSizeParameters [
 
 	^ ParametrizedTestMatrix new
@@ -15,7 +17,7 @@ VMJittedSpecializedPrimitiveTest class >> wordSizeParameters [
 		yourself
 ]
 
-{ #category : #'tests - primitiveGreaterOrEqual' }
+{ #category : 'tests - primitiveGreaterOrEqual' }
 VMJittedSpecializedPrimitiveTest >> testPrimitiveFFIFunctionReturnsCorreclty [
 
 	| primitiveAddress tfExternalFunction functionAddress functionExternalAddress tfFunctionDefinition cif cifExternalAddress libFFIType cifArrayOfArgTypes cifArgTypes |
@@ -84,7 +86,7 @@ VMJittedSpecializedPrimitiveTest >> testPrimitiveFFIFunctionReturnsCorreclty [
 	self assert: self machineSimulator rax equals: (memory integerObjectOf: 8888)
 ]
 
-{ #category : #'tests - primitiveGreaterOrEqual' }
+{ #category : 'tests - primitiveGreaterOrEqual' }
 VMJittedSpecializedPrimitiveTest >> testPrimitiveFFIFunctionShouldFailNegativeArgument [
 
 	| primitiveAddress tfExternalFunction functionAddress functionExternalAddress tfFunctionDefinition cif cifExternalAddress libFFIType cifArrayOfArgTypes cifArgTypes endInstruction |
@@ -151,7 +153,7 @@ VMJittedSpecializedPrimitiveTest >> testPrimitiveFFIFunctionShouldFailNegativeAr
 	self runFrom: primitiveAddress until: endInstruction address.
 ]
 
-{ #category : #'tests - primitiveGreaterOrEqual' }
+{ #category : 'tests - primitiveGreaterOrEqual' }
 VMJittedSpecializedPrimitiveTest >> testPrimitiveFFIShouldFailWithArgumentNotImmediate [
 
 	| primitiveAddress tfExternalFunction functionAddress functionExternalAddress tfFunctionDefinition cif cifExternalAddress libFFIType cifArrayOfArgTypes cifArgTypes endInstruction |
@@ -220,7 +222,7 @@ VMJittedSpecializedPrimitiveTest >> testPrimitiveFFIShouldFailWithArgumentNotImm
 	
 ]
 
-{ #category : #'tests - primitiveGreaterOrEqual' }
+{ #category : 'tests - primitiveGreaterOrEqual' }
 VMJittedSpecializedPrimitiveTest >> testPrimitiveFFIShouldFailWithInvalidCifNargs [
 
 	| primitiveAddress tfExternalFunction functionAddress functionExternalAddress tfFunctionDefinition cif cifExternalAddress libFFIType cifArrayOfArgTypes cifArgTypes endInstruction |
@@ -291,7 +293,7 @@ VMJittedSpecializedPrimitiveTest >> testPrimitiveFFIShouldFailWithInvalidCifNarg
 	
 ]
 
-{ #category : #'tests - primitiveGreaterOrEqual' }
+{ #category : 'tests - primitiveGreaterOrEqual' }
 VMJittedSpecializedPrimitiveTest >> testPrimitiveFFIShouldFailWithInvalidCifRtype [
 	
 	| primitiveAddress tfExternalFunction functionAddress functionExternalAddress tfFunctionDefinition cif cifExternalAddress libFFIType cifArrayOfArgTypes cifArgTypes endInstruction |

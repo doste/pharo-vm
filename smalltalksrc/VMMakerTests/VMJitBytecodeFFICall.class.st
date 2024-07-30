@@ -1,10 +1,11 @@
 Class {
-	#name : #VMJitBytecodeFFICall,
-	#superclass : #VMStackToRegisterMappingCogitTest,
-	#category : #VMMakerTests
+	#name : 'VMJitBytecodeFFICall',
+	#superclass : 'VMStackToRegisterMappingCogitTest',
+	#category : 'VMMakerTests',
+	#package : 'VMMakerTests'
 }
 
-{ #category : #'tests - extended push bytecode - push inst var' }
+{ #category : 'tests - extended push bytecode - push inst var' }
 VMJitBytecodeFFICall >> createExternalFunctionForCogitBlock: aCogitBlock withArgumentTypes: argumentTypes withReturnType: returnType [
 
 	| functionAddress tfExternalFunction functionExternalAddress tfFunctionDefinition cif cifExternalAddress |
@@ -27,7 +28,7 @@ VMJitBytecodeFFICall >> createExternalFunctionForCogitBlock: aCogitBlock withArg
 	^ tfExternalFunction
 ]
 
-{ #category : #'tests - extended push bytecode - push inst var' }
+{ #category : 'tests - extended push bytecode - push inst var' }
 VMJitBytecodeFFICall >> createExternalFunctionForCogitBlockWithOnlyAStopInstructionWithArgumentTypes: argumentTypes withReturnType: returnType [
 
 	| functionAddress tfExternalFunction functionExternalAddress tfFunctionDefinition cif cifExternalAddress |
@@ -50,7 +51,7 @@ VMJitBytecodeFFICall >> createExternalFunctionForCogitBlockWithOnlyAStopInstruct
 	^ {tfExternalFunction. functionAddress}
 ]
 
-{ #category : #'tests - extended push bytecode - push inst var' }
+{ #category : 'tests - extended push bytecode - push inst var' }
 VMJitBytecodeFFICall >> createExternalFunctionWithAddress: anAddress withArgumentTypes: argumentTypes withReturnType: returnType [
 
 	| tfExternalFunction functionExternalAddress tfFunctionDefinition cif cifExternalAddress |
@@ -72,13 +73,28 @@ VMJitBytecodeFFICall >> createExternalFunctionWithAddress: anAddress withArgumen
 	^ tfExternalFunction
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMJitBytecodeFFICall >> fakeTrampoline [
 	^ self compile: [ cogit RetN: 0 ]
 
 ]
 
-{ #category : #tests }
+{ #category : 'running' }
+VMJitBytecodeFFICall >> setUp [
+
+	super setUp.
+	LibFFIConstants initialize.
+	
+	"genBytecodeFFICall needs this trampoline to compile the fallback argument array allocation.
+	Set a fake trampoline by default. Override in the tests if necessary"
+	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
+	
+	"genBytecodeFFICall needs this trampoline to compile the fallback message send.
+	Set a fake trampoline by default. Override in the tests if necessary"
+	cogit ordinarySendTrampolineAt: 2 put: self fakeTrampoline.
+]
+
+{ #category : 'tests' }
 VMJitBytecodeFFICall >> testBytecodeFFICallLargeExternalAddress [
 
 	| aVeryLargeAddress tfExternalFunction stopAddress addr methodObject |
@@ -94,10 +110,6 @@ VMJitBytecodeFFICall >> testBytecodeFFICallLargeExternalAddress [
 				                memory nilObject.
 				                tfExternalFunction };
 		                buildMethod.
-		
-	"genBytecodeFFICall will call into these trampolines for the fallback, so for the test to work we need to simulate them"
-	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
-	cogit ordinarySendTrampolineAt: 2 put: self fakeTrampoline.
 
 	addr := self
 		        compile: [
@@ -130,7 +142,7 @@ VMJitBytecodeFFICall >> testBytecodeFFICallLargeExternalAddress [
 		equals: aVeryLargeAddress
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMJitBytecodeFFICall >> testBytecodeFFICallSwitchToTheCStack [
 
 	| tfExternalFunctionAndCompiledBlock stopAddress addr methodObject cStackPointer tfExternalFunction compiledBlockWithStop |
@@ -142,10 +154,6 @@ VMJitBytecodeFFICall >> testBytecodeFFICallSwitchToTheCStack [
 	tfExternalFunction :=	tfExternalFunctionAndCompiledBlock first.
 		
 	compiledBlockWithStop := tfExternalFunctionAndCompiledBlock second.
-	
-	"genBytecodeFFICall will call into these trampolines for the fallback, so for the test to work we need to simulate them"
-	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
-	cogit ordinarySendTrampolineAt: 2 put: self fakeTrampoline.
 
 	methodObject := methodBuilder newMethod
 		                literals: {
@@ -182,7 +190,7 @@ VMJitBytecodeFFICall >> testBytecodeFFICallSwitchToTheCStack [
 
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMJitBytecodeFFICall >> testBytecodeFFICallWithComplexExternalFunction [
 	|  cogitBlock tfExternalFunction  stopAddress addr  methodObject |
 	
@@ -216,10 +224,6 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithComplexExternalFunction [
 			 literals:{memory nilObject. tfExternalFunction};
 			 buildMethod).
 			
-	"genBytecodeFFICall will call into these trampolines for the fallback, so for the test to work we need to simulate them"
-	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
-	cogit ordinarySendTrampolineAt: 2 put: self fakeTrampoline.
-			
     addr := self
         compile: [ 
 	
@@ -244,8 +248,6 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithComplexExternalFunction [
             stopAddress := cogit Stop.]
         bytecodes: 1.
 
-1halt.
-
 	self runFrom: addr until: stopAddress address . 
 
 	self assert: machineSimulator receiverRegisterValue equals: (memory integerObjectOf: (7 + 6 + 5 + 4 + 3 + 2 + 1)).
@@ -253,7 +255,7 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithComplexExternalFunction [
 	self assert: machineSimulator arg1RegisterValue equals: (memory integerObjectOf: 0).
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMJitBytecodeFFICall >> testBytecodeFFICallWithComplexExternalFunctionAndPreservesValuesInRegisters [
 	|  cogitBlock tfExternalFunction  stopAddress addr  methodObject |
 	
@@ -277,12 +279,7 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithComplexExternalFunctionAndPreserv
 		
 	tfExternalFunction := self createExternalFunctionForCogitBlock: cogitBlock
 											withArgumentTypes: { interpreter libFFI uint64.} 
-											withReturnType: interpreter libFFI uint64.
-
-	"genBytecodeFFICall will call into these trampolines for the fallback, so for the test to work we need to simulate them"
-	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
-	cogit ordinarySendTrampolineAt: 2 put: self fakeTrampoline.
-	
+											withReturnType: interpreter libFFI uint64.	
 	methodObject :=  (methodBuilder newMethod
 			 literals:{memory nilObject. tfExternalFunction};
 			 buildMethod).
@@ -319,7 +316,7 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithComplexExternalFunctionAndPreserv
 	self assert: machineSimulator classRegisterValue equals: (memory integerObjectOf: 19).
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMJitBytecodeFFICall >> testBytecodeFFICallWithExternalFunctionAccessToTheCorrectArgument [
 
 	| tfExternalFunction stopAddress addr methodObject actualExternalAddress anExternalAddressObject |
@@ -331,10 +328,6 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithExternalFunctionAccessToTheCorrec
 		                      withArgumentTypes:
 		                      { interpreter libFFI uint64 . interpreter libFFI pointer . interpreter libFFI uint32  }
 		                      withReturnType: interpreter libFFI pointer.
-	
-	"genBytecodeFFICall will call into these trampolines for the fallback, so for the test to work we need to simulate them"
-	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
-	cogit ordinarySendTrampolineAt: 2 put: self fakeTrampoline.
 	
 	actualExternalAddress := memory integerObjectOf: 16rffff.
 	anExternalAddressObject := self newExternalAddress: actualExternalAddress.
@@ -375,7 +368,7 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithExternalFunctionAccessToTheCorrec
 		equals: actualExternalAddress.
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMJitBytecodeFFICall >> testBytecodeFFICallWithExternalFunctionThreeArgs [
 
 	| tfExternalFunction stopAddress addr methodObject |
@@ -389,10 +382,6 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithExternalFunctionThreeArgs [
 		                      { interpreter libFFI uint64 . interpreter libFFI sint8 . interpreter libFFI uint32  }
 		                      withReturnType: interpreter libFFI uint64.
 	
-	"genBytecodeFFICall will call into these trampolines for the fallback, so for the test to work we need to simulate them"
-	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
-	cogit ordinarySendTrampolineAt: 2 put: self fakeTrampoline.
-
 	methodObject := methodBuilder newMethod
 		                literals: {
 				                memory nilObject.
@@ -425,7 +414,7 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithExternalFunctionThreeArgs [
 		equals: (memory integerObjectOf: (1+2+3))
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunction [
 
 	| tfExternalFunction stopAddress addr methodObject |
@@ -437,10 +426,6 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunction [
 		                      { interpreter libFFI uint64 }
 		                      withReturnType: interpreter libFFI uint64.
 	
-	"genBytecodeFFICall will call into these trampolines for the fallback, so for the test to work we need to simulate them"
-	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
-	cogit ordinarySendTrampolineAt: 2 put: self fakeTrampoline.
-
 	methodObject := methodBuilder newMethod
 		                literals: {
 				                memory nilObject.
@@ -471,7 +456,133 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunction [
 		equals: (memory integerObjectOf: 888)
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
+VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunctionNegative32BitInteger [
+
+	| tfExternalFunction stopAddress addr methodObject |
+	tfExternalFunction := self
+		                      createExternalFunctionForCogitBlock: [
+			                      cogit MoveR: Arg0Reg R: TempReg.
+			                      cogit RetN: 0 ]
+		                      withArgumentTypes:
+		                      { interpreter libFFI sint32 }
+		                      withReturnType: interpreter libFFI sint32.
+	
+	methodObject := methodBuilder newMethod
+		                literals: {
+				                memory nilObject.
+				                tfExternalFunction };
+		                buildMethod.
+
+	addr := self
+		        compile: [
+			        cogit methodOrBlockNumTemps: 1.
+			        cogit methodOrBlockNumArgs: 1.
+			        cogit initSimStackForFramefulMethod: 0.
+					  cogit needsFrame: true. 
+
+			        cogit methodObj: methodObject.
+			        cogit ssPushConstant: (memory integerObjectOf: -12).
+			        cogit byte0: 230.
+			        cogit byte1: 1.
+			        cogit genBytecodeFFICall.
+
+			        "This instruction should not be called"
+			        stopAddress := cogit Stop ]
+		        bytecodes: 1.
+		
+	self runFrom: addr until: stopAddress address.
+
+	self
+		assert: machineSimulator receiverRegisterValue
+		equals: (memory integerObjectOf: -12)
+]
+
+{ #category : 'tests' }
+VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunctionNegative64BitInteger [
+
+	| tfExternalFunction stopAddress addr methodObject |
+	tfExternalFunction := self
+		                      createExternalFunctionForCogitBlock: [
+			                      cogit MoveR: Arg0Reg R: TempReg.
+			                      cogit RetN: 0 ]
+		                      withArgumentTypes:
+		                      { interpreter libFFI sint64 }
+		                      withReturnType: interpreter libFFI sint64.
+	
+	methodObject := methodBuilder newMethod
+		                literals: {
+				                memory nilObject.
+				                tfExternalFunction };
+		                buildMethod.
+
+	addr := self
+		        compile: [
+			        cogit methodOrBlockNumTemps: 1.
+			        cogit methodOrBlockNumArgs: 1.
+			        cogit initSimStackForFramefulMethod: 0.
+					  cogit needsFrame: true. 
+
+			        cogit methodObj: methodObject.
+			        cogit ssPushConstant: (memory integerObjectOf: -200).
+			        cogit byte0: 230.
+			        cogit byte1: 1.
+			        cogit genBytecodeFFICall.
+
+			        "This instruction should not be called"
+			        stopAddress := cogit Stop ]
+		        bytecodes: 1.
+		
+	self runFrom: addr until: stopAddress address.
+
+	self
+		assert: machineSimulator receiverRegisterValue
+		equals: (memory integerObjectOf: -200)
+]
+
+{ #category : 'tests' }
+VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunctionNegative8BitInteger [
+
+	| tfExternalFunction stopAddress addr methodObject |
+	tfExternalFunction := self
+		                      createExternalFunctionForCogitBlock: [
+			                      cogit MoveR: Arg0Reg R: TempReg.
+			                      cogit RetN: 0 ]
+		                      withArgumentTypes:
+		                      { interpreter libFFI sint8 }
+		                      withReturnType: interpreter libFFI sint8.
+	
+	methodObject := methodBuilder newMethod
+		                literals: {
+				                memory nilObject.
+				                tfExternalFunction };
+		                buildMethod.
+
+	addr := self
+		        compile: [
+			        cogit methodOrBlockNumTemps: 1.
+			        cogit methodOrBlockNumArgs: 1.
+			        cogit initSimStackForFramefulMethod: 0.
+					  cogit needsFrame: true. 
+
+			        cogit methodObj: methodObject.
+			        cogit ssPushConstant: (memory integerObjectOf: -3).
+			        cogit byte0: 230.
+			        cogit byte1: 1.
+			        cogit genBytecodeFFICall.
+
+			        "This instruction should not be called"
+			        stopAddress := cogit Stop ]
+		        bytecodes: 1.
+		
+	self runFrom: addr until: stopAddress address.
+
+	self
+		assert: machineSimulator receiverRegisterValue
+		equals: (memory integerObjectOf: -3)
+]
+
+{ #category : 'tests' }
 VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunctionWithTwoArgs [
 
 	| tfExternalFunction stopAddress addr methodObject |
@@ -490,9 +601,6 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunctionWithTwoArgs
 				                memory nilObject.
 				                tfExternalFunction };
 		                buildMethod.
-	"genBytecodeFFICall will call into these trampolines for the fallback, so for the test to work we need to simulate them"
-	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
-	cogit ordinarySendTrampolineAt: 2 put: self fakeTrampoline.
 
 	addr := self
 		        compile: [
@@ -520,7 +628,7 @@ VMJitBytecodeFFICall >> testBytecodeFFICallWithSimpleExternalFunctionWithTwoArgs
 		equals: (memory integerObjectOf: 30)
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionPointerPointer [
 
 	| tfExternalFunction stopAddress addr methodObject actualExternalAddress anExternalAddressObject |
@@ -540,10 +648,6 @@ VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionPointerPointer [
 				                memory nilObject.   "this would be the runner"
 				                tfExternalFunction };
 		                buildMethod.
-	
-	"genBytecodeFFICall will call into these trampolines for the fallback, so for the test to work we need to simulate them"
-	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
-	cogit ordinarySendTrampolineAt: 2 put: self fakeTrampoline.
 	
 	actualExternalAddress := memory integerObjectOf: 16rffff.
 	anExternalAddressObject := self newExternalAddress: actualExternalAddress.
@@ -576,7 +680,7 @@ VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionPointerPointer [
 		equals: actualExternalAddress.
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionReturnsLargeInteger [
 
 	| tfExternalFunction stopAddress addr methodObject |
@@ -597,10 +701,6 @@ VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionReturnsLargeInteger [
 				                memory nilObject.   "this would be the runner"
 				                tfExternalFunction };
 		                buildMethod.
-	
-	"genBytecodeFFICall will call into these trampolines for the fallback, so for the test to work we need to simulate them"
-	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
-	cogit ordinarySendTrampolineAt: 2 put: self fakeTrampoline.
 
 	addr := self
 		        compile: [
@@ -626,7 +726,7 @@ VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionReturnsLargeInteger [
 		equals: (memory integerObjectOf: (memory maxSmallInteger + 1))
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionVoidPointerExtractsExternalAddress [
 
 	| tfExternalFunction stopAddress addr methodObject actualExternalAddress anExternalAddressObject |
@@ -647,10 +747,6 @@ VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionVoidPointerExtractsExtern
 				                memory nilObject.   "this would be the runner"
 				                tfExternalFunction };
 		                buildMethod.
-	
-	"genBytecodeFFICall will call into these trampolines for the fallback, so for the test to work we need to simulate them"
-	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
-	cogit ordinarySendTrampolineAt: 2 put: self fakeTrampoline.
 	
 	actualExternalAddress := memory integerObjectOf: 16rffff.
 	anExternalAddressObject := self newExternalAddress: actualExternalAddress.
@@ -679,10 +775,10 @@ VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionVoidPointerExtractsExtern
 		equals: actualExternalAddress.
 ]
 
-{ #category : #tests }
-VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionVoidPointerValidatesExternalAddress [
+{ #category : 'tests' }
+VMJitBytecodeFFICall >> testInvalidExternalAddressShouldFallback [
 
-	| tfExternalFunction stopAddress addr methodObject anInvalidExternalAddress simulatedFallback |
+	| tfExternalFunction stopAddress addr methodObject anInvalidExternalAddress |
 	"Test the prototype void fn(pointer) works.
 	
 	The external function to test doesn't return anything but will just copy the pointer given as argument."
@@ -700,13 +796,6 @@ VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionVoidPointerValidatesExter
 				                memory nilObject.   "this would be the runner"
 				                tfExternalFunction };
 		                buildMethod.
-	
-	"genBytecodeFFICall will call into this trampolin for the fallback, so for the test to work we need to simulate it"
-	cogit ceScheduleScavengeTrampoline: self fakeTrampoline.
-	
-	"We are passing an invalid external address. genBytecodeFFICall should check this and invoke the fallback "
-	simulatedFallback := self compile: [ cogit RetN: 0 ].
-	cogit ordinarySendTrampolineAt: 2 put: simulatedFallback.
 	
 	anInvalidExternalAddress := memory integerObjectOf: 16rffff.
 
@@ -726,8 +815,8 @@ VMJitBytecodeFFICall >> testBytecodeFFIExternalFunctionVoidPointerValidatesExter
 			        "This instruction should not be called"
 			        stopAddress := cogit Stop ]
 		        bytecodes: 1.
-1halt.
+
 	self runFrom: addr until: stopAddress address.																							
 
-	self assert: machineSimulator instructionPointerRegisterValue equals:  simulatedFallback
+	self assert: machineSimulator instructionPointerRegisterValue equals:  (cogit ordinarySendTrampolineAt: 2)
 ]

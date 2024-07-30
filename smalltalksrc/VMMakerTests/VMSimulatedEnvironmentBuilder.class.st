@@ -90,12 +90,12 @@ VMSimulatedEnvironmentBuilder >> doBuild [
 
 { #category : 'building' }
 VMSimulatedEnvironmentBuilder >> doBuildSimulator [
-	
-	objectMemory := objectMemoryClass simulatorClass new.
-	
+		
 	interpreterClass
 		initializeWithOptions: initializationOptions
-		objectMemoryClass: objectMemory class.
+		objectMemoryClass: objectMemoryClass simulatorClass.
+
+	objectMemory := objectMemoryClass simulatorClass new.
 
 	interpreter := interpreterClass basicNew
 		  objectMemory: objectMemory;

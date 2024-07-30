@@ -1,10 +1,11 @@
 Class {
-	#name : #VMFFIUint64Uint64Test,
-	#superclass : #VMAbstractFFITest,
-	#category : #VMMakerTests
+	#name : 'VMFFIUint64Uint64Test',
+	#superclass : 'VMAbstractFFITest',
+	#category : 'VMMakerTests',
+	#package : 'VMMakerTests'
 }
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMFFIUint64Uint64Test >> testFunctionReturnsSameValue [
 	| tfExternalFunction anUint64 |
 	tfExternalFunction := self 
@@ -26,7 +27,7 @@ VMFFIUint64Uint64Test >> testFunctionReturnsSameValue [
 	
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMFFIUint64Uint64Test >> testPrimitiveRejectsIntegerNegativeArgument [
 	| tfExternalFunction  |
 	tfExternalFunction := self 
@@ -44,7 +45,7 @@ VMFFIUint64Uint64Test >> testPrimitiveRejectsIntegerNegativeArgument [
 	self deny: interpreter successful
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 VMFFIUint64Uint64Test >> testPrimitiveRejectsNonIntegerArgument [
 	| tfExternalFunction  |
 	tfExternalFunction := self 

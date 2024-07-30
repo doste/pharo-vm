@@ -162,7 +162,7 @@ VMSimpleStackBasedCogitBytecodeTest >> setUp [
 	memory classByteArray: (self newClassInOldSpaceWithSlots: 0 instSpec: (memory byteFormatForNumBytes: 0) ).
 ]
 
-{ #category : #'tests - extended push bytecode - push inst var' }
+{ #category : 'tests - extended push bytecode - push inst var' }
 VMSimpleStackBasedCogitBytecodeTest >> testBytecodeFFICallWithComplexExternalFunction [
 	|  cogitBlock tfExternalFunction  stopAddress addr  methodObject |
 	
@@ -223,7 +223,7 @@ VMSimpleStackBasedCogitBytecodeTest >> testBytecodeFFICallWithComplexExternalFun
 	self assert: machineSimulator arg1RegisterValue equals: (memory integerObjectOf: 0).
 ]
 
-{ #category : #'tests - extended push bytecode - push inst var' }
+{ #category : 'tests - extended push bytecode - push inst var' }
 VMSimpleStackBasedCogitBytecodeTest >> testBytecodeFFICallWithSimpleExternalFunction [
 	| tfExternalFunction stopAddress addr  methodObject |
 	
