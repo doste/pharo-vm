@@ -28,32 +28,6 @@ VMJittedLookupTest >> installSelector: aSelectorOop method: aMethodOop inMethodD
 ]
 
 { #category : 'tests' }
-VMJittedLookupTest >> setArrayClassIntoClassTable [
-	| aClass |
-	aClass := self
-		newClassInOldSpaceWithSlots: 0
-		instSpec: Array instSpec.
-	memory setHashBitsOf: aClass to: ClassArrayCompactIndex.
-	memory
-		storePointer: ClassArrayCompactIndex
-		ofObject: memory classTableFirstPage
-		withValue: aClass
-]
-
-{ #category : 'tests' }
-VMJittedLookupTest >> setMessageClassIntoClassTable [
-	| aClass |
-	aClass := self
-		newClassInOldSpaceWithSlots: MessageSend allSlots size 
-		instSpec: MessageSend instSpec.
-	memory setHashBitsOf: aClass to: ClassMessageCompactIndex.
-	memory
-		storePointer: ClassMessageCompactIndex
-		ofObject: memory classTableFirstPage
-		withValue: aClass
-]
-
-{ #category : 'tests' }
 VMJittedLookupTest >> setUpClassAndMethod [
 
 

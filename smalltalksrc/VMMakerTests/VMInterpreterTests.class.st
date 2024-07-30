@@ -75,7 +75,5 @@ VMInterpreterTests >> setUpMethodDictionaryIn: aClass [
 		storePointer: MethodArrayIndex
 		ofObject: aMethodDictionary
 		withValue: anArrayOfMethods.
-		
-	
-
+	^ aMethodDictionary
 ]

@@ -63,6 +63,14 @@ VMSpurMemoryManagerTest >> configureEnvironmentBuilder [
 		useComposedImageFormatAsDefault: useComposedImageFormat
 ]
 
+{ #category : 'tests' }
+VMSpurMemoryManagerTest >> contextClass [
+
+	^ memory
+		  fetchPointer: ClassMethodContextCompactIndex
+		  ofObject: memory classTableFirstPage
+]
+
 { #category : 'helpers' }
 VMSpurMemoryManagerTest >> createActiveProcess [
 
@@ -795,6 +803,19 @@ VMSpurMemoryManagerTest >> primitiveTraceLogSize [
 	^ 0
 ]
 
+{ #category : 'tests' }
+VMSpurMemoryManagerTest >> setArrayClassIntoClassTable [
+	| aClass |
+	aClass := self
+		newClassInOldSpaceWithSlots: 0
+		instSpec: Array instSpec.
+	memory setHashBitsOf: aClass to: ClassArrayCompactIndex.
+	memory
+		storePointer: ClassArrayCompactIndex
+		ofObject: memory classTableFirstPage
+		withValue: aClass
+]
+
 { #category : 'running' }
 VMSpurMemoryManagerTest >> setContextClassIntoClassTable [
 	| aClass |
@@ -804,6 +825,19 @@ VMSpurMemoryManagerTest >> setContextClassIntoClassTable [
 	memory setHashBitsOf: aClass to: ClassMethodContextCompactIndex.
 	memory
 		storePointer: ClassMethodContextCompactIndex
+		ofObject: memory classTableFirstPage
+		withValue: aClass
+]
+
+{ #category : 'tests' }
+VMSpurMemoryManagerTest >> setMessageClassIntoClassTable [
+	| aClass |
+	aClass := self
+		newClassInOldSpaceWithSlots: MessageSend allSlots size 
+		instSpec: MessageSend instSpec.
+	memory setHashBitsOf: aClass to: ClassMessageCompactIndex.
+	memory
+		storePointer: ClassMessageCompactIndex
 		ofObject: memory classTableFirstPage
 		withValue: aClass
 ]
@@ -870,6 +904,23 @@ VMSpurMemoryManagerTest >> setUp [
 		
 	oldSpaceSize := environmentBuilder oldSpaceSize.
 	memory lastHash: 1.
+]
+
+{ #category : 'tests' }
+VMSpurMemoryManagerTest >> setUpContextClass [
+
+	| contextClass |
+	contextClass := self
+		newClassInOldSpaceWithSlots: Context allSlots size
+		instSpec: Context instSpec.
+		
+	memory setHashBitsOf: contextClass to: ClassMethodContextCompactIndex.
+		
+	memory
+		storePointer: ClassMethodContextCompactIndex
+		ofObject: memory classTableFirstPage
+		withValue: contextClass
+
 ]
 
 { #category : 'running' }
