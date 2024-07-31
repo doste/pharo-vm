@@ -5483,20 +5483,20 @@ CogARMv8Compiler >> prepareForExternalCallWithCif: aCif [
 
 	(cogit isIntegerOrPointerType: (aCif argTypeAt: 0) type)
 		ifTrue: [ "a.k.a. Arg0Reg"
-		cogit popIntoRegisterAndPreserveIt: CArg0Reg ]
+		cogit moveEntry: 0 intoRegister: CArg0Reg ]
 		ifFalse: [ "floats not supported yet." ].
 	numArgs = 1 ifTrue: [ ^ self ].
 
 	"a.k.a. Arg1Reg"
-	cogit popIntoRegisterAndPreserveIt: CArg1Reg.
+	cogit moveEntry: 1 intoRegister: CArg1Reg.
 	numArgs = 2 ifTrue: [ ^ self ].
 
 	"a.k.a. ReceiverResultReg"
-	cogit popIntoRegisterAndPreserveIt: CArg2Reg.
+	cogit moveEntry: 2 intoRegister: CArg2Reg.
 	numArgs = 3 ifTrue: [ ^ self ].
 
 	"a.k.a. ClassReg"
-	cogit popIntoRegisterAndPreserveIt: CArg3Reg
+	cogit moveEntry: 3 intoRegister: CArg3Reg
 ]
 
 { #category : 'calling C function in Smalltalk stack' }

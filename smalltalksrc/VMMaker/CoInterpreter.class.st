@@ -1175,6 +1175,64 @@ CoInterpreter >> ceCounterTripped: condition [
 ]
 
 { #category : 'trampolines' }
+CoInterpreter >> ceFallbackFFICallUsingRunner: runner andExternalFunction: anExternalFunction [
+
+	<api>
+	<var: #cif type: #'ffi_cif *'>
+	"Type size as int so substracting 1 from it does not wrap"
+	<var: #size type: #int>
+	| cif size argumentArray |
+	self assert: (self isMachineCodeFrame: framePointer).
+
+	"We have the arguments of the ffi call in the stack"
+	"Call invokeFunction:withArguments: on the runner using the external function and an array of boxed arguments."
+
+	cif := self getCifFromTFExternalFunction: anExternalFunction.
+	size := cif numberOfArguments.
+	argumentArray := objectMemory
+		         eeInstantiateSmallClassIndex: ClassArrayCompactIndex
+		         format: objectMemory arrayFormat
+		         numSlots: size.
+	0 to: size - 1 do: [ :i |
+		"Assume: have just allocated a new Array; it must be young. Thus, can use unchecked stores."
+		objectMemory
+			storePointerUnchecked: i
+			ofObject: argumentArray
+			withValue: (self stackValue: size - i - 1) ].
+	self pop: size.
+
+	self push: runner.
+	self push: anExternalFunction.
+	self push: argumentArray.
+
+	^ self
+		  ceSendAbort:
+		  (objectMemory splObj: SelectorInvokeFunctionWithArguments)
+		  to: runner
+		  numArgs: 2
+]
+
+{ #category : 'trampolines' }
+CoInterpreter >> ceFallbackInvalidFFICall [
+
+	<api>
+	<var: #cif type: #'ffi_cif *'>
+	"Type size as int so substracting 1 from it does not wrap"
+	<var: #size type: #int>
+	self assert: (self isMachineCodeFrame: framePointer).
+
+	"We have an invalid FFI call: either the function or the cif are not valid. We cannot proceed.
+	Instead, send a message #invalidFFICall to the Context object"
+
+	self push: (self frameContext: framePointer).
+	^ self
+		  ceSendAbort:
+		  (objectMemory splObj: SelectorInvalidFFICall)
+		  to: self stackTop
+		  numArgs: 0
+]
+
+{ #category : 'trampolines' }
 CoInterpreter >> ceInterpretMethodFromPIC: aMethodObj receiver: rcvr [
 	<api>
 	| pic primitiveIndex |
@@ -3049,6 +3107,20 @@ CoInterpreter >> getBlockCompilationMSecs [
 CoInterpreter >> getCheckAllocFiller [
 	<api>
 	^checkAllocFiller
+]
+
+{ #category : 'trampolines' }
+CoInterpreter >> getCifFromTFExternalFunction: aTFExternalFunction [
+
+	| aTFFunctionDefinition cifAddr cif |
+	aTFFunctionDefinition := objectMemory
+		                         fetchPointer: 1
+		                         ofObject: aTFExternalFunction.
+	cifAddr := self getHandler: aTFFunctionDefinition.
+	cif := self getHandlerAsCif:
+		       (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction).
+
+	^ cif
 ]
 
 { #category : 'internal interpreter access' }

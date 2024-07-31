@@ -4704,7 +4704,8 @@ CogX64Compiler >> prepareForExternalCallWithCif: aCif [
 	<var: #aCif type: #'ffi_cif *'>
 	<var: #numArgs type: #'int'>
 	| numArgs numberOfFloatArgs |
-	SysV ifFalse: [ "WIN64 ABI allways reserve shadow space on the stack for callee to save up to 4 register parameters"
+	SysV ifFalse: [
+		"WIN64 ABI allways reserve shadow space on the stack for callee to save up to 4 register parameters"
 		cogit SubCq: 32 R: RSP ].
 
 	numArgs := aCif numberArguments.
@@ -4714,7 +4715,7 @@ CogX64Compiler >> prepareForExternalCallWithCif: aCif [
 	SysV
 		ifTrue: [
 			numArgs - 1 to: 0 by: -1 do: [ :i |
-				cogit popIntoRegisterAndPreserveIt:
+				cogit moveEntry: (numArgs - 1 - i) intoRegister:
 					(self
 						 getRegisterForExternalFunctionArgumentInIndex: i
 						 fromCif: aCif) ] ]
@@ -4726,25 +4727,25 @@ CogX64Compiler >> prepareForExternalCallWithCif: aCif [
 			See https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention"
 			(cogit isIntegerOrPointerType: (aCif argTypeAt: 0) type)
 				ifTrue: [ "a.k.a. RCX"
-				cogit popIntoRegisterAndPreserveIt: Arg0Reg ]
+				cogit moveEntry: 0 intoRegister: Arg0Reg ]
 				ifFalse: [ "floats not supported yet." ].
 			numArgs = 1 ifTrue: [ ^ self ].
 
 			(cogit isIntegerOrPointerType: (aCif argTypeAt: 1) type)
 				ifTrue: [ "a.k.a. RDX"
-				cogit popIntoRegisterAndPreserveIt: Arg1Reg ]
+				cogit moveEntry: 1 intoRegister: Arg1Reg ]
 				ifFalse: [ "floats not supported yet." ].
 			numArgs = 2 ifTrue: [ ^ self ].
 
 			(cogit isIntegerOrPointerType: (aCif argTypeAt: 2) type)
 				ifTrue: [ "a.k.a. R8"
-				cogit popIntoRegisterAndPreserveIt: ClassReg ]
+				cogit moveEntry: 2 intoRegister: ClassReg ]
 				ifFalse: [ "floats not supported yet." ].
 			numArgs = 3 ifTrue: [ ^ self ].
 
 			(cogit isIntegerOrPointerType: (aCif argTypeAt: 3) type)
 				ifTrue: [ "a.k.a. R9"
-				cogit popIntoRegisterAndPreserveIt: ReceiverResultReg ]
+				cogit moveEntry: 3 intoRegister: ReceiverResultReg ]
 				ifFalse: [ "floats not supported yet." ] ]
 ]
 

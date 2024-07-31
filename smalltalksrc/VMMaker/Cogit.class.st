@@ -934,6 +934,7 @@ Cogit class >> initializeMiscConstants [
 
 { #category : 'class initialization' }
 Cogit class >> initializeNumTrampolines [
+	self objectRepresentationClass initialize.
 	NumTrampolines := self numTrampolines
 						+ self objectRepresentationClass numTrampolines
 						+ (BytecodeSetHasDirectedSuperSend ifTrue: [NumSendTrampolines * 2] ifFalse: [0])
@@ -10232,6 +10233,13 @@ Cogit >> opcodePrintStringFrom: startIndex to: stopIndex [
 Cogit >> openPICSize [
 	<doNotGenerate>
 	^ openPICSize
+]
+
+{ #category : 'accessing' }
+Cogit >> ordinarySendTrampolineAt: anInteger [
+
+	<doNotGenerate>
+	^ ordinarySendTrampolines at: anInteger
 ]
 
 { #category : 'accessing' }

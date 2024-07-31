@@ -2061,28 +2061,39 @@ SimpleStackBasedCogit >> extendedStoreAndPopBytecode [
 ]
 
 { #category : 'bytecode generators' }
-SimpleStackBasedCogit >> fallbackToPrimitiveWithFunction: aTFExternalFunction andCif: aCif usingRunner: aRunner [
-	"Unpack all arguments in an array that is left in the ReceiverResultReg"
+SimpleStackBasedCogit >> fallbackInvalidFFICall [
 
-	| size |
 	<inline: true>
+	
+	self genSmalltalkToCStackSwitch: true.
+	self
+		compileCallFor: #ceFallbackInvalidFFICall
+		numArgs: 0
+		arg: nil
+		arg: nil
+		arg: nil
+		arg: nil
+		resultReg: NoReg
+		regsToSave: self emptyRegisterMask
+]
 
-	"self voidReceiverResultRegContainsSelf.
-	self ssFlushTo: simStackPtr. 																						<<<<<<<<<< tara bien?"
-	size := aCif ifNil: [0] ifNotNil: [aCif numberArguments].				"tara bien?"
-					
-	objectRepresentation genNewArrayOfSize: size initialized: false.
-	size - 1 to: 0 by: -1 do: [ :i |
-		self PopR: TempReg.
-		objectRepresentation
-			genStoreSourceReg: TempReg
-			slotIndex: i
-			intoNewObjectInDestReg: ReceiverResultReg ].
+{ #category : 'bytecode generators' }
+SimpleStackBasedCogit >> fallbackToPrimitiveWithFunction: aTFExternalFunction usingRunner: aRunner [
 
-	self PushC64: aRunner.
-	self PushC64: aTFExternalFunction.
-	self PushR: ReceiverResultReg.
-	^ self genSend: -33 numArgs: 2 "invokeFunction:withArguments:"
+	<inline: true>
+	
+	self MoveCq: aRunner R: TempReg.
+	self MoveCq: aTFExternalFunction R: ReceiverResultReg.
+	self genSmalltalkToCStackSwitch: true.
+	self
+		compileCallFor: #ceFallbackFFICallUsingRunner:andExternalFunction:
+		numArgs: 2
+		arg: TempReg
+		arg: ReceiverResultReg
+		arg: nil
+		arg: nil
+		resultReg: NoReg
+		regsToSave: self emptyRegisterMask
 ]
 
 { #category : 'bytecode generator support' }
@@ -3919,13 +3930,9 @@ SimpleStackBasedCogit >> generateTracingTrampolines [
 
 { #category : 'bytecode generators' }
 SimpleStackBasedCogit >> getCifFromTFExternalFunction: aTFExternalFunction [
-	
-	| aTFFunctionDefinition cifAddr cif |
-	aTFFunctionDefinition := objectMemory fetchPointer: 1 ofObject: aTFExternalFunction.
-	cifAddr := coInterpreter getHandler: aTFFunctionDefinition.
-	cif := coInterpreter getHandlerAsCif: (objectMemory fetchPointer: 1 ofObject: aTFExternalFunction).	
-	
-	^ cif
+
+	<doNotGenerate>
+	^ coInterpreter getCifFromTFExternalFunction: aTFExternalFunction
 ]
 
 { #category : 'bytecode generators' }
@@ -4015,25 +4022,84 @@ SimpleStackBasedCogit >> getRegisterForArgumentInIndex: indexOfArg fromCif: aCif
 		otherwise: [ ^ nil ]
 ]
 
+{ #category : 'bytecode generators' }
+SimpleStackBasedCogit >> handleIntegerReturnValueFromExternalFunctionWithCif: aCif [
+
+	<var: #aCif type: #'ffi_cif *'>
+	| returnType |
+	returnType := aCif returnType type.
+	^ [ returnType ]
+		  caseOf: {
+				  ([ FFI_TYPE_SINT8 ] -> [
+				   objectRepresentation
+					   genIntegerTo8BitSignedIntegerValue: backEnd cResultRegister
+					   into: ReceiverResultReg ]).
+
+				  ([ FFI_TYPE_SINT16 ] -> [
+				   objectRepresentation
+					   genIntegerTo16BitSignedIntegerValue: backEnd cResultRegister
+					   into: ReceiverResultReg ]).
+
+				  ([ FFI_TYPE_SINT32 ] -> [
+				   objectRepresentation
+					   genIntegerTo32BitSignedIntegerValue: backEnd cResultRegister
+					   into: ReceiverResultReg
+					   scratchReg: Extra0Reg
+					   scratchReg: Extra1Reg ]).
+
+				  ([ FFI_TYPE_SINT64 ] -> [
+				   objectRepresentation
+					   genIntegerTo64BitSignedIntegerValue: backEnd cResultRegister
+					   into: ReceiverResultReg
+					   scratchReg: Extra0Reg
+					   scratchReg: Extra1Reg ]).
+
+				  ([ FFI_TYPE_UINT8 ] -> [
+				   objectRepresentation
+					   genPositiveIntegerValue: backEnd cResultRegister
+					   into: ReceiverResultReg ]).
+
+				  ([ FFI_TYPE_UINT16 ] -> [
+				   objectRepresentation
+					   genPositiveIntegerValue: backEnd cResultRegister
+					   into: ReceiverResultReg ]).
+
+				  ([ FFI_TYPE_UINT32 ] -> [
+				   objectRepresentation
+					   genIntegerTo32BitPositiveIntegerValue: backEnd cResultRegister
+					   into: ReceiverResultReg
+					   scratchReg: Extra0Reg
+					   scratchReg: Extra1Reg ]).
+				  ([ FFI_TYPE_UINT64 ] -> [
+				   objectRepresentation
+					   genIntegerTo64BitPositiveIntegerValue: backEnd cResultRegister
+					   into: ReceiverResultReg
+					   scratchReg: Extra0Reg
+					   scratchReg: Extra1Reg ]) }
+		  otherwise: [ nil ]
+]
+
 { #category : 'simulation only' }
 SimpleStackBasedCogit >> handleReturnFromExternalFunctionWithCif: aCif [
+
+	"Marshall the return value of an FFI call.
+	Return a jump to jump in case type checks fail or nil if no check is done.
+	The caller should set the target of the jump"
+
 	<var: #aCif type: #'ffi_cif *'>
-	"If we open CogX64Compiler >> initializeAbstractRegistersSysV we can see that the RAX register is mapped to TempReg.
-	We need to convert that C integer into a Pharo SmallInteger:"																													
-	
-	"We know the external function left us its result in TempReg. So we convert the value inside to a Pharo int and then push it."
 	(self isIntegerType: aCif returnType type) ifTrue: [ 
-		objectRepresentation genConvertIntegerToSmallIntegerInReg:  TempReg.
-		self PushR: TempReg.
-	].
+		^ self handleIntegerReturnValueFromExternalFunctionWithCif: aCif].
 
-	"The external function didn't return anything, so we don't push anything."
-	(aCif returnType type = FFI_TYPE_VOID) ifTrue: [ 
-		"Return the receiver to guarantee that we push a return value to the stack"
-		self genPushReceiverBytecode.
-	].
-	
+	aCif returnType type = FFI_TYPE_VOID ifTrue: [
+		^ nil ].
 
+	"If the external function returned a pointer, we have to wrap it in an ExternalAddress"
+	aCif returnType type = FFI_TYPE_POINTER ifTrue: [
+		^ objectRepresentation
+			  genAllocExternalAddressValue: backEnd cResultRegister
+			  into: ReceiverResultReg
+			  scratchReg: Extra0Reg
+			  scratchReg: Extra1Reg ]
 ]
 
 { #category : 'register management' }
