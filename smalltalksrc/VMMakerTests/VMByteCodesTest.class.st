@@ -5,7 +5,8 @@ Class {
 		'contextOop',
 		'context',
 		'callingFrame',
-		'topFrame'
+		'topFrame',
+		'runnerClass'
 	],
 	#category : 'VMMakerTests-InterpreterTests',
 	#package : 'VMMakerTests',
@@ -181,12 +182,17 @@ VMByteCodesTest >> pushThisContextTopFrame [
 { #category : 'running' }
 VMByteCodesTest >> setUp [
 
-	| classFloat |
+	| classFloat classArray |
 	super setUp.
 	self installFloat64RegisterClass.
 	self setUpContextClass.
-	self setArrayClassIntoClassTable.
+	classArray := self setArrayClassIntoClassTable.
 	self setMessageClassIntoClassTable.
+	
+	runnerClass := self
+		newClassInOldSpaceWithSlots: 0
+		instSpec: Object instSpec.
+	memory ensureBehaviorHash: runnerClass.
 
 	interpreter libFFI: LibFFI new.
 	interpreter libFFI interpreter: interpreter.
@@ -194,8 +200,7 @@ VMByteCodesTest >> setUp [
 	memory classExternalAddress: (self
 			 newClassInOldSpaceWithSlots: 0
 			 instSpec: (memory byteFormatForNumBytes: 0)).
-	memory classArray:
-		(self newClassInOldSpaceWithSlots: 0 instSpec: memory arrayFormat).
+	memory classArray: classArray.
 	memory classByteArray: (self
 			 newClassInOldSpaceWithSlots: 0
 			 instSpec: (memory byteFormatForNumBytes: 0)).
@@ -520,6 +525,67 @@ VMByteCodesTest >> testBytecodeFFICallAddTwoNumbersCorrectly [
 ]
 
 { #category : 'tests-fficall' }
+VMByteCodesTest >> testBytecodeFFICallFailWithBadDoubleArg [
+
+	| callerFFIMethod ffiCallArgument aMethodDictionary runner aMethodToActivate tfExternalFunction expectedReceiver expectedTfExternalFunction expectedArgumentArray |
+
+	"An invalid FFI call will send the message #invalidFFICall to the current context.
+	Thus, install a method with that selector in the Context class"
+	runner := memory instantiateClass: runnerClass.
+	aMethodDictionary := self setUpMethodDictionaryIn: runnerClass.
+	aMethodToActivate := methodBuilder newMethod
+		                     numberOfArguments: 2;
+		                     buildMethod.
+	memory
+		splObj: SelectorInvokeFunctionWithArguments
+		put: (memory integerObjectOf: 17).
+	self
+		installSelector: (memory splObj: SelectorInvokeFunctionWithArguments)
+		method: aMethodToActivate
+		inMethodDictionary: aMethodDictionary.
+
+	tfExternalFunction := self
+		                      createExternalFunctionFor: [ :anArgument |
+		                      anArgument ]
+		                      withArgumentTypes:
+		                      { interpreter libFFI double }
+		                      withReturnType: interpreter libFFI void.
+
+
+	callerFFIMethod := methodBuilder newMethod
+		           bytecodes: #[ 16rE6 16r1 ];
+		           numberOfArguments: 2;
+		           literals: {
+				           runner.
+				           tfExternalFunction };
+		           isPrimitive: false;
+		           buildMethod.
+
+	ffiCallArgument := memory integerObjectOf: 41.
+	stackBuilder addNewFrame
+		method: callerFFIMethod;
+		stack: { ffiCallArgument }.
+	stackBuilder buildStack.
+
+	interpreter methodDictLinearSearchLimit: 3.
+	interpreter setBreakSelector: nil.
+	interpreter method: callerFFIMethod.
+
+	self interpretNextBytecode.
+
+	expectedReceiver := interpreter frameReceiver: (interpreter framePointer).
+	expectedTfExternalFunction := interpreter itemporary: 0 in: (interpreter framePointer).
+	expectedArgumentArray := interpreter itemporary: 1 in: (interpreter framePointer).
+	
+	self assert: expectedReceiver equals: runner.
+	self assert: expectedTfExternalFunction equals: tfExternalFunction.
+	
+	self assert: (memory fetchClassOf: expectedArgumentArray) equals: memory classArray.
+	self assert: (memory slotSizeOf: expectedArgumentArray) equals: 1.
+	self assert: (memory fetchPointer: 0 ofObject: expectedArgumentArray) equals: ffiCallArgument.
+]
+
+{ #category : 'tests-fficall' }
 VMByteCodesTest >> testBytecodeFFICallFailWithBadFunction [
 
 	| aMethod receiver contextClass aMethodDictionary invalidExternalFunction simulatedClassOfRunner simulatedRunner aMethodToActivate |
@@ -575,57 +641,96 @@ VMByteCodesTest >> testBytecodeFFICallFailWithBadFunction [
 ]
 
 { #category : 'tests-fficall' }
-VMByteCodesTest >> testBytecodeFFICallFailWithNonSmallIntegerArgument [
+VMByteCodesTest >> testBytecodeFFICallFailWithBadInt8Arg [
 
-	| aMethod receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction selectorOop simulatedInvokeFunctionWithArguments simulatedClassOfRunner simulatedRunner |
+	| callerFFIMethod ffiCallArgument aMethodDictionary runner aMethodToActivate tfExternalFunction expectedReceiver expectedTfExternalFunction expectedArgumentArray |
+
+	"An invalid FFI call will send the message #invalidFFICall to the current context.
+	Thus, install a method with that selector in the Context class"
+	runner := memory instantiateClass: runnerClass.
+	aMethodDictionary := self setUpMethodDictionaryIn: runnerClass.
+	aMethodToActivate := methodBuilder newMethod
+		                     numberOfArguments: 2;
+		                     buildMethod.
+	memory
+		splObj: SelectorInvokeFunctionWithArguments
+		put: (memory integerObjectOf: 17).
+	self
+		installSelector: (memory splObj: SelectorInvokeFunctionWithArguments)
+		method: aMethodToActivate
+		inMethodDictionary: aMethodDictionary.
+
+	tfExternalFunction := self
+		                      createExternalFunctionFor: [ :anArgument |
+		                      anArgument ]
+		                      withArgumentTypes:
+		                      { interpreter libFFI sint8 }
+		                      withReturnType: interpreter libFFI void.
+
+
+	callerFFIMethod := methodBuilder newMethod
+		           bytecodes: #[ 16rE6 16r1 ];
+		           numberOfArguments: 2;
+		           literals: {
+				           runner.
+				           tfExternalFunction };
+		           isPrimitive: false;
+		           buildMethod.
+
+	ffiCallArgument := memory trueObject.
+	stackBuilder addNewFrame
+		method: callerFFIMethod;
+		stack: { ffiCallArgument }.
+	stackBuilder buildStack.
+
+	interpreter methodDictLinearSearchLimit: 3.
+	interpreter setBreakSelector: nil.
+	interpreter method: callerFFIMethod.
+
+	self interpretNextBytecode.
+
+	expectedReceiver := interpreter frameReceiver: (interpreter framePointer).
+	expectedTfExternalFunction := interpreter itemporary: 0 in: (interpreter framePointer).
+	expectedArgumentArray := interpreter itemporary: 1 in: (interpreter framePointer).
 	
-	"We create a simulated external function to call"
+	self assert: expectedReceiver equals: runner.
+	self assert: expectedTfExternalFunction equals: tfExternalFunction.
+	
+	self assert: (memory fetchClassOf: expectedArgumentArray) equals: memory classArray.
+	self assert: (memory slotSizeOf: expectedArgumentArray) equals: 1.
+	self assert: (memory fetchPointer: 0 ofObject: expectedArgumentArray) equals: ffiCallArgument.
+]
+
+{ #category : 'tests-fficall' }
+VMByteCodesTest >> testBytecodeFFICallWithNonConmutativeOp [
+
+	| aMethod aMethodToActivate receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction isFunctionCalled |
+	
+	isFunctionCalled := false.
+	
 	tfExternalFunction := self 
-		createExternalFunctionFor:  [ :anArgument :anotherArgument | anArgument + anotherArgument ]  "A very basic function, just add numbers"
+		createExternalFunctionFor:  [ :anArgument :anotherArgument | isFunctionCalled := true . anArgument - anotherArgument ] 
 		withArgumentTypes: { interpreter libFFI uint64. interpreter libFFI uint64} 
 		withReturnType: interpreter libFFI uint64.
 
-	"-----------------------------------------"
-	"When the bytecodeFFICall fails for some reason, instead of throw an error (the bytecodes, in contrast to primitives, cannot fail, there is no 'bytecodeFail'.
-	So in those cases we pass the burden of handling the errors to the TFSameThreadRunner, who in the previous implementation of FFI was the only responsible to manage all FFI calls.
-	If bytecodeFFICall fails, we want to send the message #invokeFunction:withArguments: to the TFSameThreadRunner uniqueInstance object.
-	
-	Here we are in a simulated environment, so we will need to simulate all of the objects and their interactions. "
-	simulatedInvokeFunctionWithArguments := methodBuilder newMethod
+	methodBuilder newMethod literals: { tfExternalFunction }.
+	aMethod := methodBuilder buildMethod.
+	aMethodToActivate := methodBuilder newMethod
 		                     numberOfArguments: 2;
 		                     buildMethod.
-	stackBuilder addNewFrame method: simulatedInvokeFunctionWithArguments.
-	stackBuilder buildStack.
-	
-   simulatedClassOfRunner := self installClassIntoClassTableWithInstSpec: 1 instSize: 0.
-	simulatedRunner := memory instantiateClass: simulatedClassOfRunner.
-   self setUpMethodDictionaryIn: simulatedClassOfRunner.
 
-	"The method that we want to end up calling is all simulated, so it doesn't really matter its selector. Only that they are associated."
-	selectorOop := memory integerObjectOf: 42.
-	memory splObj: SelectorInvokeFunctionWithArguments  put: selectorOop.
-   self installSelector: selectorOop method: simulatedInvokeFunctionWithArguments inMethodDictionary: (memory fetchPointer: MethodDictionaryIndex ofObject: simulatedClassOfRunner).
-																							
-	"-----------------------------------------"			
-				
-																
-	"The byte following the bytecode 230 (15rE6) encodes two offsets of the literals, corresponding to aTFRunner and the function definition.
-	In the least significant nibble it's the runner and on the most significant one the fdef."
-	
-	" The runner it's on offset 0 and the fdef on offset 1:  0000 0001"
 	aMethod := methodBuilder newMethod
 		bytecodes:
 			#[ 
-				"byecodeFFICall n=1" 16rE6 16r1						
+				"byecodeFFICall n=0" 16rE6 16r0						
 						];
 		numberOfArguments: 2;
 		literals: { 
-			simulatedRunner . tfExternalFunction
+			tfExternalFunction
 		};
 		isPrimitive: false;
 		buildMethod.
-	
-	"Here it doesn't matter the receiver of the method. We are only interested in testing the method, more specifically its bytecodes."
+		
 	receiver := memory integerObjectOf: 41.
 	receiverClass := self setSmallIntegerClassIntoClassTable.
 	self setUpMethodDictionaryIn: receiverClass.
@@ -633,9 +738,12 @@ VMByteCodesTest >> testBytecodeFFICallFailWithNonSmallIntegerArgument [
 		                     fetchPointer: MethodDictionaryIndex
 		                     ofObject: receiverClass.
 
-	arg1 := memory nilObject.								"Not an SmallInteger! The FFI call should fail."
-	arg2 := memory integerObjectOf: 222.
-
+	self
+		installSelector: tfExternalFunction
+		method: aMethod
+		inMethodDictionary: aMethodDictionary.
+	arg1 := memory integerObjectOf: 90.
+	arg2 := memory integerObjectOf: 10.
 	stackBuilder addNewFrame
 		method: aMethod;
 		stack: { 
@@ -650,109 +758,22 @@ VMByteCodesTest >> testBytecodeFFICallFailWithNonSmallIntegerArgument [
 
 	self interpretNextBytecode.
 
-	"We want to test that the intepreter could successfully arrive to the method that handles the errors. That handler is the TFSameThreadRunner and the method
-	invokeFunction:withArguments:. Of course in these tests we simulate it with an Object that knows how to responds to the invokeFunction:withArguments.
-	That the interpreter arrives at the handler method it means that its instructionPointer is set to the first bytecode of the CompiledMethod corresponding to the 
-	handler method. 
-	Each bytecode is responsible of move the IP forward to the next instruction.
-	So, when the intepreter is in the first bytecode of the method, its IP is already pointing to the next bytecode.
-	That's why we need to subtract one:"
-	self assert: interpreter instructionPointer equals: (methodBuilder bytecodeAt: 0 forMethod: simulatedInvokeFunctionWithArguments) - 1
+	self assert: isFunctionCalled.
 	
-
+	self assert: (memory integerValueOf:(interpreter stackTop))  equals: 90 - 10.
 ]
 
 { #category : 'tests-fficall' }
-VMByteCodesTest >> testBytecodeFFICallFailWithSelectorForErrorNotSet [
-	| aMethod receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction selectorOop simulatedInvokeFunctionWithArguments simulatedClassOfRunner simulatedRunner |
-	
-	"We create a simulated external function to call"
-	tfExternalFunction := self 
-		createExternalFunctionFor:  [ :anArgument :anotherArgument | anArgument + anotherArgument ]  "A very basic function, just add numbers"
-		withArgumentTypes: { interpreter libFFI uint64. interpreter libFFI uint64} 
-		withReturnType: interpreter libFFI uint64.
-
-	"-----------------------------------------"
-	"When the bytecodeFFICall fails for some reason, instead of throw an error (the bytecodes, in contrast to primitives, cannot fail, there is no 'bytecodeFail'.
-	So in those cases we pass the burden of handling the errors to the TFSameThreadRunner, who in the previous implementation of FFI was the only responsible to manage all FFI calls.
-	If bytecodeFFICall fails, we want to send the message #invokeFunction:withArguments: to the TFSameThreadRunner uniqueInstance object.
-	
-	Here we are in a simulated environment, so we will need to simulate all of the objects and their interactions. "
-	simulatedInvokeFunctionWithArguments := methodBuilder newMethod
-		                     numberOfArguments: 2;
-		                     buildMethod.
-	stackBuilder addNewFrame method: simulatedInvokeFunctionWithArguments.
-	stackBuilder buildStack.
-	
-   simulatedClassOfRunner := self installClassIntoClassTableWithInstSpec: 1 instSize: 0.
-	simulatedRunner := memory instantiateClass: simulatedClassOfRunner.
-   self setUpMethodDictionaryIn: simulatedClassOfRunner.
-
-	"The method that we want to end up calling is all simulated, so it doesn't really matter its selector. Only that they are associated."
-	selectorOop := memory integerObjectOf: 42.
-	"memory splObj: SelectorInvokeFunctionWithArguments  put: selectorOop.   												<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
-   self installSelector: selectorOop method: simulatedInvokeFunctionWithArguments inMethodDictionary: (memory fetchPointer: MethodDictionaryIndex ofObject: simulatedClassOfRunner).
-																							
-	"-----------------------------------------"			
-				
-																
-	"The byte following the bytecode 230 (15rE6) encodes two offsets of the literals, corresponding to aTFRunner and the function definition.
-	In the least significant nibble it's the runner and on the most significant one the fdef."
-	
-	" The runner it's on offset 0 and the fdef on offset 1:  0000 0001"
-	aMethod := methodBuilder newMethod
-		bytecodes:
-			#[ 
-				"byecodeFFICall n=1" 16rE6 16r1						
-						];
-		numberOfArguments: 2;
-		literals: { 
-			simulatedRunner . tfExternalFunction
-		};
-		isPrimitive: false;
-		buildMethod.
-	
-	"Here it doesn't matter the receiver of the method. We are only interested in testing the method, more specifically its bytecodes."
-	receiver := memory integerObjectOf: 41.
-	receiverClass := self setSmallIntegerClassIntoClassTable.
-	self setUpMethodDictionaryIn: receiverClass.
-	aMethodDictionary := memory
-		                     fetchPointer: MethodDictionaryIndex
-		                     ofObject: receiverClass.
-
-	arg1 := memory integerObjectOf: 111.
-	arg2 := memory integerObjectOf: 222.
-
-	stackBuilder addNewFrame
-		method: aMethod;
-		stack: { 
-				receiver.
-				arg1.
-				arg2 }.
-	stackBuilder buildStack.
-
-	interpreter methodDictLinearSearchLimit: 3.
-	interpreter setBreakSelector: nil.
-	interpreter method: aMethod.
-
-	"The interpreter is trying to find the method in the class and when executes 'lookupMethodInClass:'  it looks for the methodSelector, but as we have not set it up here, it doesn't find it."
-	[ self interpretNextBytecode. self fail ] on: Error do: [ :err | self assert: err messageText equals: 'Recursive not understood error encountered' ].
-
-	
-
-]
-
-{ #category : 'tests-fficall' }
-VMByteCodesTest >> testBytecodeFFICallWithNonConmutativeOp [
+VMByteCodesTest >> testBytecodeFFICallWithNonConmutativeOpSignedInt [
 
 	| aMethod aMethodToActivate receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction isFunctionCalled |
 	
 	isFunctionCalled := false.
 	
 	tfExternalFunction := self 
-		createExternalFunctionFor:  [ :anArgument :anotherArgument | isFunctionCalled := true . anArgument - anotherArgument ] 
-		withArgumentTypes: { interpreter libFFI uint64. interpreter libFFI uint64} 
-		withReturnType: interpreter libFFI uint64.
+		createExternalFunctionFor:  [ :anArgument :anotherArgument | isFunctionCalled := true. anArgument - anotherArgument ] 
+		withArgumentTypes: { interpreter libFFI sint32. interpreter libFFI sint32} 
+		withReturnType: interpreter libFFI sint32.
 
 	methodBuilder newMethod literals: { tfExternalFunction }.
 	aMethod := methodBuilder buildMethod.

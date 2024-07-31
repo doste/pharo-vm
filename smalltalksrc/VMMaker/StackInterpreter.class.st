@@ -7258,8 +7258,7 @@ StackInterpreter >> handleFFIError [
 StackInterpreter >> handleFFIErrorWithFunctionDefinition: aFunctionDefinition runner: aRunner andCif: cif [  
 	| numberOfArguments arguments lookupClassTag |
 	
-	numberOfArguments := cif ifNil: [ 0 ] ifNotNil: [ cif numberArguments ] . "si cif es nil que hacemos?"
-
+	numberOfArguments := cif numberArguments.
 	arguments := objectMemory
 		         eeInstantiateSmallClassIndex: ClassArrayCompactIndex
 		         format: objectMemory arrayFormat
@@ -14650,20 +14649,26 @@ StackInterpreter >> signed32BitIntegerFor: integerValue [
 	"Answer a full 32 bit integer object for the given integer value.
 	 N.B.  Returning in each arm separately enables Slang inlining.
 	 /Don't/ return the ifTrue:ifFalse: unless Slang inlining of conditionals is fixed."
+
 	<api>
 	<inline: true>
 	objectMemory hasSixtyFourBitImmediates
-		ifTrue:
-			[^objectMemory integerObjectOf: 
-				(self cCode: [self cCoerceSimple: integerValue to: #int]
-					inSmalltalk: [(integerValue bitAnd: 16r7FFFFFFF)
-								- ((integerValue >> 31 anyMask: 1)
-									ifTrue: [-16r100000000]
-									ifFalse: [0])])]
-		ifFalse:
-			[(objectMemory isIntegerValue: integerValue) ifTrue:
-				[^objectMemory integerObjectOf: integerValue].
-			 ^self noInlineSigned32BitIntegerGutsFor: integerValue]
+		ifTrue: [			
+			"Check if the value is already a valid 32 bit value, and tag it if possible"
+			(integerValue between: -2147483648 and: 2147483647) ifTrue: [
+				^ objectMemory integerObjectOf: integerValue ].
+			"Otherwise, truncate to 32 bits"
+			^ objectMemory integerObjectOf: (self
+					   cCode: [ self cCoerceSimple: integerValue to: #int ]
+					   inSmalltalk: [
+						   (integerValue bitAnd: 16r7FFFFFFF)
+						   - ((integerValue >> 31 anyMask: 1)
+								    ifTrue: [ -16r100000000 ]
+								    ifFalse: [ 0 ]) ]) ]
+		ifFalse: [
+			(objectMemory isIntegerValue: integerValue) ifTrue: [
+				^ objectMemory integerObjectOf: integerValue ].
+			^ self noInlineSigned32BitIntegerGutsFor: integerValue ]
 ]
 
 { #category : 'primitive support' }
