@@ -2778,15 +2778,11 @@ StackInterpreter >> bytecodeFFICall [
 
 	externalFunction := self getHandler: fdef.
 	(self failed or: [ externalFunction isNil ]) ifTrue: [
-		^ self
-			  error: 'WAAAAAT' ].
-
-
+		^ self fallbackInvalidFFICall ].
 	cif := self getHandlerAsCif:
 		       (objectMemory fetchPointer: 1 ofObject: fdef).
 	(self failed or: [ cif isNil ]) ifTrue: [
-		^ self
-			  error: 'WAAAAAT' ].
+		^ self fallbackInvalidFFICall ].
 
 	(self doCall: externalFunction withCif: cif) ifFalse: [
 		^ self
@@ -5862,6 +5858,19 @@ StackInterpreter >> failUnbalancedPrimitive [
 	"not inlined for breakpoint value..."
 	<inline: false>
 	self primitiveFailFor: PrimErrBadNumArgs
+]
+
+{ #category : 'bytecode generators' }
+StackInterpreter >> fallbackInvalidFFICall [
+	"We have an invalid FFI call: either the function or the cif are not valid. We cannot proceed.
+	Instead, send a message #invalidFFICall to the Context object"
+
+	| ourContext |
+	ourContext := self ensureFrameIsMarried: framePointer SP: stackPointer.
+	self push: ourContext.
+	messageSelector := objectMemory splObj: SelectorInvalidFFICall.
+	argumentCount := 0.
+	self normalSend
 ]
 
 { #category : 'utilities' }

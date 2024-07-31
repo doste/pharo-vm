@@ -79,6 +79,7 @@ Class {
 		'SelectorCannotReturn',
 		'SelectorCounterTripped',
 		'SelectorDoesNotUnderstand',
+		'SelectorInvalidFFICall',
 		'SelectorInvokeCallback',
 		'SelectorInvokeFunctionWithArguments',
 		'SelectorMustBeBoolean',

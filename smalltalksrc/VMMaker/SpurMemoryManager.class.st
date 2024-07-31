@@ -893,6 +893,7 @@ SpurMemoryManager class >> initializeSpecialObjectIndices [
 	ClassExternalAddress := 43.
 	
 	SelectorInvokeFunctionWithArguments := 45.
+	SelectorInvalidFFICall := 46.
 
 	SelectorAboutToReturn := 48.
 	SelectorRunWithIn := 49.
