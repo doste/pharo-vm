@@ -10258,8 +10258,7 @@ StackInterpreter >> marshallSInt8From: elemOop into: holder [
 	value < INT8_MIN ifTrue: [ ^ self primitiveFailFor: PrimErrBadArgument ].
 
 	intHolder := self cCoerce: holder to: #'int8_t *'.
-	intHolder at: 0 put: elemOop
-		
+	intHolder at: 0 put: value
 ]
 
 { #category : 'ffi - helpers' }
