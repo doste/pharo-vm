@@ -315,14 +315,13 @@ VMByteCodesTest >> testArraySumUsingVectorBytecode [
 { #category : 'tests-fficall' }
 VMByteCodesTest >> testBytecodeFFICall8BitNegativeInteger [
 
-	| aMethod aMethodToActivate receiver receiverClass aMethodDictionary arg1 tfExternalFunction isFunctionCalled |
+	| aMethod aMethodToActivate receiver receiverClass aMethodDictionary arg1 tfExternalFunction |
 	
-	isFunctionCalled := false.
 	
 	tfExternalFunction := self 
 		createExternalFunctionFor:  [ :anArgument | anArgument ] 
 		withArgumentTypes: { interpreter libFFI sint8 } 
-		withReturnType: interpreter libFFI uint8.
+		withReturnType: interpreter libFFI sint8.
 
 	methodBuilder newMethod literals: { tfExternalFunction }.
 	aMethod := methodBuilder buildMethod.
@@ -366,16 +365,11 @@ VMByteCodesTest >> testBytecodeFFICall8BitNegativeInteger [
 	interpreter method: aMethod.
 
 	self interpretNextBytecode.
-
-	self assert: isFunctionCalled.
 	
 	"Before calling to the bytecode we had to push the receiver and all the arguments.
 	We should assert that the bytecode popped the 2 arguments and pushed the result.
 	Here we assert that the result was pushed:"
-	self assert: (memory integerValueOf:(interpreter stackTop))  equals: 111 + 222.
-	
-	"And here we assert that the 2 arguments were popped (the receiver was pushed before the args)"
-	self assert: (memory integerValueOf:(interpreter stackValue: 1))  equals: receiver.
+	self assert: interpreter stackTop equals: (memory integerObjectOf: -2)
 
 ]
 
