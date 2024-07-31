@@ -520,7 +520,7 @@ VMByteCodesTest >> testBytecodeFFICallAddTwoNumbersCorrectly [
 ]
 
 { #category : 'tests-fficall' }
-VMByteCodesTest >> testBytecodeFFICallFailWithBadArguments [
+VMByteCodesTest >> testBytecodeFFICallFailWithBadFunction [
 
 	| aMethod receiver contextClass aMethodDictionary invalidExternalFunction simulatedClassOfRunner simulatedRunner aMethodToActivate |
 	simulatedClassOfRunner := self
@@ -572,90 +572,6 @@ VMByteCodesTest >> testBytecodeFFICallFailWithBadArguments [
 	self
 		assert: (interpreter frameMethodObject: interpreter framePointer)
 		equals: aMethodToActivate
-]
-
-{ #category : 'tests-fficall' }
-VMByteCodesTest >> testBytecodeFFICallFailWithBadExternalFunction [
-
-	| aMethod receiver receiverClass aMethodDictionary arg1 arg2 tfExternalFunction selectorOop simulatedInvokeFunctionWithArguments simulatedClassOfRunner simulatedRunner |
-	
-	
-	tfExternalFunction := memory trueObject. "Bad function!"
-	
-	"When the bytecodeFFICall fails for some reason, instead of throw an error (the bytecodes, in contrast to primitives, cannot fail, there is no 'bytecodeFail'.
-	So in those cases we pass the burden of handling the errors to the TFSameThreadRunner, who in the previous implementation of FFI was the only responsible to manage all FFI calls.
-	If bytecodeFFICall fails, we want to send the message #invokeFunction:withArguments: to the TFSameThreadRunner uniqueInstance object.
-	
-	Here we are in a simulated environment, so we will need to simulate all of the objects and their interactions. "
-	simulatedInvokeFunctionWithArguments := methodBuilder newMethod
-		                     numberOfArguments: 2;
-		                     buildMethod.
-	stackBuilder addNewFrame method: simulatedInvokeFunctionWithArguments.
-	stackBuilder buildStack.
-	
-   simulatedClassOfRunner := self installClassIntoClassTableWithInstSpec: 1 instSize: 0.
-	simulatedRunner := memory instantiateClass: simulatedClassOfRunner.
-   self setUpMethodDictionaryIn: simulatedClassOfRunner.
-
-	"The method that we want to end up calling is all simulated, so it doesn't really matter its selector. Only that they are associated."
-	selectorOop := memory integerObjectOf: 42.
-	memory splObj: SelectorInvokeFunctionWithArguments  put: selectorOop.
-   self installSelector: selectorOop method: simulatedInvokeFunctionWithArguments inMethodDictionary: (memory fetchPointer: MethodDictionaryIndex ofObject: simulatedClassOfRunner).
-																							
-	"-----------------------------------------"			
-				
-																
-	"The byte following the bytecode 230 (15rE6) encodes two offsets of the literals, corresponding to aTFRunner and the function definition.
-	In the least significant nibble it's the runner and on the most significant one the fdef."
-	
-	" The runner it's on offset 0 and the fdef on offset 1:  0000 0001"
-	aMethod := methodBuilder newMethod
-		bytecodes:
-			#[ 
-				"byecodeFFICall n=1" 16rE6 16r1						
-						];
-		numberOfArguments: 2;
-		literals: { 
-			simulatedRunner . tfExternalFunction
-		};
-		isPrimitive: false;
-		buildMethod.
-	
-	"Here it doesn't matter the receiver of the method. We are only interested in testing the method, more specifically its bytecodes."
-	receiver := memory integerObjectOf: 41.
-	receiverClass := self setSmallIntegerClassIntoClassTable.
-	self setUpMethodDictionaryIn: receiverClass.
-	aMethodDictionary := memory
-		                     fetchPointer: MethodDictionaryIndex
-		                     ofObject: receiverClass.
-
-	arg1 := memory integerObjectOf: 111.
-	arg2 := memory integerObjectOf: 222.
-
-	stackBuilder addNewFrame
-		method: aMethod;
-		stack: { 
-				receiver.
-				arg1.
-				arg2 }.
-	stackBuilder buildStack.
-
-	interpreter methodDictLinearSearchLimit: 3.
-	interpreter setBreakSelector: nil.
-	interpreter method: aMethod.
-
-	self interpretNextBytecode.
-
-	"We want to test that the intepreter could successfully arrive to the method that handles the errors. That handler is the TFSameThreadRunner and the method
-	invokeFunction:withArguments:. Of course in these tests we simulate it with an Object that knows how to responds to the invokeFunction:withArguments.
-	That the interpreter arrives at the handler method it means that its instructionPointer is set to the first bytecode of the CompiledMethod corresponding to the 
-	handler method. 
-	Each bytecode is responsible of move the IP forward to the next instruction.
-	So, when the intepreter is in the first bytecode of the method, its IP is already pointing to the next bytecode.
-	That's why we need to subtract one:"
-	self assert: interpreter instructionPointer equals: (methodBuilder bytecodeAt: 0 forMethod: simulatedInvokeFunctionWithArguments) - 1
-	
-
 ]
 
 { #category : 'tests-fficall' }
