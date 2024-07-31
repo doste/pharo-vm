@@ -9,24 +9,11 @@ Class {
 	#tag : 'JitTests'
 }
 
-{ #category : 'tests' }
+{ #category : 'running' }
 VMPushThisContextRoutineTest >> setUp [
 
-	| contextClass |
-
 	super setUp.
-
-	contextClass := self
-		newClassInOldSpaceWithSlots: Context allSlots size
-		instSpec: Context instSpec.
-		
-	memory setHashBitsOf: contextClass to: ClassMethodContextCompactIndex.
-		
-	memory
-		storePointer: ClassMethodContextCompactIndex
-		ofObject: memory classTableFirstPage
-		withValue: contextClass
-
+	self setUpContextClass
 ]
 
 { #category : 'tests' }

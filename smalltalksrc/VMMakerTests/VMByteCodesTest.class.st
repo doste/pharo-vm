@@ -178,29 +178,38 @@ VMByteCodesTest >> pushThisContextTopFrame [
 		withInterpreter: interpreter
 ]
 
-{ #category : 'tests-simd' }
-VMByteCodesTest >> setUp [ 
+{ #category : 'running' }
+VMByteCodesTest >> setUp [
 
 	| classFloat |
 	super setUp.
-	self installFloat64RegisterClass
-	
-	"aver:::"
+	self installFloat64RegisterClass.
+	self setUpContextClass.
+	self setArrayClassIntoClassTable.
+	self setMessageClassIntoClassTable.
+
 	interpreter libFFI: LibFFI new.
 	interpreter libFFI interpreter: interpreter.
-	
-	memory classExternalAddress: (self newClassInOldSpaceWithSlots: 0 instSpec: (memory byteFormatForNumBytes: 0) ).
-	memory classArray: (self newClassInOldSpaceWithSlots: 0 instSpec: memory arrayFormat ).
-	memory classByteArray: (self newClassInOldSpaceWithSlots: 0 instSpec: (memory byteFormatForNumBytes: 0) ).
 
-  classFloat := self newClassInOldSpaceWithSlots: 0 instSpec: memory firstLongFormat.
+	memory classExternalAddress: (self
+			 newClassInOldSpaceWithSlots: 0
+			 instSpec: (memory byteFormatForNumBytes: 0)).
+	memory classArray:
+		(self newClassInOldSpaceWithSlots: 0 instSpec: memory arrayFormat).
+	memory classByteArray: (self
+			 newClassInOldSpaceWithSlots: 0
+			 instSpec: (memory byteFormatForNumBytes: 0)).
+
+	classFloat := self
+		              newClassInOldSpaceWithSlots: 0
+		              instSpec: memory firstLongFormat.
 	memory setHashBitsOf: classFloat to: ClassFloatCompactIndex.
 	memory
 		storePointer: ClassFloatCompactIndex
 		ofObject: memory classTableFirstPage
 		withValue: classFloat.
 
-	self createLargeIntegerClasses.	
+	self createLargeIntegerClasses
 ]
 
 { #category : 'tests-push-simple' }
