@@ -6359,7 +6359,7 @@ CogARMv8Compiler >> subsSize: is64Bits sourceRegister: sourceRegister shift: shi
 
 { #category : 'translation' }
 CogARMv8Compiler >> supportsJITtedBytecodeFFICall [
-	^true
+	^false
 ]
 
 { #category : 'private-bit-manipulation' }
